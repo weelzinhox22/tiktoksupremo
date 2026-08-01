@@ -81,19 +81,31 @@ function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string
   return result;
 }
 
+function parseGoogleError(errText: string): string {
+  try {
+    const json = JSON.parse(errText) as { error?: { message?: string } };
+    if (json?.error?.message) return json.error.message;
+  } catch {
+    /* fallback */
+  }
+  return errText.slice(0, 150);
+}
+
 export class GeminiProvider implements AIProvider {
   private key = process.env["GEMINI_API_KEY"];
   private model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
   private timeout = Number(process.env["AI_TIMEOUT_MS"] || 90_000);
 
   private requireKey() {
-    if (!this.key) {
+    const rawKey = this.key || process.env["GEMINI_API_KEY"] || "";
+    const cleanKey = rawKey.trim().replace(/^["']|["']$/g, "");
+    if (!cleanKey) {
       throw new AIProviderError(
         "IA não configurada. Defina a chave de API no backend.",
         "not_configured",
       );
     }
-    return this.key;
+    return cleanKey;
   }
 
   private async request(body: Record<string, unknown>) {
@@ -229,57 +241,52 @@ export class GeminiProvider implements AIProvider {
     if (options?.generationConfig) {
       body["generationConfig"] = options.generationConfig;
     }
-    const modelToUse = (targetModel || "gemini-1.5-flash").trim();
+    const modelToUse = (targetModel || "gemini-1.5-flash").trim().replace(/^["']|["']$/g, "");
+    const apiKey = this.requireKey();
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-goog-api-key": this.requireKey(),
+            "x-goog-api-key": apiKey,
           },
           body: JSON.stringify(body),
           signal: controller.signal,
         },
       );
-      if (
-        (response.status === 404 || response.status === 400) &&
-        modelToUse !== "gemini-1.5-flash"
-      ) {
-        const errBody = await response.text().catch(() => "");
-        console.warn(
-          `[Gemini] modelo ${modelToUse} retornou status ${response.status} (${errBody.slice(0, 150)}). Tentando fallback para gemini-1.5-flash...`,
-        );
-        return await this.requestGenerateContent(parts, options, "gemini-1.5-flash");
-      }
-      if (response.status === 400) {
-        const errBody = await response.text().catch(() => "");
-        console.error("[Gemini] generateContent 400:", errBody);
-        throw new AIProviderError(
-          "A IA recusou a solicitação. Verifique se o modelo e a chave de API estão corretos.",
-          "provider",
-        );
-      }
-      if (response.status === 404) {
-        throw new AIProviderError(
-          "O modelo de IA não foi encontrado para esta chave de API. Verifique a chave e o modelo configurados.",
-          "provider",
-        );
-      }
-      if (response.status === 401 || response.status === 403) {
-        throw new AIProviderError("A chave de API foi rejeitada ou não possui permissão.", "auth");
-      }
-      if (response.status === 429) {
-        throw new AIProviderError(
-          "O limite de requisições da IA foi atingido. Aguarde e tente novamente.",
-          "rate_limit",
-        );
-      }
       if (!response.ok) {
-        const errorBody = await response.text().catch(() => "(sem corpo)");
-        console.error(`[Gemini] erro ${response.status} na generateContent API:`, errorBody);
-        throw new AIProviderError(`A IA retornou erro ${response.status}.`, "provider");
+        const errorBody = await response.text().catch(() => "");
+        const details = parseGoogleError(errorBody);
+        console.error(`[Gemini] erro ${response.status} na generateContent API (${modelToUse}):`, errorBody);
+
+        if (
+          (response.status === 404 || response.status === 400) &&
+          modelToUse !== "gemini-1.5-flash"
+        ) {
+          console.warn(
+            `[Gemini] modelo ${modelToUse} retornou status ${response.status} (${details}). Tentando fallback para gemini-1.5-flash...`,
+          );
+          return await this.requestGenerateContent(parts, options, "gemini-1.5-flash");
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          throw new AIProviderError(
+            `A chave de API de IA foi rejeitada ou não possui permissão (${details || "chave inválida"}).`,
+            "auth",
+          );
+        }
+        if (response.status === 429) {
+          throw new AIProviderError(
+            "O limite de requisições da IA foi atingido. Aguarde e tente novamente.",
+            "rate_limit",
+          );
+        }
+        throw new AIProviderError(
+          `A IA retornou erro ${response.status}: ${details || "solicitação não concluída"}.`,
+          "provider",
+        );
       }
       return (await response.json()) as {
         candidates?: Array<{
