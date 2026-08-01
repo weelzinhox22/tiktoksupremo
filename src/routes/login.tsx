@@ -22,8 +22,14 @@ type Mode = "login" | "recovery";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
-    const user = await getCurrentUser();
-    if (user) throw redirect({ to: "/dashboard" });
+    try {
+      const user = await getCurrentUser();
+      if (user) throw redirect({ to: "/dashboard" });
+    } catch (error) {
+      if (error && typeof error === "object" && "to" in error) {
+        throw error;
+      }
+    }
   },
   head: () => ({ meta: [{ title: "Entrar no Tik Supremo" }] }),
   component: LoginPage,
