@@ -1,5 +1,4 @@
 import { createServerClient } from "@supabase/ssr";
-import { getCookies, setCookie } from "@tanstack/react-start/server";
 
 export function getSupabaseServerClient() {
   const env = import.meta.env as Record<string, string | undefined>;
@@ -12,10 +11,12 @@ export function getSupabaseServerClient() {
   }
   return createServerClient(url, anonKey, {
     cookies: {
-      getAll() {
+      async getAll() {
+        const { getCookies } = await import("@tanstack/react-start/server");
         return Object.entries(getCookies()).map(([name, value]) => ({ name, value }));
       },
-      setAll(cookies) {
+      async setAll(cookies) {
+        const { setCookie } = await import("@tanstack/react-start/server");
         for (const { name, value, options } of cookies) {
           setCookie(name, value, options);
         }
