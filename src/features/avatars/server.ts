@@ -140,14 +140,15 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
       );
     }
 
-    const targetModel = (process.env["GEMINI_FREE_MODEL"] || "gemini-1.5-flash").trim();
+    const targetModel = (process.env["GEMINI_FREE_MODEL"] || "gemini-3.6-flash").trim();
 
     const fetchBriefing = async (modelName: string): Promise<Response> => {
+      const cleanKey = key.trim().replace(/^["']|["']$/g, "");
       return fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(cleanKey)}`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+          headers: { "Content-Type": "application/json", "x-goog-api-key": cleanKey },
           body: JSON.stringify({
             contents: [
               {
@@ -176,11 +177,11 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
     };
 
     let response = await fetchBriefing(targetModel);
-    if ((response.status === 404 || response.status === 400) && targetModel !== "gemini-1.5-flash") {
-      console.warn(
-        `[AvatarBrief] Modelo ${targetModel} retornou ${response.status}. Tentando fallback com gemini-1.5-flash...`,
-      );
-      response = await fetchBriefing("gemini-1.5-flash");
+    if (!response.ok && targetModel !== "gemini-3.6-flash") {
+      response = await fetchBriefing("gemini-3.6-flash");
+    }
+    if (!response.ok) {
+      response = await fetchBriefing("gemini-flash-latest");
     }
 
     if (response.status === 429) {

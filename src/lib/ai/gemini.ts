@@ -93,7 +93,7 @@ function parseGoogleError(errText: string): string {
 
 export class GeminiProvider implements AIProvider {
   private key = process.env["GEMINI_API_KEY"];
-  private model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
+  private model = process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
   private timeout = Number(process.env["AI_TIMEOUT_MS"] || 90_000);
 
   private requireKey() {
@@ -232,7 +232,7 @@ export class GeminiProvider implements AIProvider {
       content?: { parts?: Array<{ text?: string; thought?: boolean }> };
     }>;
   }> {
-    const modelToUse = (targetModel || "gemini-1.5-flash").trim().replace(/^["']|["']$/g, "");
+    const modelToUse = (targetModel || "gemini-3.6-flash").trim().replace(/^["']|["']$/g, "");
     const apiKey = this.requireKey();
     const body: Record<string, unknown> = { contents: [{ parts }] };
     if (options?.systemInstruction) {
@@ -243,11 +243,12 @@ export class GeminiProvider implements AIProvider {
     }
 
     const attempts = [
-      { version: "v1", model: modelToUse },
       { version: "v1beta", model: modelToUse },
+      { version: "v1beta", model: "gemini-3.6-flash" },
+      { version: "v1beta", model: "gemini-flash-latest" },
+      { version: "v1beta", model: "gemini-3.5-flash" },
+      { version: "v1beta", model: "gemini-2.0-flash" },
       { version: "v1", model: "gemini-1.5-flash" },
-      { version: "v1beta", model: "gemini-1.5-flash-latest" },
-      { version: "v1", model: "gemini-1.5-pro" },
     ].filter(
       (item, index, self) =>
         self.findIndex((t) => t.version === item.version && t.model === item.model) === index,
