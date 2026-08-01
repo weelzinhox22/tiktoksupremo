@@ -53,6 +53,7 @@ const videoFrameSchema = {
 
 // Gemini's responseSchema does not support: additionalProperties, minimum, maximum,
 // minItems, maxItems, exclusiveMinimum, exclusiveMaximum. Strip them recursively.
+// Gemini also does NOT support numeric enum values — only string enums are allowed.
 function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string, unknown> {
   const UNSUPPORTED = new Set([
     "additionalProperties",
@@ -66,6 +67,14 @@ function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
     if (UNSUPPORTED.has(key)) continue;
+    // Gemini only supports string enums — drop enum if it contains non-string values
+    if (key === "enum" && Array.isArray(value)) {
+      if (value.every((v) => typeof v === "string")) {
+        result[key] = value;
+      }
+      // else: skip the enum entirely (Gemini rejects numeric enums)
+      continue;
+    }
     if (key === "properties" && value && typeof value === "object") {
       const props: Record<string, unknown> = {};
       for (const [pk, pv] of Object.entries(value as Record<string, unknown>)) {
@@ -74,12 +83,17 @@ function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string
       result[key] = props;
     } else if (key === "items" && value && typeof value === "object") {
       result[key] = sanitizeSchemaForGemini(value as Record<string, unknown>);
+    } else if ((key === "anyOf" || key === "allOf" || key === "oneOf") && Array.isArray(value)) {
+      result[key] = value.map((v) =>
+        v && typeof v === "object" ? sanitizeSchemaForGemini(v as Record<string, unknown>) : v,
+      );
     } else {
       result[key] = value;
     }
   }
   return result;
 }
+
 
 function parseGoogleError(errText: string): string {
   try {
