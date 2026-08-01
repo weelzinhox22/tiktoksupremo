@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Sparkles,
   Package,
@@ -198,9 +198,14 @@ function Landing() {
             Perguntas
           </a>
         </nav>
-        <Button variant="hero" size="sm" asChild>
-          <a href="#planos">Começar</a>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/login">Entrar</Link>
+          </Button>
+          <Button variant="hero" size="sm" asChild>
+            <a href="#planos">Começar</a>
+          </Button>
+        </div>
       </header>
 
       <main id="topo" className="relative z-10">
