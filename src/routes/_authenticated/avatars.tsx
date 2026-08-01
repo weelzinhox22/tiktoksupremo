@@ -53,7 +53,7 @@ function AvatarsPage() {
     mutationFn: () => createAvatarBrief({ data: { name, description } }),
     onSuccess: (result) => {
       setBrief(result);
-      toast.success("Briefing gratuito criado com Gemini.");
+      toast.success("Briefing de avatar criado com sucesso.");
     },
     onError: (error) => toast.error(error.message),
   });
@@ -268,7 +268,7 @@ function AvatarsPage() {
               </span>
               <p className="mt-4 text-sm font-semibold">Duas formas de começar</p>
               <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-                Gere a imagem diretamente com FLUX ou peça ao Gemini somente um prompt detalhado
+                Gere a imagem diretamente com IA ou peça somente um prompt detalhado
                 para usar em outra ferramenta.
               </p>
             </div>

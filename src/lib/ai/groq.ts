@@ -45,7 +45,7 @@ export class GroqProvider implements AIProvider {
   private requireKey() {
     if (!this.key) {
       throw new AIProviderError(
-        "IA não configurada. Defina GROQ_API_KEY ou OPENAI_API_KEY somente no backend.",
+        "IA não configurada. Defina a chave de API no backend.",
         "not_configured",
       );
     }
@@ -61,38 +61,38 @@ export class GroqProvider implements AIProvider {
         signal: controller.signal,
       });
       if (response.status === 401) {
-        throw new AIProviderError("A chave Groq foi rejeitada.", "auth");
+        throw new AIProviderError("A chave de API foi rejeitada.", "auth");
       }
       if (response.status === 400 && path.includes("audio")) {
         throw new AIProviderError(
-          "O Groq não conseguiu ler o áudio deste vídeo. Verifique se o arquivo possui fala ou faixa de áudio compatível.",
+          "O serviço de áudio não conseguiu ler este vídeo. Verifique se o arquivo possui fala ou faixa de áudio compatível.",
           "provider",
         );
       }
       if (response.status === 429) {
         throw new AIProviderError(
-          "O limite do Groq foi atingido. Aguarde e tente novamente.",
+          "O limite da IA foi atingido. Aguarde e tente novamente.",
           "rate_limit",
         );
       }
       if (response.status === 413) {
         throw new AIProviderError(
           path.includes("audio")
-            ? "O vídeo excede o limite de transcrição do seu plano Groq. Envie um vídeo menor ou use somente a copy."
-            : "A solicitação ficou grande demais para o Groq. Reduza o conteúdo ou os arquivos de referência.",
+            ? "O vídeo excede o limite de transcrição. Envie um vídeo menor ou use somente a copy."
+            : "A solicitação ficou grande demais. Reduza o conteúdo ou os arquivos de referência.",
           "provider",
         );
       }
       if (!response.ok) {
-        throw new AIProviderError(`O Groq retornou erro ${response.status}.`, "provider");
+        throw new AIProviderError(`A IA retornou erro ${response.status}.`, "provider");
       }
       return response;
     } catch (error) {
       if (error instanceof AIProviderError) throw error;
       if (error instanceof Error && error.name === "AbortError") {
-        throw new AIProviderError("O Groq excedeu o tempo limite.", "timeout");
+        throw new AIProviderError("A IA excedeu o tempo limite.", "timeout");
       }
-      throw new AIProviderError("Não foi possível acessar o Groq.", "provider");
+      throw new AIProviderError("Não foi possível acessar o serviço de IA.", "provider");
     } finally {
       clearTimeout(timer);
     }
@@ -111,7 +111,7 @@ export class GroqProvider implements AIProvider {
     const data = (await response.json()) as { text?: unknown };
     if (typeof data.text !== "string") {
       throw new AIProviderError(
-        "A transcrição Groq retornou formato inválido.",
+        "A transcrição da IA retornou formato inválido.",
         "invalid_response",
       );
     }
@@ -229,14 +229,14 @@ export class GroqProvider implements AIProvider {
       const text = data.choices?.[0]?.message?.content;
       if (!text)
         throw new AIProviderError(
-          "A análise visual Groq não retornou conteúdo.",
+          "A análise visual da IA não retornou conteúdo.",
           "invalid_response",
         );
       try {
         return JSON.parse(text) as Record<string, unknown>;
       } catch {
         throw new AIProviderError(
-          "A análise visual Groq retornou JSON inválido.",
+          "A análise visual da IA retornou JSON inválido.",
           "invalid_response",
         );
       }
@@ -251,7 +251,7 @@ export class GroqProvider implements AIProvider {
         } catch {
           return {
             limitations:
-              "Os frames excederam o limite visual do Groq; o roteiro foi criado com a transcrição e os dados do produto.",
+              "Os frames excederam o limite visual; o roteiro foi criado com a transcrição e os dados do produto.",
           };
         }
       }
@@ -293,7 +293,7 @@ export class GroqProvider implements AIProvider {
     });
     const data = (await response.json()) as GroqChatResponse;
     const text = data.choices?.[0]?.message?.content;
-    if (!text) throw new AIProviderError("O Groq não analisou a imagem.", "invalid_response");
+    if (!text) throw new AIProviderError("A IA não analisou a imagem.", "invalid_response");
     try {
       return referenceVisualAnalysisSchema.parse(JSON.parse(text));
     } catch {
@@ -334,7 +334,7 @@ export class GroqProvider implements AIProvider {
     });
     const data = (await response.json()) as GroqChatResponse;
     const text = data.choices?.[0]?.message?.content;
-    if (!text) throw new AIProviderError("O Groq não retornou o roteiro.", "invalid_response");
+    if (!text) throw new AIProviderError("A IA não retornou o roteiro.", "invalid_response");
     try {
       const parsed = scriptResultSchema.parse(JSON.parse(text));
       if (parsed.scenes.some((scene) => !scene.veo_prompt.includes(scene.spoken_text))) {
@@ -343,7 +343,7 @@ export class GroqProvider implements AIProvider {
       return parsed;
     } catch {
       throw new AIProviderError(
-        "O roteiro Groq não passou pela validação de segurança.",
+        "O roteiro não passou pela validação de segurança.",
         "invalid_response",
       );
     }

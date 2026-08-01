@@ -15,7 +15,7 @@ export function getAIProvider(): { name: AIProviderName; provider: AIProvider } 
   if (process.env["GROQ_API_KEY"]) return { name: "groq", provider: new GroqProvider() };
   if (process.env["OPENAI_API_KEY"]) return { name: "openai", provider: new OpenAIProvider() };
   throw new AIProviderError(
-    "IA não configurada. Defina GEMINI_API_KEY, GROQ_API_KEY ou OPENAI_API_KEY somente no backend.",
+    "IA não configurada. Defina a chave de API no backend.",
     "not_configured",
   );
 }

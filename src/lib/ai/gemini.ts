@@ -83,13 +83,13 @@ function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string
 
 export class GeminiProvider implements AIProvider {
   private key = process.env["GEMINI_API_KEY"];
-  private model = process.env["GEMINI_MODEL"] || "gemini-2.5-flash";
+  private model = process.env["GEMINI_MODEL"] || "gemini-2.0-flash";
   private timeout = Number(process.env["AI_TIMEOUT_MS"] || 90_000);
 
   private requireKey() {
     if (!this.key) {
       throw new AIProviderError(
-        "Gemini não configurado. Cole GEMINI_API_KEY no arquivo .env.local e reinicie o aplicativo.",
+        "IA não configurada. Defina a chave de API no backend.",
         "not_configured",
       );
     }
@@ -115,22 +115,22 @@ export class GeminiProvider implements AIProvider {
       );
       if (response.status === 400) {
         throw new AIProviderError(
-          "O Gemini recusou a solicitação. Confira se a chave tem acesso ao modelo configurado.",
+          "A IA recusou a solicitação. Verifique se o modelo e a chave de API estão corretos.",
           "provider",
         );
       }
       if (response.status === 401 || response.status === 403) {
-        throw new AIProviderError("A chave Gemini foi rejeitada ou não possui permissão.", "auth");
+        throw new AIProviderError("A chave de API foi rejeitada ou não possui permissão.", "auth");
       }
       if (response.status === 413) {
         throw new AIProviderError(
-          "A referência ficou grande demais para o Gemini. O sistema já reduziu os dados; tente usar menos frames.",
+          "A referência ficou grande demais para o sistema. Tente usar menos frames.",
           "provider",
         );
       }
       if (response.status === 429) {
         throw new AIProviderError(
-          "O limite gratuito do Gemini foi atingido. Aguarde e tente novamente.",
+          "O limite de requisições da IA foi atingido. Aguarde e tente novamente.",
           "rate_limit",
         );
       }
@@ -138,7 +138,7 @@ export class GeminiProvider implements AIProvider {
         const errorBody = await response.text().catch(() => "(sem corpo)");
         console.error(`[Gemini] erro ${response.status} na interactions API:`, errorBody);
         throw new AIProviderError(
-          `O Gemini retornou erro ${response.status}: ${errorBody.slice(0, 200)}`,
+          `A IA retornou erro ${response.status}.`,
           "provider",
         );
       }
@@ -146,9 +146,9 @@ export class GeminiProvider implements AIProvider {
     } catch (error) {
       if (error instanceof AIProviderError) throw error;
       if (error instanceof Error && error.name === "AbortError") {
-        throw new AIProviderError("O Gemini excedeu o tempo limite.", "timeout");
+        throw new AIProviderError("A IA excedeu o tempo limite.", "timeout");
       }
-      throw new AIProviderError("Não foi possível acessar o Gemini.", "provider");
+      throw new AIProviderError("Não foi possível acessar o serviço de IA.", "provider");
     } finally {
       clearTimeout(timer);
     }
@@ -245,23 +245,23 @@ export class GeminiProvider implements AIProvider {
         const errBody = await response.text().catch(() => "");
         console.error("[Gemini] generateContent 400:", errBody);
         throw new AIProviderError(
-          "O Gemini recusou a solicitação. Verifique o modelo e a chave de API.",
+          "A IA recusou a solicitação. Verifique se o modelo e a chave de API estão corretos.",
           "provider",
         );
       }
       if (response.status === 401 || response.status === 403) {
-        throw new AIProviderError("A chave Gemini foi rejeitada ou não possui permissão.", "auth");
+        throw new AIProviderError("A chave de API foi rejeitada ou não possui permissão.", "auth");
       }
       if (response.status === 429) {
         throw new AIProviderError(
-          "O limite gratuito do Gemini foi atingido. Aguarde e tente novamente.",
+          "O limite de requisições da IA foi atingido. Aguarde e tente novamente.",
           "rate_limit",
         );
       }
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "(sem corpo)");
         console.error(`[Gemini] erro ${response.status} na generateContent API:`, errorBody);
-        throw new AIProviderError(`O Gemini retornou erro ${response.status}.`, "provider");
+        throw new AIProviderError(`A IA retornou erro ${response.status}.`, "provider");
       }
       return (await response.json()) as {
         candidates?: Array<{
@@ -272,9 +272,9 @@ export class GeminiProvider implements AIProvider {
     } catch (error) {
       if (error instanceof AIProviderError) throw error;
       if (error instanceof Error && error.name === "AbortError") {
-        throw new AIProviderError("O Gemini excedeu o tempo limite.", "timeout");
+        throw new AIProviderError("A IA excedeu o tempo limite.", "timeout");
       }
-      throw new AIProviderError("Não foi possível acessar o Gemini.", "provider");
+      throw new AIProviderError("Não foi possível acessar o serviço de IA.", "provider");
     } finally {
       clearTimeout(timer);
     }
@@ -321,7 +321,7 @@ export class GeminiProvider implements AIProvider {
     ]);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text)
-      throw new AIProviderError("O Gemini não retornou a transcrição.", "invalid_response");
+      throw new AIProviderError("A IA não retornou a transcrição.", "invalid_response");
     return text.trim();
   }
 
@@ -389,7 +389,7 @@ export class GeminiProvider implements AIProvider {
 
       const text = this.getGeneratedText(data, "analyzeVideoFrames");
       if (!text)
-        return { limitations: "O Gemini não retornou análise visual; roteiro gerado sem ela." };
+        return { limitations: "A IA não retornou análise visual; roteiro gerado sem ela." };
       try {
         return this.safeParseJson(text);
       } catch {
@@ -446,7 +446,7 @@ export class GeminiProvider implements AIProvider {
       },
     );
     const text = this.getGeneratedText(result, "analyzeReferenceImages");
-    if (!text) throw new AIProviderError("O Gemini não analisou a imagem.", "invalid_response");
+    if (!text) throw new AIProviderError("A IA não analisou a imagem.", "invalid_response");
     try {
       return referenceVisualAnalysisSchema.parse(this.safeParseJson(text));
     } catch {
@@ -511,7 +511,7 @@ export class GeminiProvider implements AIProvider {
       },
     });
     const text = this.getGeneratedText(data, "generateScript");
-    if (!text) throw new AIProviderError("O Gemini não retornou o roteiro.", "invalid_response");
+    if (!text) throw new AIProviderError("A IA não retornou o roteiro.", "invalid_response");
     try {
       const raw = this.safeParseJson(text);
       this.coerceGeminiResult(raw);
@@ -533,7 +533,7 @@ export class GeminiProvider implements AIProvider {
         err,
       );
       throw new AIProviderError(
-        "O roteiro Gemini não passou pela validação estruturada.",
+        "O roteiro gerado pela IA não passou pela validação estruturada.",
         "invalid_response",
       );
     }

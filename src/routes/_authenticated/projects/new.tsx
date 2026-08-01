@@ -1310,13 +1310,7 @@ function NewProjectPage() {
               {watch("modularVariations")
                 ? "um pacote modular com 48 combinações"
                 : `${watch("variations")} versão(ões)`}
-              . Cada prompt VEO será salvo como JSON válido.
             </p>
-            <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm">
-              Se <code>GROQ_API_KEY</code> ou <code>OPENAI_API_KEY</code> não estiver configurada no
-              backend, nenhum roteiro falso será criado: a versão ficará como falha, com o erro real
-              no histórico.
-            </div>
           </div>
         )}
         <div className="flex justify-between border-t border-border pt-5">

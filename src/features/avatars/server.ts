@@ -136,11 +136,11 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
     const key = process.env["GEMINI_API_KEY"];
     if (!key) {
       throw new Error(
-        "Para criar o briefing gratuito, configure uma chave gratuita do Gemini. O upload de avatar continua disponível sem essa etapa.",
+        "Para criar o briefing gratuito, configure a chave de API de IA no backend. O upload de avatar continua disponível sem essa etapa.",
       );
     }
 
-    const model = process.env["GEMINI_FREE_MODEL"] || "gemini-2.5-flash-lite";
+    const model = process.env["GEMINI_FREE_MODEL"] || "gemini-2.0-flash-lite";
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
@@ -173,16 +173,16 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
     );
 
     if (response.status === 429) {
-      throw new Error("O limite gratuito do Gemini foi atingido. Aguarde e tente novamente.");
+      throw new Error("O limite de requisições da IA foi atingido. Aguarde e tente novamente.");
     }
     if (!response.ok) {
-      throw new Error("O Gemini não conseguiu criar o briefing do avatar.");
+      throw new Error("A IA não conseguiu criar o briefing do avatar.");
     }
     const result = (await response.json()) as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const text = result.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text;
-    if (!text) throw new Error("O Gemini não retornou o briefing do avatar.");
+    if (!text) throw new Error("A IA não retornou o briefing do avatar.");
     try {
       return generatedBriefSchema.parse(JSON.parse(text));
     } catch {
