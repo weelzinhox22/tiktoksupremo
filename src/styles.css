@@ -208,14 +208,5 @@
   background: radial-gradient(55% 40% at 50% 0%, oklch(0.7 0.16 292 / 0.1) 0%, transparent 75%);
 }
 
-/* Hide third-party dev/sandbox badges */
-#lovable-badge,
-[class*="lovable-badge"],
-[id*="lovable-badge"],
-iframe[src*="lovable"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
 }
 
