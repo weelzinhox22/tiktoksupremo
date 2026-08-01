@@ -213,6 +213,7 @@ export class GeminiProvider implements AIProvider {
       systemInstruction?: string;
       generationConfig?: Record<string, unknown>;
     },
+    targetModel = this.model,
   ): Promise<{
     candidates?: Array<{
       finishReason?: string;
@@ -228,9 +229,10 @@ export class GeminiProvider implements AIProvider {
     if (options?.generationConfig) {
       body["generationConfig"] = options.generationConfig;
     }
+    const modelToUse = (targetModel || "gemini-1.5-flash").trim();
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent`,
         {
           method: "POST",
           headers: {
@@ -241,11 +243,27 @@ export class GeminiProvider implements AIProvider {
           signal: controller.signal,
         },
       );
+      if (
+        (response.status === 404 || response.status === 400) &&
+        modelToUse !== "gemini-1.5-flash"
+      ) {
+        const errBody = await response.text().catch(() => "");
+        console.warn(
+          `[Gemini] modelo ${modelToUse} retornou status ${response.status} (${errBody.slice(0, 150)}). Tentando fallback para gemini-1.5-flash...`,
+        );
+        return await this.requestGenerateContent(parts, options, "gemini-1.5-flash");
+      }
       if (response.status === 400) {
         const errBody = await response.text().catch(() => "");
         console.error("[Gemini] generateContent 400:", errBody);
         throw new AIProviderError(
           "A IA recusou a solicitação. Verifique se o modelo e a chave de API estão corretos.",
+          "provider",
+        );
+      }
+      if (response.status === 404) {
+        throw new AIProviderError(
+          "O modelo de IA não foi encontrado para esta chave de API. Verifique a chave e o modelo configurados.",
           "provider",
         );
       }

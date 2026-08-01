@@ -140,37 +140,48 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
       );
     }
 
-    const model = process.env["GEMINI_FREE_MODEL"] || "gemini-2.0-flash-lite";
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text: `Crie um briefing visual consistente para um avatar UGC adulto e fictício chamado ${data.name}. Pedido do usuário: ${data.description}\n\nNão imite pessoa pública ou pessoa real identificável. A resposta deve ajudar o usuário a criar a imagem em uma ferramenta de sua escolha e depois enviá-la ao Tik Supremo. O prompt deve pedir retrato vertical 9:16, aparência fotográfica natural, corpo e roupa visíveis, anatomia realista, iluminação suave, fundo limpo, sem texto, logotipo ou marca-d'água.`,
+    const targetModel = (process.env["GEMINI_FREE_MODEL"] || "gemini-1.5-flash").trim();
+
+    const fetchBriefing = async (modelName: string): Promise<Response> => {
+      return fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Crie um briefing visual consistente para um avatar UGC adulto e fictício chamado ${data.name}. Pedido do usuário: ${data.description}\n\nNão imite pessoa pública ou pessoa real identificável. A resposta deve ajudar o usuário a criar a imagem em uma ferramenta de sua escolha e depois enviá-la ao Tik Supremo. O prompt deve pedir retrato vertical 9:16, aparência fotográfica natural, corpo e roupa visíveis, anatomia realista, iluminação suave, fundo limpo, sem texto, logotipo ou marca-d'água.`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "object",
+                required: ["visual_description", "image_prompt", "preservation_rules"],
+                properties: {
+                  visual_description: { type: "string" },
+                  image_prompt: { type: "string" },
+                  preservation_rules: { type: "array", items: { type: "string" } },
                 },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "object",
-              required: ["visual_description", "image_prompt", "preservation_rules"],
-              properties: {
-                visual_description: { type: "string" },
-                image_prompt: { type: "string" },
-                preservation_rules: { type: "array", items: { type: "string" } },
               },
             },
-          },
-        }),
-      },
-    );
+          }),
+        },
+      );
+    };
+
+    let response = await fetchBriefing(targetModel);
+    if ((response.status === 404 || response.status === 400) && targetModel !== "gemini-1.5-flash") {
+      console.warn(
+        `[AvatarBrief] Modelo ${targetModel} retornou ${response.status}. Tentando fallback com gemini-1.5-flash...`,
+      );
+      response = await fetchBriefing("gemini-1.5-flash");
+    }
 
     if (response.status === 429) {
       throw new Error("O limite de requisições da IA foi atingido. Aguarde e tente novamente.");
