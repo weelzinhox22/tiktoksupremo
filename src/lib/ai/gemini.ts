@@ -232,8 +232,8 @@ export class GeminiProvider implements AIProvider {
       content?: { parts?: Array<{ text?: string; thought?: boolean }> };
     }>;
   }> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeout);
+    const modelToUse = (targetModel || "gemini-1.5-flash").trim().replace(/^["']|["']$/g, "");
+    const apiKey = this.requireKey();
     const body: Record<string, unknown> = { contents: [{ parts }] };
     if (options?.systemInstruction) {
       body["systemInstruction"] = { parts: [{ text: options.systemInstruction }] };
@@ -241,12 +241,27 @@ export class GeminiProvider implements AIProvider {
     if (options?.generationConfig) {
       body["generationConfig"] = options.generationConfig;
     }
-    const modelToUse = (targetModel || "gemini-1.5-flash").trim().replace(/^["']|["']$/g, "");
-    const apiKey = this.requireKey();
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelToUse}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
+
+    const attempts = [
+      { version: "v1", model: modelToUse },
+      { version: "v1beta", model: modelToUse },
+      { version: "v1", model: "gemini-1.5-flash" },
+      { version: "v1beta", model: "gemini-1.5-flash-latest" },
+      { version: "v1", model: "gemini-1.5-pro" },
+    ].filter(
+      (item, index, self) =>
+        self.findIndex((t) => t.version === item.version && t.model === item.model) === index,
+    );
+
+    let lastStatus = 0;
+    let lastDetails = "";
+
+    for (const attempt of attempts) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeout);
+      try {
+        const url = `https://generativelanguage.googleapis.com/${attempt.version}/models/${attempt.model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const response = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -254,22 +269,24 @@ export class GeminiProvider implements AIProvider {
           },
           body: JSON.stringify(body),
           signal: controller.signal,
-        },
-      );
-      if (!response.ok) {
+        });
+
+        if (response.ok) {
+          return (await response.json()) as {
+            candidates?: Array<{
+              finishReason?: string;
+              content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+            }>;
+          };
+        }
+
         const errorBody = await response.text().catch(() => "");
         const details = parseGoogleError(errorBody);
-        console.error(`[Gemini] erro ${response.status} na generateContent API (${modelToUse}):`, errorBody);
-
-        if (
-          (response.status === 404 || response.status === 400) &&
-          modelToUse !== "gemini-1.5-flash"
-        ) {
-          console.warn(
-            `[Gemini] modelo ${modelToUse} retornou status ${response.status} (${details}). Tentando fallback para gemini-1.5-flash...`,
-          );
-          return await this.requestGenerateContent(parts, options, "gemini-1.5-flash");
-        }
+        lastStatus = response.status;
+        lastDetails = details;
+        console.warn(
+          `[Gemini] ${attempt.version}/models/${attempt.model} retornou ${response.status}: ${details}`,
+        );
 
         if (response.status === 401 || response.status === 403) {
           throw new AIProviderError(
@@ -283,26 +300,20 @@ export class GeminiProvider implements AIProvider {
             "rate_limit",
           );
         }
-        throw new AIProviderError(
-          `A IA retornou erro ${response.status}: ${details || "solicitação não concluída"}.`,
-          "provider",
-        );
+      } catch (error) {
+        if (error instanceof AIProviderError) throw error;
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new AIProviderError("A IA excedeu o tempo limite.", "timeout");
+        }
+      } finally {
+        clearTimeout(timer);
       }
-      return (await response.json()) as {
-        candidates?: Array<{
-          finishReason?: string;
-          content?: { parts?: Array<{ text?: string; thought?: boolean }> };
-        }>;
-      };
-    } catch (error) {
-      if (error instanceof AIProviderError) throw error;
-      if (error instanceof Error && error.name === "AbortError") {
-        throw new AIProviderError("A IA excedeu o tempo limite.", "timeout");
-      }
-      throw new AIProviderError("Não foi possível acessar o serviço de IA.", "provider");
-    } finally {
-      clearTimeout(timer);
     }
+
+    throw new AIProviderError(
+      `A IA retornou erro ${lastStatus || 404}: ${lastDetails || "modelo ou API indisponível"}.`,
+      "provider",
+    );
   }
 
   /** Returns the model's output text, skipping thinking-step parts (gemini-2.5+). */
