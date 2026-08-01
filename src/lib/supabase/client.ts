@@ -7,9 +7,7 @@ let browserClient: SupabaseClient | undefined;
 export function getSupabaseBrowserClient() {
   if (!browserClient) {
     const { url, anonKey } = getPublicSupabaseConfig();
-    browserClient = createBrowserClient(url, anonKey, {
-      cookieOptions: { sameSite: "lax", secure: location.protocol === "https:" },
-    });
+    browserClient = createBrowserClient(url, anonKey);
   }
   return browserClient;
 }
