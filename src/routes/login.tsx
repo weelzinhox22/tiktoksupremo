@@ -61,7 +61,7 @@ function LoginPage() {
       }
       await signIn(values.email, values.password);
       toast.success("Bem-vindo de volta.");
-      await navigate({ to: "/dashboard", replace: true });
+      window.location.href = "/dashboard";
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Não foi possível continuar.";
       setError(message);
