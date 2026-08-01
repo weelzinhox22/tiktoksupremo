@@ -22,6 +22,10 @@ import {
 } from "@/features/script-generation/prompts/tik-supremo";
 import { scriptJsonSchema } from "./openai";
 import { AIProviderError, type AIProvider, type GenerationContext } from "./provider";
+import {
+  buildReferenceVisualAnalysisPrompt,
+  referenceVisualAnalysisSchema,
+} from "@/features/products/visual-analysis";
 
 type GroqChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
@@ -156,7 +160,8 @@ export class GroqProvider implements AIProvider {
     });
     const data = (await response.json()) as GroqChatResponse;
     const text = data.choices?.[0]?.message?.content;
-    if (!text) throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
+    if (!text)
+      throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
     try {
       return JSON.parse(text) as unknown;
     } catch {
@@ -251,6 +256,48 @@ export class GroqProvider implements AIProvider {
         }
       }
       throw error;
+    }
+  }
+
+  async analyzeReferenceImages(
+    imageUrls: string[],
+    referenceType: "product" | "avatar",
+    context: GenerationContext,
+  ) {
+    if (!imageUrls.length)
+      throw new AIProviderError("Nenhuma imagem foi enviada para análise.", "provider");
+    const response = await this.request("/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.requireKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: this.visionModel,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: buildReferenceVisualAnalysisPrompt(referenceType, context) },
+              ...imageUrls.slice(0, 4).map((url) => ({
+                type: "image_url",
+                image_url: { url },
+              })),
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+        max_completion_tokens: 2_000,
+      }),
+    });
+    const data = (await response.json()) as GroqChatResponse;
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) throw new AIProviderError("O Groq não analisou a imagem.", "invalid_response");
+    try {
+      return referenceVisualAnalysisSchema.parse(JSON.parse(text));
+    } catch {
+      throw new AIProviderError("A análise visual retornou formato inválido.", "invalid_response");
     }
   }
 

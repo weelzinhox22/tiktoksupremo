@@ -9,6 +9,18 @@ export type EditorSegment = {
   end: number;
   duration: number;
   mute: boolean;
+  playbackRate: number;
+  volume: number;
+  mirror: boolean;
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  fadeIn: number;
+  fadeOut: number;
+  hideOverlay: boolean;
+  overlayPosition: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  overlayWidth: number;
+  overlayHeight: number;
 };
 
 export type EditorCombination = {
@@ -22,18 +34,23 @@ export type EditorCombination = {
 let ffmpegInstance: FFmpegType | null = null;
 let loaded = false;
 
-export const combinations: EditorCombination[] = Array.from({ length: 48 }, (_, index) => {
-  const hook = Math.floor(index / 12);
-  const body = Math.floor((index % 12) / 3);
-  const cta = index % 3;
-  return {
-    number: index + 1,
-    hook,
-    body,
-    cta,
-    label: `Gancho ${hook + 1} + Corpo ${body + 1} + CTA ${cta + 1}`,
-  };
-});
+export function createCombinations(hookCount: number, bodyCount: number, ctaCount: number) {
+  const result: EditorCombination[] = [];
+  for (let hook = 0; hook < hookCount; hook++) {
+    for (let body = 0; body < bodyCount; body++) {
+      for (let cta = 0; cta < ctaCount; cta++) {
+        result.push({
+          number: result.length + 1,
+          hook,
+          body,
+          cta,
+          label: `Gancho ${hook + 1} + Corpo ${body + 1} + CTA ${cta + 1}`,
+        });
+      }
+    }
+  }
+  return result;
+}
 
 export async function getVideoDuration(file: File) {
   const url = URL.createObjectURL(file);
@@ -84,23 +101,47 @@ export async function normalizeSegment(
 ) {
   if (!segment.file) throw new Error(`Envie o arquivo de ${segment.label}.`);
   const { fetchFile } = await import("@ffmpeg/util");
-  const extension = segment.file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "") || "mp4";
+  const extension =
+    segment.file.name
+      .split(".")
+      .pop()
+      ?.replace(/[^a-z0-9]/gi, "") || "mp4";
   const input = `input-${segment.id}.${extension}`;
   const output = `normalized-${segment.id}.mp4`;
   await ffmpeg.writeFile(input, await fetchFile(segment.file));
   await deleteIfPresent(ffmpeg, output);
 
-  const selectedDuration = Math.max(0.1, Math.min(8, segment.end - segment.start));
+  const selectedDuration = Math.max(
+    0.1,
+    Math.min(8 * segment.playbackRate, segment.end - segment.start),
+  );
+  const playedDuration = Math.min(8, selectedDuration / segment.playbackRate);
   const height = options.width === 1080 ? 1920 : 1280;
-  const videoFilter = [
+  const scaleFilter = `scale=${options.width}:${height}:force_original_aspect_ratio=decrease`;
+  const videoFilters = [
     `trim=duration=${selectedDuration}`,
-    "setpts=PTS-STARTPTS",
-    `scale=${options.width}:${height}:force_original_aspect_ratio=decrease`,
+    `setpts=(PTS-STARTPTS)/${segment.playbackRate}`,
+    scaleFilter,
     `pad=${options.width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+    ...(segment.mirror ? ["hflip"] : []),
+    `eq=brightness=${segment.brightness}:contrast=${segment.contrast}:saturation=${segment.saturation}`,
     "fps=30",
-    `tpad=stop_mode=clone:stop_duration=${Math.max(0, 8 - selectedDuration)}`,
+  ];
+  if (segment.hideOverlay) {
+    const boxWidth = Math.max(16, Math.round((options.width * segment.overlayWidth) / 100));
+    const boxHeight = Math.max(16, Math.round((height * segment.overlayHeight) / 100));
+    const x = segment.overlayPosition.endsWith("right") ? options.width - boxWidth - 4 : 4;
+    const y = segment.overlayPosition.startsWith("bottom") ? height - boxHeight - 4 : 4;
+    videoFilters.push(`delogo=x=${x}:y=${y}:w=${boxWidth}:h=${boxHeight}:show=0`);
+  }
+  if (segment.fadeIn > 0) videoFilters.push(`fade=t=in:st=0:d=${segment.fadeIn}`);
+  if (segment.fadeOut > 0)
+    videoFilters.push(`fade=t=out:st=${Math.max(0, 8 - segment.fadeOut)}:d=${segment.fadeOut}`);
+  videoFilters.push(
+    `tpad=stop_mode=clone:stop_duration=${Math.max(0, 8 - playedDuration)}`,
     "trim=duration=8",
-  ].join(",");
+  );
+  const videoFilter = videoFilters.join(",");
 
   const base = ["-ss", String(segment.start), "-i", input];
   const encodeVideo = [
@@ -138,7 +179,18 @@ export async function normalizeSegment(
       output,
     ]);
   } else {
-    const audioFilter = `atrim=duration=${selectedDuration},asetpts=PTS-STARTPTS,apad=pad_dur=${Math.max(0, 8 - selectedDuration)},atrim=duration=8`;
+    const audioFilters = [
+      `atrim=duration=${selectedDuration}`,
+      "asetpts=PTS-STARTPTS",
+      `atempo=${segment.playbackRate}`,
+      `volume=${segment.volume / 100}`,
+      `apad=pad_dur=${Math.max(0, 8 - playedDuration)}`,
+      "atrim=duration=8",
+    ];
+    if (segment.fadeIn > 0) audioFilters.push(`afade=t=in:st=0:d=${segment.fadeIn}`);
+    if (segment.fadeOut > 0)
+      audioFilters.push(`afade=t=out:st=${Math.max(0, 8 - segment.fadeOut)}:d=${segment.fadeOut}`);
+    const audioFilter = audioFilters.join(",");
     const withAudio = await ffmpeg.exec([
       ...base,
       ...encodeVideo,

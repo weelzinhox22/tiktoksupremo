@@ -1,20 +1,83 @@
 import { z } from "zod";
 
-export const sceneSchema = z.object({
-  scene_number: z.number().int().positive(),
-  duration_seconds: z.number().positive().max(8),
-  spoken_text: z.string(),
-  speech_direction: z.string(),
-  visual_action: z.string(),
-  body_movement: z.string(),
-  camera_direction: z.string(),
-  framing: z.string(),
-  character_direction: z.string(),
-  product_direction: z.string(),
-  setting: z.string(),
-  continuity_rules: z.string(),
-  veo_prompt: z.string(),
+const veoPromptSchema = z.string().superRefine((value, context) => {
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      context.addIssue({ code: "custom", message: "O prompt VEO precisa ser um objeto JSON." });
+      return;
+    }
+    const requiredKeys = [
+      "version",
+      "aspect_ratio",
+      "duration_seconds",
+      "format",
+      "reference_lock",
+      "style",
+      "character",
+      "environment",
+      "product",
+      "camera",
+      "hands",
+      "movement",
+      "voice",
+      "dialogue",
+      "screen",
+      "negative_prompt",
+    ];
+    const missing = requiredKeys.filter((key) => !(key in parsed));
+    if (missing.length) {
+      context.addIssue({
+        code: "custom",
+        message: `O JSON VEO não contém: ${missing.join(", ")}.`,
+      });
+    }
+    if (parsed["duration_seconds"] !== 8 || parsed["aspect_ratio"] !== "9:16") {
+      context.addIssue({
+        code: "custom",
+        message: "O prompt VEO precisa usar 9:16 e exatamente 8 segundos.",
+      });
+    }
+  } catch {
+    context.addIssue({ code: "custom", message: "O prompt VEO precisa ser um JSON válido." });
+  }
 });
+
+function validateDialogue(
+  value: { spoken_text: string; veo_prompt: string },
+  context: z.RefinementCtx,
+) {
+  try {
+    const prompt = JSON.parse(value.veo_prompt) as Record<string, unknown>;
+    if (prompt["dialogue"] !== value.spoken_text) {
+      context.addIssue({
+        code: "custom",
+        path: ["veo_prompt"],
+        message: "dialogue deve ser exatamente igual a spoken_text.",
+      });
+    }
+  } catch {
+    // O erro de JSON já é informado por veoPromptSchema.
+  }
+}
+
+export const sceneSchema = z
+  .object({
+    scene_number: z.number().int().positive(),
+    duration_seconds: z.literal(8),
+    spoken_text: z.string(),
+    speech_direction: z.string(),
+    visual_action: z.string(),
+    body_movement: z.string(),
+    camera_direction: z.string(),
+    framing: z.string(),
+    character_direction: z.string(),
+    product_direction: z.string(),
+    setting: z.string(),
+    continuity_rules: z.string(),
+    veo_prompt: veoPromptSchema,
+  })
+  .superRefine(validateDialogue);
 
 export const scriptResultSchema = z.object({
   product_summary: z.string(),
@@ -99,12 +162,14 @@ export const validatedCopyAnalysisSchema = z.object({
 });
 export type ValidatedCopyAnalysis = z.infer<typeof validatedCopyAnalysisSchema>;
 
-export const sceneRevisionSchema = z.object({
-  spoken_text: z.string(),
-  speech_direction: z.string(),
-  character_direction: z.string(),
-  veo_prompt: z.string(),
-});
+export const sceneRevisionSchema = z
+  .object({
+    spoken_text: z.string(),
+    speech_direction: z.string(),
+    character_direction: z.string(),
+    veo_prompt: veoPromptSchema,
+  })
+  .superRefine(validateDialogue);
 export type SceneRevision = z.infer<typeof sceneRevisionSchema>;
 
 export const copyModuleBatchSchema = z.object({
@@ -114,10 +179,12 @@ export const copyModuleBatchSchema = z.object({
       title: z.string(),
       strategy: z.string(),
       scenes: z.array(
-        z.object({
-          spoken_text: z.string(),
-          veo_prompt: z.string(),
-        }),
+        z
+          .object({
+            spoken_text: z.string(),
+            veo_prompt: veoPromptSchema,
+          })
+          .superRefine(validateDialogue),
       ),
     }),
   ),

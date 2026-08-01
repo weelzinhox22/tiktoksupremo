@@ -1,10 +1,24 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "@tanstack/react-query";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, ArrowRight, Loader2, Search, Upload, Wand2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ImagePlus,
+  Lightbulb,
+  Loader2,
+  Search,
+  Sparkles,
+  Upload,
+  UserRound,
+  Wand2,
+  PackageCheck,
+  PersonStanding,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +28,15 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { generateProjectScript } from "@/features/script-generation/server";
 import { extractVideoFrames } from "@/features/video-analysis/extract-frames";
 import { importProductFromUrl } from "@/features/products/import-server";
+import { generateAvatarImage } from "@/features/avatars/server";
+import {
+  listAvatarLibrary,
+  listMovementLibrary,
+  listProductLibrary,
+  type AvatarWithPreview,
+  type ProductLibraryWithPreview,
+} from "@/features/libraries/queries";
+import type { Avatar, MovementPreset } from "@/lib/supabase/types";
 
 const schema = z.object({
   projectName: z.string().max(160, "O nome do projeto deve ter no máximo 160 caracteres."),
@@ -94,6 +117,20 @@ function NewProjectPage() {
   const [video, setVideo] = useState<File | null>(null);
   const [progress, setProgress] = useState("Preparando...");
   const [lastImportedUrl, setLastImportedUrl] = useState("");
+  const [avatars, setAvatars] = useState<AvatarWithPreview[]>([]);
+  const [libraryProducts, setLibraryProducts] = useState<ProductLibraryWithPreview[]>([]);
+  const [selectedLibraryProductId, setSelectedLibraryProductId] = useState<string | null>(null);
+  const [saveProductToLibrary, setSaveProductToLibrary] = useState(true);
+  const [movements, setMovements] = useState<MovementPreset[]>([]);
+  const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([]);
+  const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [avatarMode, setAvatarMode] = useState<"none" | "library" | "upload" | "generate">("none");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarName, setAvatarName] = useState("");
+  const [avatarDescription, setAvatarDescription] = useState("");
+  const selectedAvatar = avatars.find((avatar) => avatar.id === selectedAvatarId) ?? null;
+  const selectedLibraryProduct =
+    libraryProducts.find((product) => product.id === selectedLibraryProductId) ?? null;
   const {
     register,
     handleSubmit,
@@ -151,6 +188,24 @@ function NewProjectPage() {
       notes: "",
     },
   });
+  useEffect(() => {
+    let active = true;
+    const loadLibraries = async () => {
+      const [avatarResult, productResult, movementResult] = await Promise.allSettled([
+        listAvatarLibrary(user.id),
+        listProductLibrary(),
+        listMovementLibrary(),
+      ]);
+      if (!active) return;
+      if (avatarResult.status === "fulfilled") setAvatars(avatarResult.value);
+      if (productResult.status === "fulfilled") setLibraryProducts(productResult.value);
+      if (movementResult.status === "fulfilled") setMovements(movementResult.value);
+    };
+    void loadLibraries();
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
   const productImportMutation = useMutation({
     mutationFn: (url: string) => importProductFromUrl({ data: { url } }),
     onSuccess: (data) => {
@@ -164,10 +219,81 @@ function NewProjectPage() {
     onError: (cause) =>
       toast.error(cause instanceof Error ? cause.message : "Não foi possível importar o produto."),
   });
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async () => {
+      if (!avatarFile) throw new Error("Escolha a foto do avatar.");
+      if (avatarName.trim().length < 2) throw new Error("Dê um nome ao avatar.");
+      const supabase = getSupabaseBrowserClient();
+      const imagePath = `${user.id}/avatars/uploaded/${crypto.randomUUID()}-${safeName(avatarFile.name)}`;
+      const upload = await supabase.storage
+        .from("product-images")
+        .upload(imagePath, avatarFile, { contentType: avatarFile.type, upsert: false });
+      if (upload.error) throw new Error(`Falha ao enviar o avatar: ${upload.error.message}`);
+      const result = await supabase
+        .from("avatars")
+        .insert({
+          user_id: user.id,
+          name: avatarName.trim(),
+          description: avatarDescription.trim(),
+          image_path: imagePath,
+          source: "upload",
+          generation_prompt: null,
+          metadata: {
+            reference_purpose: "ugc_video_identity_anchor",
+          },
+        })
+        .select(
+          "id,user_id,name,description,image_path,source,generation_prompt,metadata,created_at,updated_at",
+        )
+        .single();
+      if (result.error || !result.data) {
+        await supabase.storage.from("product-images").remove([imagePath]);
+        throw new Error("A foto foi enviada, mas o avatar não pôde ser salvo.");
+      }
+      const signed = await supabase.storage
+        .from("product-images")
+        .createSignedUrl(imagePath, 3_600);
+      return { ...(result.data as Avatar), previewUrl: signed.data?.signedUrl ?? null };
+    },
+    onSuccess: (avatar) => {
+      setAvatars((current) => [avatar, ...current]);
+      setSelectedAvatarId(avatar.id);
+      setAvatarMode("library");
+      setAvatarFile(null);
+      toast.success("Avatar salvo e selecionado.");
+    },
+    onError: (cause) =>
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível salvar o avatar."),
+  });
+  const generateAvatarMutation = useMutation({
+    mutationFn: () =>
+      generateAvatarImage({
+        data: { name: avatarName.trim(), description: avatarDescription.trim() },
+      }),
+    onSuccess: (avatar) => {
+      const complete = avatar as AvatarWithPreview;
+      setAvatars((current) => [complete, ...current]);
+      setSelectedAvatarId(complete.id);
+      setAvatarMode("library");
+      toast.success("Avatar criado com FLUX, salvo e selecionado.");
+    },
+    onError: (cause) =>
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível criar o avatar."),
+  });
   const mutation = useMutation({
     mutationFn: async (values: FormData) => {
       setProgress("Criando o projeto...");
-      if (!values.copy.trim() && !video) throw new Error("Adicione uma copy, um vídeo ou os dois.");
+      if (
+        !values.copy.trim() &&
+        !video &&
+        !images.length &&
+        !labelImages.length &&
+        !selectedLibraryProduct?.image_paths.length
+      ) {
+        throw new Error(
+          "Adicione uma foto do produto, uma copy, um vídeo ou combine essas referências.",
+        );
+      }
       const supabase = getSupabaseBrowserClient();
       const projectInsert = await supabase
         .from("projects")
@@ -203,6 +329,8 @@ function NewProjectPage() {
             required_information: values.requiredInformation,
             forbidden_words: values.forbiddenWords,
             modular_variations: values.modularVariations,
+            avatar_id: selectedAvatarId,
+            movement_ids: selectedMovementIds,
             notes: values.notes,
           },
         })
@@ -213,8 +341,12 @@ function NewProjectPage() {
           `Não foi possível criar o projeto: ${projectInsert.error?.message ?? "erro desconhecido"}`,
         );
       const projectId = projectInsert.data.id as string;
-      const imagePaths: string[] = [];
-      const labelImagePaths: string[] = [];
+      const imagePaths: string[] = [...(selectedLibraryProduct?.image_paths ?? [])];
+      const labelImagePaths: string[] = Array.isArray(
+        selectedLibraryProduct?.raw_data?.["label_image_paths"],
+      )
+        ? (selectedLibraryProduct.raw_data["label_image_paths"] as string[])
+        : [];
       if (images.length) setProgress("Enviando fotos do produto...");
       for (const [index, file] of images.entries()) {
         const path = `${user.id}/${projectId}/${crypto.randomUUID()}-${index}-${safeName(file.name)}`;
@@ -235,8 +367,15 @@ function NewProjectPage() {
         labelImagePaths.push(path);
       }
       setProgress("Salvando informações do produto...");
-      const product = await supabase.from("products").insert({
-        project_id: projectId,
+      const productRawData = {
+        source: selectedLibraryProductId ? "library" : "manual",
+        trend_data_available: false,
+        promotion: values.promotion,
+        product_variation: values.productVariation,
+        label_image_paths: labelImagePaths,
+      };
+      let libraryProductId = selectedLibraryProductId;
+      const reusableProduct = {
         user_id: user.id,
         name: values.productName,
         product_url: values.productUrl || null,
@@ -254,13 +393,50 @@ function NewProjectPage() {
         perceived_competition: values.competition || null,
         notes: values.productNotes || null,
         image_paths: imagePaths,
-        raw_data: {
-          source: "manual",
-          trend_data_available: false,
-          promotion: values.promotion,
-          product_variation: values.productVariation,
-          label_image_paths: labelImagePaths,
-        },
+        raw_data: productRawData,
+      };
+      if (selectedLibraryProduct) {
+        await supabase
+          .from("product_library")
+          .update({
+            ...reusableProduct,
+            usage_count: selectedLibraryProduct.usage_count + 1,
+            last_used_at: new Date().toISOString(),
+          })
+          .eq("id", selectedLibraryProduct.id)
+          .eq("user_id", user.id);
+      } else if (saveProductToLibrary) {
+        const savedLibraryProduct = await supabase
+          .from("product_library")
+          .insert({ ...reusableProduct, usage_count: 1, last_used_at: new Date().toISOString() })
+          .select("id")
+          .single();
+        if (savedLibraryProduct.error || !savedLibraryProduct.data) {
+          throw new Error("O projeto foi iniciado, mas o produto não pôde entrar na biblioteca.");
+        }
+        libraryProductId = savedLibraryProduct.data.id as string;
+      }
+      const product = await supabase.from("products").insert({
+        project_id: projectId,
+        user_id: user.id,
+        library_product_id: libraryProductId,
+        name: values.productName,
+        product_url: values.productUrl || null,
+        category: values.category,
+        price: nullableNumber(values.price),
+        commission_rate: nullableNumber(values.commission),
+        rating: nullableNumber(values.rating),
+        review_count: nullableNumber(values.reviewCount),
+        known_sales: nullableNumber(values.knownSales),
+        description: values.description,
+        benefits: list(values.benefits),
+        problems_solved: list(values.problems),
+        objections: list(values.objections),
+        target_audience: values.audience,
+        perceived_competition: values.competition || null,
+        notes: values.productNotes || null,
+        image_paths: imagePaths,
+        raw_data: productRawData,
       });
       if (product.error) throw new Error(`Falha ao salvar o produto: ${product.error.message}`);
       if (values.copy.trim()) {
@@ -342,16 +518,55 @@ function NewProjectPage() {
     if (!normalized || normalized === lastImportedUrl || productImportMutation.isPending) return;
     try {
       const host = new URL(normalized).hostname.toLowerCase();
-      if (host === "tiktok.com" || host.endsWith(".tiktok.com") || host === "kalodata.com" || host.endsWith(".kalodata.com")) {
+      if (
+        host === "tiktok.com" ||
+        host.endsWith(".tiktok.com") ||
+        host === "kalodata.com" ||
+        host.endsWith(".kalodata.com")
+      ) {
         productImportMutation.mutate(normalized);
       }
     } catch {
       // A validação normal do formulário orientará o usuário.
     }
   };
+  const selectLibraryProduct = (id: string) => {
+    const product = libraryProducts.find((item) => item.id === id);
+    if (!product) return;
+    setSelectedLibraryProductId(product.id);
+    setImages([]);
+    setLabelImages([]);
+    setValue("productName", product.name, { shouldValidate: true });
+    setValue("productUrl", product.product_url ?? "");
+    setValue("category", product.category);
+    setValue("price", product.price === null ? "" : String(product.price));
+    setValue("commission", product.commission_rate === null ? "" : String(product.commission_rate));
+    setValue("rating", product.rating === null ? "" : String(product.rating));
+    setValue("reviewCount", product.review_count === null ? "" : String(product.review_count));
+    setValue("knownSales", product.known_sales === null ? "" : String(product.known_sales));
+    setValue("description", product.description, { shouldValidate: true });
+    setValue("benefits", product.benefits.join("\n"), { shouldValidate: true });
+    setValue("problems", product.problems_solved.join("\n"));
+    setValue("objections", product.objections.join("\n"));
+    setValue("audience", product.target_audience, { shouldValidate: true });
+    setValue("competition", product.perceived_competition ?? "");
+    setValue("productNotes", product.notes ?? "");
+    const raw = product.raw_data ?? {};
+    setValue("promotion", typeof raw["promotion"] === "string" ? raw["promotion"] : "");
+    setValue(
+      "productVariation",
+      typeof raw["product_variation"] === "string" ? raw["product_variation"] : "",
+    );
+    toast.success(`${product.name} carregado da biblioteca.`);
+  };
+  const toggleMovement = (id: string) => {
+    setSelectedMovementIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id].slice(-6),
+    );
+  };
   return (
     <div className="mx-auto max-w-5xl space-y-7 pb-12">
-      <header>
+      <header className="bento-hero p-6 md:p-8">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Novo projeto
         </p>
@@ -372,7 +587,7 @@ function NewProjectPage() {
       </div>
       <form
         onSubmit={handleSubmit((v) => mutation.mutate(v))}
-        className="surface-card space-y-6 p-5 md:p-8"
+        className="bento-card space-y-6 p-5 md:p-8"
       >
         {step === 0 && (
           <div className="space-y-6">
@@ -383,6 +598,61 @@ function NewProjectPage() {
                 inteligentes.
               </p>
             </div>
+            {libraryProducts.length > 0 && (
+              <section className="rounded-2xl border border-border bg-secondary/15 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <PackageCheck className="size-5" />
+                    </span>
+                    <div>
+                      <h2 className="font-semibold">Usar produto da biblioteca</h2>
+                      <p className="text-xs text-muted-foreground">
+                        Preenche dados, fotos e análise já existente.
+                      </p>
+                    </div>
+                  </div>
+                  {selectedLibraryProductId && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedLibraryProductId(null)}
+                    >
+                      Cadastrar outro produto
+                    </Button>
+                  )}
+                </div>
+                <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+                  {libraryProducts.map((product) => (
+                    <button
+                      type="button"
+                      key={product.id}
+                      onClick={() => selectLibraryProduct(product.id)}
+                      className={`flex min-w-56 items-center gap-3 rounded-xl border p-3 text-left transition ${selectedLibraryProductId === product.id ? "border-primary bg-primary/10" : "border-border bg-background/40 hover:border-primary/30"}`}
+                    >
+                      <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                        {product.previewUrl ? (
+                          <img
+                            src={product.previewUrl}
+                            alt={product.name}
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <PackageCheck className="m-3 size-6 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{product.name}</p>
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                          {product.category} · {product.usage_count} uso(s)
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Qual é o produto?" error={errors.productName?.message}>
                 <Input placeholder="Ex.: escova secadora 5 em 1" {...register("productName")} />
@@ -404,12 +674,17 @@ function NewProjectPage() {
                     disabled={!watch("productUrl").trim() || productImportMutation.isPending}
                     onClick={() => tryImportProduct(watch("productUrl"))}
                   >
-                    {productImportMutation.isPending ? <Loader2 className="animate-spin" /> : <Search />}
+                    {productImportMutation.isPending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Search />
+                    )}
                     <span className="hidden sm:inline">Puxar dados</span>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Preenche automaticamente os dados públicos disponíveis. Páginas privadas do Kalodata exigem integração autorizada.
+                  Preenche automaticamente os dados públicos disponíveis. Páginas privadas do
+                  Kalodata exigem integração autorizada.
                 </p>
               </Field>
               <Field label="Cole a descrição do produto" error={errors.description?.message} wide>
@@ -434,10 +709,41 @@ function NewProjectPage() {
                   onChange={(e) => setImages(Array.from(e.target.files ?? []))}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {images.length ? `${images.length} foto(s) selecionada(s)` : "Opcional"}
+                  {images.length
+                    ? `${images.length} foto(s) selecionada(s). A IA vai analisar tipo de produto, cores, material aparente, formato, estampa, acabamento e regras de preservação.`
+                    : selectedLibraryProduct?.image_paths.length
+                      ? `${selectedLibraryProduct.image_paths.length} foto(s) reutilizada(s) da biblioteca. Você pode adicionar novas fotos.`
+                      : "Opcional, mas recomendado. Use fotos nítidas da frente, verso e detalhes."}
                 </p>
+                {images.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {images.slice(0, 6).map((file) => (
+                      <FilePreview
+                        key={`${file.name}-${file.lastModified}`}
+                        file={file}
+                        alt={file.name}
+                      />
+                    ))}
+                  </div>
+                )}
               </Field>
             </div>
+            {!selectedLibraryProductId && (
+              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-secondary/15 p-4">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4"
+                  checked={saveProductToLibrary}
+                  onChange={(event) => setSaveProductToLibrary(event.target.checked)}
+                />
+                <span>
+                  <strong className="block text-sm">Salvar este produto na biblioteca</strong>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                    Deixa dados, fotos e análise disponíveis para os próximos roteiros.
+                  </span>
+                </span>
+              </label>
+            )}
             <details className="group rounded-xl border border-border bg-secondary/20 p-4">
               <summary className="cursor-pointer font-medium text-foreground">
                 Adicionar detalhes avançados{" "}
@@ -460,7 +766,10 @@ function NewProjectPage() {
                   <Input placeholder="Ex.: 20% OFF ou leve 3, pague 2" {...register("promotion")} />
                 </Field>
                 <Field label="Variação mostrada no vídeo">
-                  <Input placeholder="Ex.: frasco com 60, 90 ou 120 cápsulas" {...register("productVariation")} />
+                  <Input
+                    placeholder="Ex.: frasco com 60, 90 ou 120 cápsulas"
+                    {...register("productVariation")}
+                  />
                 </Field>
                 <Field label="Comissão %">
                   <Input inputMode="decimal" {...register("commission")} />
@@ -497,7 +806,8 @@ function NewProjectPage() {
                     onChange={(event) => setLabelImages(Array.from(event.target.files ?? []))}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Opcional. Ajuda a mencionar composição, modo de uso e informações realmente presentes no rótulo.
+                    Opcional. Ajuda a mencionar composição, modo de uso e informações realmente
+                    presentes no rótulo.
                   </p>
                 </Field>
               </div>
@@ -522,7 +832,9 @@ function NewProjectPage() {
                   onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
                 />
                 <p className="mt-3 text-xs text-muted-foreground">
-                  {video ? video.name : "Opcional. Use copy, vídeo ou os dois."}
+                  {video
+                    ? video.name
+                    : "Opcional. Você pode gerar usando as fotos do produto, uma copy, um vídeo ou combinar tudo."}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Frames serão amostrados no navegador; áudio e texto serão processados no backend.
@@ -592,6 +904,245 @@ function NewProjectPage() {
                 />
               </div>
             </div>
+
+            <section className="overflow-hidden rounded-2xl border border-border bg-secondary/15">
+              <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <UserRound className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Avatar de referência</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Opcional. O avatar escolhido será preservado em todas as cenas UGC.
+                    </p>
+                  </div>
+                </div>
+                {selectedAvatar && (
+                  <div className="text-right">
+                    <span className="flex items-center justify-end gap-1.5 text-xs font-medium text-emerald-400">
+                      <Check className="size-4" /> {selectedAvatar.name}
+                    </span>
+                    <p className="mt-1 max-w-64 text-[10px] text-muted-foreground">
+                      Use esta mesma foto como referência ao gerar cada cena no VEO.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 p-4 lg:grid-cols-4">
+                <AvatarModeButton
+                  active={avatarMode === "none"}
+                  icon={<UserRound />}
+                  label="Sem avatar"
+                  onClick={() => {
+                    setAvatarMode("none");
+                    setSelectedAvatarId(null);
+                  }}
+                />
+                <AvatarModeButton
+                  active={avatarMode === "library"}
+                  icon={<Check />}
+                  label="Meus avatares"
+                  onClick={() => setAvatarMode("library")}
+                />
+                <AvatarModeButton
+                  active={avatarMode === "upload"}
+                  icon={<ImagePlus />}
+                  label="Enviar avatar"
+                  onClick={() => setAvatarMode("upload")}
+                />
+                <AvatarModeButton
+                  active={avatarMode === "generate"}
+                  icon={<Sparkles />}
+                  label="Gerar com FLUX"
+                  onClick={() => setAvatarMode("generate")}
+                />
+              </div>
+
+              {avatarMode === "library" && (
+                <div className="border-t border-border p-4">
+                  {avatars.length ? (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {avatars.map((avatar) => (
+                        <button
+                          key={avatar.id}
+                          type="button"
+                          onClick={() => setSelectedAvatarId(avatar.id)}
+                          className={`overflow-hidden rounded-xl border text-left transition ${selectedAvatarId === avatar.id ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/35"}`}
+                        >
+                          <div className="aspect-[4/5] bg-secondary">
+                            {avatar.previewUrl ? (
+                              <img
+                                src={avatar.previewUrl}
+                                alt={avatar.name}
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex size-full items-center justify-center text-muted-foreground">
+                                <UserRound />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <p className="truncate text-sm font-semibold">{avatar.name}</p>
+                            <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                              {avatar.description || "Avatar enviado pelo usuário"}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground">
+                      Sua biblioteca está vazia. Envie uma foto ou gere um avatar com FLUX.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {(avatarMode === "upload" || avatarMode === "generate") && (
+                <div className="grid gap-5 border-t border-border p-4 md:grid-cols-[180px_1fr]">
+                  <div className="overflow-hidden rounded-xl border border-dashed border-border bg-background/30">
+                    {avatarMode === "upload" && avatarFile ? (
+                      <FilePreview file={avatarFile} alt="Prévia do avatar" tall />
+                    ) : (
+                      <div className="flex aspect-[4/5] flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+                        {avatarMode === "generate" ? <Sparkles /> : <ImagePlus />}
+                        <span className="max-w-28 text-[11px]">
+                          {avatarMode === "generate"
+                            ? "O avatar aparecerá na biblioteca"
+                            : "Prévia da foto"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    <Field label="Nome do avatar">
+                      <Input
+                        value={avatarName}
+                        maxLength={100}
+                        placeholder="Ex.: Marina UGC"
+                        onChange={(event) => setAvatarName(event.target.value)}
+                      />
+                    </Field>
+                    <Field
+                      label={
+                        avatarMode === "generate"
+                          ? "Como deve ser o avatar?"
+                          : "Descrição visual ou observações"
+                      }
+                    >
+                      <Textarea
+                        rows={4}
+                        value={avatarDescription}
+                        placeholder={
+                          avatarMode === "generate"
+                            ? "Ex.: mulher brasileira adulta, cabelo cacheado castanho, camiseta branca lisa, aparência natural e confiante, em um quarto bem iluminado"
+                            : "Ex.: manter cabelo, rosto, camiseta e acessórios exatamente como na foto"
+                        }
+                        onChange={(event) => setAvatarDescription(event.target.value)}
+                      />
+                    </Field>
+                    {avatarMode === "upload" ? (
+                      <>
+                        <Input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={(event) => setAvatarFile(event.target.files?.[0] ?? null)}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={
+                            uploadAvatarMutation.isPending ||
+                            !avatarFile ||
+                            avatarName.trim().length < 2
+                          }
+                          onClick={() => uploadAvatarMutation.mutate()}
+                        >
+                          {uploadAvatarMutation.isPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Upload />
+                          )}
+                          Salvar na biblioteca
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-5 text-muted-foreground">
+                          O FLUX Schnell usa a franquia gratuita diária do Cloudflare Workers AI e
+                          salva a imagem automaticamente na sua biblioteca.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="hero"
+                          disabled={
+                            generateAvatarMutation.isPending ||
+                            avatarName.trim().length < 2 ||
+                            avatarDescription.trim().length < 20
+                          }
+                          onClick={() => generateAvatarMutation.mutate()}
+                        >
+                          {generateAvatarMutation.isPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Sparkles />
+                          )}
+                          {generateAvatarMutation.isPending
+                            ? "Criando avatar..."
+                            : "Gerar e salvar avatar"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-border bg-secondary/15">
+              <div className="flex items-center justify-between gap-3 border-b border-border p-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
+                    <PersonStanding className="size-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Poses e movimentos</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Opcional. Escolha até 6 direções para a IA distribuir entre cenas e versões.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {selectedMovementIds.length}/6
+                </span>
+              </div>
+              <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                {movements
+                  .filter((movement) => movement.formats.includes(watch("videoFormat")))
+                  .map((movement) => {
+                    const selected = selectedMovementIds.includes(movement.id);
+                    return (
+                      <button
+                        type="button"
+                        key={movement.id}
+                        onClick={() => toggleMovement(movement.id)}
+                        className={`rounded-xl border p-4 text-left transition ${selected ? "border-cyan bg-cyan/[0.08] ring-1 ring-cyan/20" : "border-border bg-background/30 hover:border-cyan/30"}`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold">{movement.name}</p>
+                          {selected && <Check className="size-4 text-cyan" />}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-muted-foreground">
+                          {movement.description}
+                        </p>
+                      </button>
+                    );
+                  })}
+              </div>
+            </section>
+
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Duração aproximada (segundos)">
                 <Input inputMode="numeric" {...register("duration")} />
@@ -602,18 +1153,54 @@ function NewProjectPage() {
               </Field>
               <Field label="Quantidade de cenas">
                 <Input inputMode="numeric" min="1" max="8" {...register("sceneCount")} />
-                <p className="text-xs text-muted-foreground">Padrão: 4 cenas de exatamente 8 segundos.</p>
+                <p className="text-xs text-muted-foreground">
+                  Padrão: 4 cenas de exatamente 8 segundos.
+                </p>
               </Field>
             </div>
             <label className="flex cursor-pointer gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-4">
               <input type="checkbox" className="mt-1 size-4" {...register("modularVariations")} />
               <span>
-                <strong className="block text-sm text-foreground">Gerar pacote modular de 48 vídeos</strong>
+                <strong className="block text-sm text-foreground">
+                  Gerar pacote modular de 48 vídeos
+                </strong>
                 <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                  Cria 4 ganchos × 4 corpos × 3 CTAs em três ações separadas de IA. Cada combinação terá 4 cenas de 8 segundos.
+                  Cria 4 ganchos × 4 corpos × 3 CTAs em três ações separadas de IA. Cada combinação
+                  terá 4 cenas de 8 segundos.
                 </span>
               </span>
             </label>
+            {(watch("modularVariations") || Number(watch("variations")) > 1) && (
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.05] p-5">
+                <div className="flex items-start gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300">
+                    <Lightbulb className="size-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Como conseguir um lote mais consistente
+                    </h3>
+                    <ul className="mt-2 space-y-1.5 text-xs leading-5 text-muted-foreground">
+                      <li>
+                        Use o mesmo avatar e fotos nítidas do produto como âncoras de identidade.
+                      </li>
+                      <li>Mantenha uma ação principal por cena de 8 segundos.</li>
+                      <li>
+                        Varie gancho, argumento e CTA; preserve produto, cenário e identidade.
+                      </li>
+                      <li>
+                        Para roupas, envie uma foto de corpo inteiro e outra aproximada da estampa
+                        ou tecido.
+                      </li>
+                      <li>
+                        Faça primeiro poucas versões para validar a direção e depois expanda o lote
+                        modular.
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
             <details className="rounded-xl border border-border bg-secondary/20 p-4">
               <summary className="cursor-pointer font-medium">
                 Personalizar direção criativa
@@ -626,7 +1213,10 @@ function NewProjectPage() {
                   <Input {...register("character")} />
                 </Field>
                 <Field label="Cenário">
-                  <Input placeholder="Quarto, cozinha, sala, banheiro, academia..." {...register("setting")} />
+                  <Input
+                    placeholder="Quarto, cozinha, sala, banheiro, academia..."
+                    {...register("setting")}
+                  />
                 </Field>
                 <Field label="Idade aparente da personagem">
                   <Input placeholder="Ex.: 30 a 35 anos" {...register("apparentAge")} />
@@ -635,16 +1225,28 @@ function NewProjectPage() {
                   <Input placeholder="Ex.: camiseta preta casual" {...register("outfit")} />
                 </Field>
                 <Field label="Cabelo e aparência">
-                  <Input placeholder="Ex.: cabelo curto, barba feita, aparência natural" {...register("appearance")} />
+                  <Input
+                    placeholder="Ex.: cabelo curto, barba feita, aparência natural"
+                    {...register("appearance")}
+                  />
                 </Field>
                 <Field label="Energia da personagem">
-                  <OptionSelect field={register("characterEnergy")} options={["", "Calma", "Espontânea", "Curiosa", "Indignada", "Empolgada"]} />
+                  <OptionSelect
+                    field={register("characterEnergy")}
+                    options={["", "Calma", "Espontânea", "Curiosa", "Indignada", "Empolgada"]}
+                  />
                 </Field>
                 <Field label="Velocidade da voz">
-                  <OptionSelect field={register("voiceSpeed")} options={["Normal", "Rápida", "Extremamente rápida"]} />
+                  <OptionSelect
+                    field={register("voiceSpeed")}
+                    options={["Normal", "Rápida", "Extremamente rápida"]}
+                  />
                 </Field>
                 <Field label="Mão que segura o frasco">
-                  <OptionSelect field={register("bottleHand")} options={["", "Direita", "Esquerda"]} />
+                  <OptionSelect
+                    field={register("bottleHand")}
+                    options={["", "Direita", "Esquerda"]}
+                  />
                 </Field>
                 <Field label="Pode girar o frasco para mostrar o rótulo?">
                   <OptionSelect field={register("rotateBottle")} options={["", "Sim", "Não"]} />
@@ -671,7 +1273,10 @@ function NewProjectPage() {
                   <Input {...register("objective")} />
                 </Field>
                 <Field label="CTA final">
-                  <Input placeholder="Abrir o carrinho, conferir opções ou aproveitar o desconto" {...register("finalCta")} />
+                  <Input
+                    placeholder="Abrir o carrinho, conferir opções ou aproveitar o desconto"
+                    {...register("finalCta")}
+                  />
                 </Field>
                 <Field label="Informações obrigatórias" wide>
                   <Textarea
@@ -699,7 +1304,13 @@ function NewProjectPage() {
                 {buildProjectName(watch("projectName"), watch("productName"))}
               </strong>
               . O sistema salvará os dados e arquivos, transcreverá o vídeo se houver, analisará as
-              referências e criará {watch("modularVariations") ? "um pacote modular com 48 combinações" : `${watch("variations")} versão(ões)`}.
+              fotos reais do produto
+              {selectedAvatar ? ` e usará o avatar ${selectedAvatar.name}` : ""}, analisará as
+              referências e criará{" "}
+              {watch("modularVariations")
+                ? "um pacote modular com 48 combinações"
+                : `${watch("variations")} versão(ões)`}
+              . Cada prompt VEO será salvo como JSON válido.
             </p>
             <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm">
               Se <code>GROQ_API_KEY</code> ou <code>OPENAI_API_KEY</code> não estiver configurada no
@@ -732,6 +1343,41 @@ function NewProjectPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+function AvatarModeButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-medium transition [&_svg]:size-4 ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background/30 text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function FilePreview({ file, alt, tall = false }: { file: File; alt: string; tall?: boolean }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className={`${tall ? "aspect-[4/5]" : "aspect-square rounded-lg"} size-full object-cover`}
+    />
   );
 }
 
@@ -776,13 +1422,7 @@ function PresetButton({
   );
 }
 
-function OptionSelect({
-  field,
-  options,
-}: {
-  field: UseFormRegisterReturn;
-  options: string[];
-}) {
+function OptionSelect({ field, options }: { field: UseFormRegisterReturn; options: string[] }) {
   return (
     <select
       className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"

@@ -19,6 +19,11 @@ import {
   TIK_SUPREMO_SYSTEM_PROMPT,
   buildGenerationInput,
 } from "@/features/script-generation/prompts/tik-supremo";
+import {
+  buildReferenceVisualAnalysisPrompt,
+  referenceVisualAnalysisJsonSchema,
+  referenceVisualAnalysisSchema,
+} from "@/features/products/visual-analysis";
 import { AIProviderError, type AIProvider, type GenerationContext } from "./provider";
 
 export const scriptJsonSchema = {
@@ -196,7 +201,7 @@ export const scriptJsonSchema = {
         ],
         properties: {
           scene_number: { type: "integer", minimum: 1 },
-          duration_seconds: { type: "number", minimum: 0.1, maximum: 8 },
+          duration_seconds: { type: "number", enum: [8] },
           ...Object.fromEntries(
             [
               "spoken_text",
@@ -268,11 +273,7 @@ export class OpenAIProvider implements AIProvider {
       throw new AIProviderError("A transcrição retornou formato inválido.", "invalid_response");
     return data.text;
   }
-  private async structuredResponse(
-    name: string,
-    prompt: string,
-    schema: Record<string, unknown>,
-  ) {
+  private async structuredResponse(name: string, prompt: string, schema: Record<string, unknown>) {
     const response = await this.request("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: `Bearer ${this.requireKey()}`, "Content-Type": "application/json" },
@@ -288,7 +289,8 @@ export class OpenAIProvider implements AIProvider {
     const text = raw.output
       ?.flatMap((item) => item.content ?? [])
       .find((item) => item.type === "output_text")?.text;
-    if (!text) throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
+    if (!text)
+      throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
     try {
       return JSON.parse(text) as unknown;
     } catch {
@@ -302,6 +304,58 @@ export class OpenAIProvider implements AIProvider {
       validatedCopyJsonSchema as unknown as Record<string, unknown>,
     );
     return validatedCopyAnalysisSchema.parse(result);
+  }
+  async analyzeReferenceImages(
+    imageUrls: string[],
+    referenceType: "product" | "avatar",
+    context: GenerationContext,
+  ) {
+    if (!imageUrls.length)
+      throw new AIProviderError("Nenhuma imagem foi enviada para análise.", "provider");
+    const response = await this.request("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.requireKey()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        input: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "input_text",
+                text: buildReferenceVisualAnalysisPrompt(referenceType, context),
+              },
+              ...imageUrls.slice(0, 8).map((image_url) => ({
+                type: "input_image",
+                image_url,
+                detail: "high",
+              })),
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: `${referenceType}_visual_analysis`,
+            strict: true,
+            schema: referenceVisualAnalysisJsonSchema,
+          },
+        },
+      }),
+    });
+    const raw = (await response.json()) as {
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+    const text = raw.output
+      ?.flatMap((item) => item.content ?? [])
+      .find((item) => item.type === "output_text")?.text;
+    if (!text)
+      throw new AIProviderError("A IA não analisou a imagem de referência.", "invalid_response");
+    try {
+      return referenceVisualAnalysisSchema.parse(JSON.parse(text));
+    } catch {
+      throw new AIProviderError("A análise visual retornou formato inválido.", "invalid_response");
+    }
   }
   async reviseScenePrompt(context: GenerationContext) {
     const result = await this.structuredResponse(

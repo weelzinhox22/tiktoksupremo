@@ -22,6 +22,11 @@ import {
 } from "@/features/script-generation/prompts/tik-supremo";
 import { scriptJsonSchema } from "./openai";
 import { AIProviderError, type AIProvider, type GenerationContext } from "./provider";
+import {
+  buildReferenceVisualAnalysisPrompt,
+  referenceVisualAnalysisJsonSchema,
+  referenceVisualAnalysisSchema,
+} from "@/features/products/visual-analysis";
 
 type GeminiInteractionResponse = {
   output_text?: string;
@@ -152,19 +157,26 @@ export class GeminiProvider implements AIProvider {
   private safeParseJson(text: string): Record<string, unknown> {
     const attempts = [
       text.trim(),
-      text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim(),
+      text
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/i, "")
+        .trim(),
     ];
     for (const attempt of attempts) {
       try {
         return JSON.parse(attempt) as Record<string, unknown>;
-      } catch { /* try next */ }
+      } catch {
+        /* try next */
+      }
     }
     // Last resort: extract first {...} block from mixed prose+JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       try {
         return JSON.parse(jsonMatch[0]) as Record<string, unknown>;
-      } catch { /* fall through */ }
+      } catch {
+        /* fall through */
+      }
     }
     throw new SyntaxError("Nenhum JSON válido encontrado na resposta do Gemini.");
   }
@@ -292,7 +304,6 @@ export class GeminiProvider implements AIProvider {
   }
 
   async transcribeMedia(media: Blob, filename: string): Promise<string> {
-
     const maxInlineBytes = 20 * 1024 * 1024; // 20 MB
     if (media.size > maxInlineBytes) {
       throw new AIProviderError(
@@ -354,7 +365,9 @@ export class GeminiProvider implements AIProvider {
           const buf = await res.arrayBuffer();
           const b64 = Buffer.from(buf).toString("base64");
           imageParts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
-        } catch { /* skip failed frames */ }
+        } catch {
+          /* skip failed frames */
+        }
       }
       if (!imageParts.length) return { limitations: "Nenhum frame pôde ser baixado para análise." };
 
@@ -375,7 +388,8 @@ export class GeminiProvider implements AIProvider {
       );
 
       const text = this.getGeneratedText(data, "analyzeVideoFrames");
-      if (!text) return { limitations: "O Gemini não retornou análise visual; roteiro gerado sem ela." };
+      if (!text)
+        return { limitations: "O Gemini não retornou análise visual; roteiro gerado sem ela." };
       try {
         return this.safeParseJson(text);
       } catch {
@@ -389,7 +403,54 @@ export class GeminiProvider implements AIProvider {
     } catch (error) {
       // Frame analysis is non-fatal — return limitations so script generation continues
       console.error("[Gemini] analyzeVideoFrames falhou, continuando sem análise visual:", error);
-      return { limitations: "Análise visual não disponível; roteiro gerado com transcrição e dados do produto." };
+      return {
+        limitations:
+          "Análise visual não disponível; roteiro gerado com transcrição e dados do produto.",
+      };
+    }
+  }
+
+  async analyzeReferenceImages(
+    imageUrls: string[],
+    referenceType: "product" | "avatar",
+    context: GenerationContext,
+  ) {
+    if (!imageUrls.length)
+      throw new AIProviderError("Nenhuma imagem foi enviada para análise.", "provider");
+    const imageParts: unknown[] = [];
+    for (const url of imageUrls.slice(0, 6)) {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const buffer = await response.arrayBuffer();
+      const data = Buffer.from(buffer).toString("base64");
+      imageParts.push({
+        inline_data: {
+          mime_type: response.headers.get("content-type") || "image/jpeg",
+          data,
+        },
+      });
+    }
+    if (!imageParts.length) {
+      throw new AIProviderError("As imagens de referência não puderam ser abertas.", "provider");
+    }
+    const result = await this.requestGenerateContent(
+      [{ text: buildReferenceVisualAnalysisPrompt(referenceType, context) }, ...imageParts],
+      {
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: sanitizeSchemaForGemini(
+            referenceVisualAnalysisJsonSchema as unknown as Record<string, unknown>,
+          ),
+          maxOutputTokens: 4_096,
+        },
+      },
+    );
+    const text = this.getGeneratedText(result, "analyzeReferenceImages");
+    if (!text) throw new AIProviderError("O Gemini não analisou a imagem.", "invalid_response");
+    try {
+      return referenceVisualAnalysisSchema.parse(this.safeParseJson(text));
+    } catch {
+      throw new AIProviderError("A análise visual retornou formato inválido.", "invalid_response");
     }
   }
 
@@ -402,7 +463,8 @@ export class GeminiProvider implements AIProvider {
       },
     });
     const text = this.getGeneratedText(data, "structuredContent");
-    if (!text) throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
+    if (!text)
+      throw new AIProviderError("A IA não retornou a análise solicitada.", "invalid_response");
     try {
       return this.safeParseJson(text);
     } catch {
@@ -440,30 +502,36 @@ export class GeminiProvider implements AIProvider {
 
   async generateScript(context: GenerationContext): Promise<ScriptResult> {
     const safeContext = compactGenerationContext({ ...context, sampled_frame_urls: undefined });
-    const data = await this.requestGenerateContent(
-      [{ text: buildGenerationInput(safeContext) }],
-      {
-        systemInstruction: TIK_SUPREMO_SYSTEM_PROMPT,
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: sanitizeSchemaForGemini(scriptJsonSchema as Record<string, unknown>),
-          maxOutputTokens: 32_768,
-        },
+    const data = await this.requestGenerateContent([{ text: buildGenerationInput(safeContext) }], {
+      systemInstruction: TIK_SUPREMO_SYSTEM_PROMPT,
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: sanitizeSchemaForGemini(scriptJsonSchema as Record<string, unknown>),
+        maxOutputTokens: 32_768,
       },
-    );
+    });
     const text = this.getGeneratedText(data, "generateScript");
     if (!text) throw new AIProviderError("O Gemini não retornou o roteiro.", "invalid_response");
     try {
       const raw = this.safeParseJson(text);
       this.coerceGeminiResult(raw);
       const parsed = scriptResultSchema.parse(raw);
-      const veoMismatches = parsed.scenes.filter((scene) => !scene.veo_prompt.includes(scene.spoken_text));
+      const veoMismatches = parsed.scenes.filter(
+        (scene) => !scene.veo_prompt.includes(scene.spoken_text),
+      );
       if (veoMismatches.length > 0) {
-        console.warn(`[Gemini] ${veoMismatches.length} cena(s) com spoken_text ausente do veo_prompt — aceito assim mesmo.`);
+        console.warn(
+          `[Gemini] ${veoMismatches.length} cena(s) com spoken_text ausente do veo_prompt — aceito assim mesmo.`,
+        );
       }
       return parsed;
     } catch (err) {
-      console.error("[Gemini] generateScript texto bruto (primeiros 2000 chars):", text.slice(0, 2_000), "\n\nErro:", err);
+      console.error(
+        "[Gemini] generateScript texto bruto (primeiros 2000 chars):",
+        text.slice(0, 2_000),
+        "\n\nErro:",
+        err,
+      );
       throw new AIProviderError(
         "O roteiro Gemini não passou pela validação estruturada.",
         "invalid_response",
@@ -487,11 +555,7 @@ export class GeminiProvider implements AIProvider {
         if (typeof scene["scene_number"] !== "number" || scene["scene_number"] < 1) {
           scene["scene_number"] = i + 1;
         }
-        if (typeof scene["duration_seconds"] !== "number") {
-          scene["duration_seconds"] = 5;
-        } else {
-          scene["duration_seconds"] = Math.max(0.1, Math.min(8, scene["duration_seconds"]));
-        }
+        scene["duration_seconds"] = 8;
       });
     }
   }

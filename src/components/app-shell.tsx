@@ -10,6 +10,11 @@ import {
   Plus,
   FileCheck2,
   Shuffle,
+  UserRound,
+  Package,
+  PersonStanding,
+  BarChart3,
+  Radar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -21,6 +26,11 @@ const navItems = [
   { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
   { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
   { label: "Editor de vídeos", icon: Shuffle, to: "/video-editor" as const },
+  { label: "Avatares", icon: UserRound, to: "/avatars" as const },
+  { label: "Produtos", icon: Package, to: "/products" as const },
+  { label: "Poses e movimentos", icon: PersonStanding, to: "/movements" as const },
+  { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
+  { label: "Radar viral", icon: Radar, to: "/radar" as const },
   { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
 ];
 
@@ -28,17 +38,29 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (
     <nav className="flex flex-col gap-1.5">
-      {navItems.map((item) => (
-        <Link
-          key={item.label}
-          to={item.to}
-          onClick={onNavigate}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${pathname === item.to || (item.to === "/projects" && pathname.startsWith("/projects/")) ? "bg-sidebar-accent text-sidebar-accent-foreground" : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"}`}
-        >
-          <item.icon className="size-4" />
-          {item.label}
-        </Link>
-      ))}
+      {navItems.map((item) => {
+        const active =
+          pathname === item.to ||
+          (item.to === "/projects" &&
+            pathname.startsWith("/projects/") &&
+            pathname !== "/projects/new");
+        return (
+          <Link
+            key={item.label}
+            to={item.to}
+            onClick={onNavigate}
+            className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${active ? "bg-gradient-to-r from-primary/18 to-cyan/8 text-sidebar-accent-foreground shadow-sm ring-1 ring-primary/15" : "text-muted-foreground hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-foreground"}`}
+          >
+            {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />}
+            <span
+              className={`flex size-7 items-center justify-center rounded-lg transition-colors ${active ? "bg-primary/15 text-primary" : "bg-white/[0.025] group-hover:bg-primary/10 group-hover:text-primary"}`}
+            >
+              <item.icon className="size-4" />
+            </span>
+            {item.label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }
@@ -46,7 +68,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2 px-1">
-      <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 ring-1 ring-primary/20">
+      <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-cyan/15 shadow-lg shadow-primary/10 ring-1 ring-primary/25">
         <Sparkles className="size-4 text-primary" />
       </span>
       <div className="leading-tight">
@@ -67,7 +89,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
   return (
     <div className="relative min-h-screen bg-background">
       <div className="aurora opacity-40" aria-hidden="true" />
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-60 flex-col gap-8 border-r border-sidebar-border bg-sidebar px-4 py-5 lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col gap-8 border-r border-sidebar-border bg-sidebar/95 px-4 py-5 shadow-2xl shadow-black/20 backdrop-blur-xl lg:flex">
         <Brand />
         <NavList />
         <div className="mt-auto border-t border-sidebar-border px-1 pt-4">
@@ -75,7 +97,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
           <p className="mt-1 truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
       </aside>
-      <div className="relative z-10 lg:pl-60">
+      <div className="relative z-10 lg:pl-64">
         <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-xl md:px-8">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>

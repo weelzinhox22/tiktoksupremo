@@ -41,5 +41,5 @@ export function buildValidatedCopyPrompt(transcript: string) {
 }
 
 export function buildSceneRevisionPrompt(context: Record<string, unknown>) {
-  return `Revise uma cena e seu prompt Google VEO conforme a instrução do usuário. Corrija inconsistências de público, gênero, vocativo, personagem, produto e tom. A instrução do usuário tem prioridade. Preserve o formato estruturado do prompt VEO e mantenha DIALOGUE exatamente igual a spoken_text. Não altere fatos do produto e não inclua explicações fora do JSON.\n\nDADOS:\n${JSON.stringify(context)}`;
+  return `Revise uma cena e seu prompt Google VEO conforme a instrução do usuário. Corrija inconsistências de público, gênero, vocativo, personagem, avatar, produto e tom. A instrução do usuário tem prioridade. veo_prompt deve ser uma STRING contendo um objeto JSON válido com instruções técnicas em inglês. Mantenha dialogue exatamente igual a spoken_text em português brasileiro. Preserve a identidade do avatar, os fatos da análise visual e todos os detalhes do produto ou roupa. Não altere fatos do produto e não inclua explicações fora do JSON externo solicitado.\n\nDADOS:\n${JSON.stringify(context)}`;
 }

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { generationRequestSchema } from "./schemas";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getAIProvider } from "@/lib/ai/factory";
+import { rankDiverseCombinations } from "./diversity";
 
 export const generateProjectScript = createServerFn({ method: "POST" })
   .validator(generationRequestSchema)
@@ -19,65 +20,109 @@ export const generateProjectScript = createServerFn({ method: "POST" })
       transcriptionsResult,
       copyLibraryResult,
       versionsResult,
+      performanceResult,
     ] = await Promise.all([
-        supabase
-          .from("projects")
-          .select("*")
-          .eq("id", data.projectId)
-          .eq("user_id", userId)
-          .single(),
-        supabase
-          .from("products")
-          .select("*")
-          .eq("project_id", data.projectId)
-          .eq("user_id", userId)
-          .single(),
-        supabase
-          .from("copies")
-          .select("*")
-          .eq("project_id", data.projectId)
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("reference_videos")
-          .select("*")
-          .eq("project_id", data.projectId)
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("transcriptions")
-          .select("id,original_filename,transcript,analysis")
-          .eq("project_id", data.projectId)
-          .eq("user_id", userId)
-          .eq("processing_status", "completed")
-          .order("created_at", { ascending: false })
-          .limit(1),
-        supabase
-          .from("copy_library")
-          .select("title,content,hook,body,cta,analysis,language_style,tags")
-          .order("created_at", { ascending: false })
-          .limit(12),
-        supabase
-          .from("script_generations")
-          .select("version")
-          .eq("project_id", data.projectId)
-          .eq("user_id", userId)
-          .order("version", { ascending: false })
-          .limit(1),
-      ]);
+      supabase.from("projects").select("*").eq("id", data.projectId).eq("user_id", userId).single(),
+      supabase
+        .from("products")
+        .select("*")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .single(),
+      supabase
+        .from("copies")
+        .select("*")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("reference_videos")
+        .select("*")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("transcriptions")
+        .select("id,original_filename,transcript,analysis")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .eq("processing_status", "completed")
+        .order("created_at", { ascending: false })
+        .limit(1),
+      supabase
+        .from("copy_library")
+        .select("title,content,hook,body,cta,analysis,language_style,tags")
+        .order("created_at", { ascending: false })
+        .limit(12),
+      supabase
+        .from("script_generations")
+        .select("version")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId)
+        .order("version", { ascending: false })
+        .limit(1),
+      supabase
+        .from("content_performance")
+        .select("hook_index,body_index,cta_index,views,likes,shares,clicks,orders")
+        .eq("project_id", data.projectId)
+        .eq("user_id", userId),
+    ]);
     if (projectResult.error || !projectResult.data)
       throw new Error("Projeto não encontrado ou sem permissão.");
     if (productResult.error || !productResult.data)
       throw new Error("Cadastre o produto antes de gerar.");
+    const settings = projectResult.data.settings as Record<string, unknown>;
+    const avatarId = typeof settings["avatar_id"] === "string" ? settings["avatar_id"] : null;
+    const movementIds = Array.isArray(settings["movement_ids"])
+      ? settings["movement_ids"].filter(
+          (value: unknown): value is string => typeof value === "string",
+        )
+      : [];
+    const selectedMovements = movementIds.length
+      ? await supabase
+          .from("movement_library")
+          .select("id,name,category,formats,description,prompt_instruction,movement_json,tags")
+          .in("id", movementIds)
+      : null;
+    if (selectedMovements?.error) {
+      throw new Error("As poses e movimentos selecionados não puderam ser carregados.");
+    }
+    const selectedAvatar = avatarId
+      ? await supabase
+          .from("avatars")
+          .select("id,name,description,image_path,source,metadata")
+          .eq("id", avatarId)
+          .eq("user_id", userId)
+          .maybeSingle()
+      : null;
+    if (avatarId && (selectedAvatar?.error || !selectedAvatar?.data)) {
+      throw new Error("O avatar selecionado não está mais disponível na sua biblioteca.");
+    }
     const copy = copiesResult.data?.[0] ?? null;
     const video = videosResult.data?.[0] ?? null;
     const standaloneTranscription = transcriptionsResult.data?.[0] ?? null;
-    if (!copy && !video && !standaloneTranscription)
-      throw new Error("Adicione uma copy, um vídeo ou associe uma transcrição ao projeto.");
+    const hasProductImages =
+      Array.isArray(productResult.data.image_paths) && productResult.data.image_paths.length > 0;
+    if (!copy && !video && !standaloneTranscription && !hasProductImages) {
+      throw new Error(
+        "Adicione uma foto do produto, uma copy, um vídeo ou associe uma transcrição ao projeto.",
+      );
+    }
     const version = (versionsResult.data?.[0]?.version ?? 0) + 1;
     const snapshot = {
       project: projectResult.data,
       product: productResult.data,
+      selected_avatar: selectedAvatar?.data
+        ? {
+            id: selectedAvatar.data.id,
+            name: selectedAvatar.data.name,
+            description: selectedAvatar.data.description,
+            source: selectedAvatar.data.source,
+            metadata: selectedAvatar.data.metadata,
+            reference_image_available: true,
+          }
+        : null,
+      selected_movements: selectedMovements?.data ?? [],
       copy: copy?.content ?? null,
       copy_library_examples: (copyLibraryResult.data ?? []).map((example) => ({
         title: example.title,
@@ -121,6 +166,88 @@ export const generateProjectScript = createServerFn({ method: "POST" })
 
     try {
       const { name: providerName, provider } = getAIProvider();
+      const productImagePaths = Array.isArray(productResult.data.image_paths)
+        ? productResult.data.image_paths.filter(
+            (value: unknown): value is string => typeof value === "string",
+          )
+        : [];
+      const productImageAccess = productImagePaths.length
+        ? await supabase.storage.from("product-images").createSignedUrls(productImagePaths, 900)
+        : null;
+      if (productImageAccess?.error) {
+        throw new Error(
+          "As fotos do produto foram salvas, mas não puderam ser abertas para análise.",
+        );
+      }
+      const productImageUrls =
+        productImageAccess?.data?.flatMap((item) => (item.signedUrl ? [item.signedUrl] : [])) ?? [];
+      if (productImagePaths.length && productImageUrls.length === 0) {
+        throw new Error("Nenhuma foto do produto pôde ser aberta para análise visual.");
+      }
+      const avatarImageAccess = selectedAvatar?.data
+        ? await supabase.storage
+            .from("product-images")
+            .createSignedUrl(selectedAvatar.data.image_path, 900)
+        : null;
+      if (
+        selectedAvatar?.data &&
+        (avatarImageAccess?.error || !avatarImageAccess?.data?.signedUrl)
+      ) {
+        throw new Error("A foto do avatar selecionado não pôde ser aberta para análise.");
+      }
+      const storedProductAnalysis = (productResult.data.analysis ?? {}) as Record<string, unknown>;
+      const cachedProductVisual =
+        storedProductAnalysis["visual_reference"] &&
+        typeof storedProductAnalysis["visual_reference"] === "object"
+          ? (storedProductAnalysis["visual_reference"] as Record<string, unknown>)
+          : null;
+      const storedAvatarMetadata = (selectedAvatar?.data?.metadata ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const cachedAvatarVisual =
+        storedAvatarMetadata["visual_reference"] &&
+        typeof storedAvatarMetadata["visual_reference"] === "object"
+          ? (storedAvatarMetadata["visual_reference"] as Record<string, unknown>)
+          : null;
+      const productVisualAnalysis =
+        cachedProductVisual ??
+        (productImageUrls.length
+          ? await provider.analyzeReferenceImages(productImageUrls, "product", {
+              name: productResult.data.name,
+              category: productResult.data.category,
+              description: productResult.data.description,
+              variation: settings["product_variation"],
+              user_notes: productResult.data.notes,
+            })
+          : null);
+      const avatarVisualAnalysis =
+        cachedAvatarVisual ??
+        (avatarImageAccess?.data?.signedUrl
+          ? await provider.analyzeReferenceImages([avatarImageAccess.data.signedUrl], "avatar", {
+              name: selectedAvatar?.data?.name,
+              user_description: selectedAvatar?.data?.description,
+              requested_character: settings["character"],
+              requested_outfit: settings["outfit"],
+            })
+          : null);
+      if (selectedAvatar?.data && avatarVisualAnalysis && !cachedAvatarVisual) {
+        await supabase
+          .from("avatars")
+          .update({ metadata: { ...storedAvatarMetadata, visual_reference: avatarVisualAnalysis } })
+          .eq("id", selectedAvatar.data.id)
+          .eq("user_id", userId);
+      }
+      const enrichedSnapshot = {
+        ...snapshot,
+        product_visual_analysis: productVisualAnalysis,
+        avatar_visual_analysis: avatarVisualAnalysis,
+      };
+      await supabase
+        .from("script_generations")
+        .update({ input_snapshot: enrichedSnapshot })
+        .eq("id", generation.id)
+        .eq("user_id", userId);
       let transcript = video?.transcription ?? standaloneTranscription?.transcript ?? "";
       let frameUrls: string[] = [];
       if (video) {
@@ -190,7 +317,13 @@ export const generateProjectScript = createServerFn({ method: "POST" })
         ? await provider.analyzeVideoFrames(frameUrls, transcript)
         : null;
       const result = await provider.generateScript({
-        ...snapshot,
+        ...enrichedSnapshot,
+        generation_variant_number: version,
+        requested_variation_count: settings["variations"],
+        variation_instruction:
+          version > 1
+            ? "Use a hook, sales angle, body development, visual action sequence and CTA materially different from previous versions while preserving verified product and avatar details."
+            : "Establish the strongest first variation using the verified references.",
         transcript: transcript || null,
         sampled_frame_urls: frameUrls,
         video_frame_analysis: videoFrameAnalysis,
@@ -201,7 +334,6 @@ export const generateProjectScript = createServerFn({ method: "POST" })
             : null,
       });
       let modularVariations: Record<string, unknown> | null = null;
-      const settings = projectResult.data.settings as Record<string, unknown>;
       if (settings["modular_variations"] === true) {
         const modularContext = {
           project: projectResult.data,
@@ -209,6 +341,10 @@ export const generateProjectScript = createServerFn({ method: "POST" })
           source_copy: copy?.content ?? standaloneTranscription?.transcript ?? transcript,
           copy_library_examples: snapshot.copy_library_examples,
           approved_strategy: result.strategy,
+          product_visual_analysis: productVisualAnalysis,
+          avatar_visual_analysis: avatarVisualAnalysis,
+          selected_avatar: snapshot.selected_avatar,
+          selected_movements: snapshot.selected_movements,
           required_information: settings["required_information"],
           forbidden_words: settings["forbidden_words"],
           format: settings["video_format"],
@@ -230,16 +366,12 @@ export const generateProjectScript = createServerFn({ method: "POST" })
         ) {
           throw new Error("A IA não entregou a estrutura modular completa de 4 × 4 × 3.");
         }
-        const combinations = hooks.flatMap((_, hookIndex) =>
-          bodies.flatMap((__, bodyIndex) =>
-            ctas.map((___, ctaIndex) => ({
-              number: hookIndex * 12 + bodyIndex * 3 + ctaIndex + 1,
-              label: `Gancho ${hookIndex + 1} + Corpo ${bodyIndex + 1} + CTA ${ctaIndex + 1}`,
-              hook_index: hookIndex,
-              body_index: bodyIndex,
-              cta_index: ctaIndex,
-            })),
-          ),
+        const combinations = rankDiverseCombinations(
+          hooks,
+          bodies,
+          ctas,
+          performanceResult.data ?? [],
+          12,
         );
         modularVariations = {
           format: settings["video_format"] || "UGC",
@@ -249,6 +381,8 @@ export const generateProjectScript = createServerFn({ method: "POST" })
           body_modules: bodies,
           cta_modules: ctas,
           combinations,
+          diversity_method: "local_lexical_and_component_distance",
+          recommended_count: combinations.filter((item) => item.recommended).length,
           total_combinations: combinations.length,
         };
       }
@@ -275,14 +409,22 @@ export const generateProjectScript = createServerFn({ method: "POST" })
         .from("projects")
         .update({
           status: "completed",
-          product_analysis: result.product_diagnosis,
+          product_analysis: {
+            ...result.product_diagnosis,
+            visual_reference: productVisualAnalysis,
+          },
           reference_analysis: { copy: result.copy_analysis, video: result.video_analysis },
         })
         .eq("id", data.projectId)
         .eq("user_id", userId);
       await supabase
         .from("products")
-        .update({ analysis: result.product_diagnosis })
+        .update({
+          analysis: {
+            ...result.product_diagnosis,
+            visual_reference: productVisualAnalysis,
+          },
+        })
         .eq("project_id", data.projectId)
         .eq("user_id", userId);
       if (copy)

@@ -4,12 +4,18 @@ import type {
   ScriptResult,
   ValidatedCopyAnalysis,
 } from "@/features/script-generation/schemas";
+import type { ReferenceVisualAnalysis } from "@/features/products/visual-analysis";
 
 export type GenerationContext = Record<string, unknown>;
 export interface AIProvider {
   transcribeMedia(media: Blob, filename: string): Promise<string>;
   transcribeMediaUrl?(signedUrl: string): Promise<string>;
   analyzeVideoFrames(frameUrls: string[], transcript: string): Promise<Record<string, unknown>>;
+  analyzeReferenceImages(
+    imageUrls: string[],
+    referenceType: "product" | "avatar",
+    context: GenerationContext,
+  ): Promise<ReferenceVisualAnalysis>;
   analyzeProduct(context: GenerationContext): Promise<Record<string, unknown>>;
   analyzeReferenceCopy(copy: string): Promise<Record<string, unknown>>;
   analyzeValidatedCopy(transcript: string): Promise<ValidatedCopyAnalysis>;

@@ -231,7 +231,7 @@ function ProjectsPage() {
                 key={project.id}
                 to="/projects/$projectId"
                 params={{ projectId: project.id }}
-                className="surface-card group relative flex flex-col justify-between overflow-hidden p-6 transition-colors hover:border-primary/30 hover:bg-secondary/20"
+                className="bento-card interactive-card group relative flex flex-col justify-between overflow-hidden p-6"
               >
                 <div className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
