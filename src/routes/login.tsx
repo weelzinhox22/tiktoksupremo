@@ -9,16 +9,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getCurrentUser } from "@/features/auth/server";
-import { resetPassword, signIn, signUp } from "@/features/auth/auth";
+import { resetPassword, signIn } from "@/features/auth/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 const schema = z.object({
-  displayName: z.string(),
+  displayName: z.string().optional(),
   email: z.string().email("Informe um e-mail válido."),
   password: z.string(),
 });
 type FormData = z.infer<typeof schema>;
-type Mode = "login" | "signup" | "recovery";
+type Mode = "login" | "recovery";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
@@ -53,20 +53,8 @@ function LoginPage() {
         setMode("login");
         return;
       }
-      if (mode === "signup") {
-        if (values.password.length < 6)
-          throw new Error("A senha precisa ter pelo menos 6 caracteres.");
-        const result = await signUp(values.email, values.password, values.displayName);
-        if (result.needsConfirmation) {
-          toast.success("Conta criada. Confirme o e-mail para entrar.");
-          setMode("login");
-          return;
-        }
-        toast.success("Conta criada com sucesso.");
-      } else {
-        await signIn(values.email, values.password);
-        toast.success("Bem-vindo de volta.");
-      }
+      await signIn(values.email, values.password);
+      toast.success("Bem-vindo de volta.");
       await navigate({ to: "/dashboard", replace: true });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Não foi possível continuar.";
@@ -74,12 +62,7 @@ function LoginPage() {
       toast.error(message);
     }
   });
-  const title =
-    mode === "signup"
-      ? "Criar sua conta"
-      : mode === "recovery"
-        ? "Recuperar senha"
-        : "Entrar no Tik Supremo";
+  const title = mode === "recovery" ? "Recuperar senha" : "Entrar no Tik Supremo";
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-10">
       <div className="aurora opacity-40" aria-hidden="true" />
@@ -103,12 +86,6 @@ function LoginPage() {
             </div>
           </div>
           <form onSubmit={submit} className="mt-7 space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Como podemos chamar você?</Label>
-                <Input id="displayName" autoComplete="name" {...register("displayName")} required />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -126,7 +103,7 @@ function LoginPage() {
                 <Input
                   id="password"
                   type="password"
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  autoComplete="current-password"
                   placeholder="••••••••"
                   {...register("password")}
                   required
@@ -146,7 +123,7 @@ function LoginPage() {
               disabled={isSubmitting || !configured}
             >
               {isSubmitting && <Loader2 className="animate-spin" />}
-              {mode === "signup" ? "Criar conta" : mode === "recovery" ? "Enviar link" : "Entrar"}
+              {mode === "recovery" ? "Enviar link" : "Entrar"}
             </Button>
           </form>
           {!configured && (
@@ -155,23 +132,14 @@ function LoginPage() {
               <code>.env.example</code>.
             </div>
           )}
-          <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+          <div className="mt-6 flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-sm">
             {mode !== "login" && (
               <button
                 type="button"
                 className="font-medium text-primary hover:text-primary/80"
                 onClick={() => setMode("login")}
               >
-                Já tenho conta
-              </button>
-            )}
-            {mode !== "signup" && (
-              <button
-                type="button"
-                className="font-medium text-primary hover:text-primary/80"
-                onClick={() => setMode("signup")}
-              >
-                Criar conta
+                Voltar para o login
               </button>
             )}
             {mode !== "recovery" && (
@@ -184,6 +152,9 @@ function LoginPage() {
               </button>
             )}
           </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Acesso exclusivo para contas autorizadas. Cadastros públicos desativados.
+          </p>
         </div>
       </div>
     </div>

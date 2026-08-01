@@ -9,14 +9,17 @@ export function getSupabaseServerClient() {
   if (!url || !anonKey) {
     throw new Error("Supabase não configurado no servidor.");
   }
+
+  const startServerPkg = "@tanstack/react-start/server";
+
   return createServerClient(url, anonKey, {
     cookies: {
       async getAll() {
-        const { getCookies } = await import("@tanstack/react-start/server");
-        return Object.entries(getCookies()).map(([name, value]) => ({ name, value }));
+        const { getCookies } = await import(/* @vite-ignore */ startServerPkg);
+        return Object.entries(getCookies()).map(([name, value]) => ({ name, value: String(value ?? "") }));
       },
       async setAll(cookies) {
-        const { setCookie } = await import("@tanstack/react-start/server");
+        const { setCookie } = await import(/* @vite-ignore */ startServerPkg);
         for (const { name, value, options } of cookies) {
           setCookie(name, value, options);
         }

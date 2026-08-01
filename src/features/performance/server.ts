@@ -375,3 +375,34 @@ export const importTikTokPerformance = createServerFn({ method: "POST" })
       publicMetricsAvailable: publicData.views > 0,
     };
   });
+
+const updateMetricsSchema = z.object({
+  id: z.string().uuid(),
+  clicks: z.number().int().min(0),
+  orders: z.number().int().min(0),
+  revenue: z.number().min(0),
+});
+
+export const updateContentPerformanceMetrics = createServerFn({ method: "POST" })
+  .validator(updateMetricsSchema)
+  .handler(async ({ data }) => {
+    const supabase = getSupabaseServerClient();
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
+
+    const update = await supabase
+      .from("content_performance")
+      .update({
+        clicks: data.clicks,
+        orders: data.orders,
+        revenue: data.revenue,
+      })
+      .eq("id", data.id)
+      .eq("user_id", auth.user.id);
+
+    if (update.error) {
+      throw new Error("Não foi possível atualizar as vendas do vídeo.");
+    }
+    return { success: true };
+  });
+

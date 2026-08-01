@@ -12,13 +12,19 @@ import {
   Sparkles,
   Trophy,
   Unplug,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listPerformance } from "@/features/libraries/queries";
-import { importTikTokPerformance } from "@/features/performance/server";
+import {
+  importTikTokPerformance,
+  updateContentPerformanceMetrics,
+} from "@/features/performance/server";
 import {
   disconnectTikTok,
   getTikTokConnectionStatus,
@@ -72,6 +78,20 @@ function PerformancePage() {
       } else {
         toast.success(`Desempenho importado e associado ao roteiro. ${result}`);
       }
+      await queryClient.invalidateQueries({ queryKey: ["performance"] });
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ clicks: 0, orders: 0, revenue: 0 });
+
+  const updateMetricsMutation = useMutation({
+    mutationFn: (data: { id: string; clicks: number; orders: number; revenue: number }) =>
+      updateContentPerformanceMetrics({ data }),
+    onSuccess: async () => {
+      toast.success("Vendas e métricas salvas com sucesso!");
+      setEditingRecordId(null);
       await queryClient.invalidateQueries({ queryKey: ["performance"] });
     },
     onError: (error) => toast.error(error.message),
@@ -246,53 +266,132 @@ function PerformancePage() {
               <h2 className="font-semibold">Publicações registradas</h2>
             </div>
             <div className="divide-y divide-border">
-              {records.map((record) => (
-                <div
-                  key={record.id}
-                  className="grid gap-3 p-5 md:grid-cols-[1.5fr_repeat(4,0.6fr)] md:items-center"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium">
-                        {record.projects?.name ?? "Publicação ainda sem projeto"}
-                      </p>
-                      {record.source === "automatic_link" && (
-                        <Badge className="bg-cyan/10 text-cyan">
-                          <Sparkles className="mr-1 size-3" /> Automático
-                        </Badge>
-                      )}
-                      {record.match_status === "pending" && (
-                        <Badge className="bg-amber-500/10 text-amber-300">
-                          <AlertCircle className="mr-1 size-3" /> Aguardando associação
-                        </Badge>
-                      )}
+              {records.map((record) => {
+                const isEditing = editingRecordId === record.id;
+                return (
+                  <div key={record.id} className="p-5 space-y-3">
+                    <div className="grid gap-3 md:grid-cols-[1.4fr_repeat(4,0.5fr)_auto] md:items-center">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium">
+                            {record.projects?.name ?? "Publicação ainda sem projeto"}
+                          </p>
+                          {record.source === "automatic_link" && (
+                            <Badge className="bg-cyan/10 text-cyan">
+                              <Sparkles className="mr-1 size-3" /> Automático
+                            </Badge>
+                          )}
+                          {record.match_status === "pending" && (
+                            <Badge className="bg-amber-500/10 text-amber-300">
+                              <AlertCircle className="mr-1 size-3" /> Aguardando associação
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {record.combination_number
+                            ? `Combinação ${record.combination_number}`
+                            : record.match_status === "pending"
+                              ? "Roteiro ainda não identificado"
+                              : "Roteiro normal"}{" "}
+                          · {new Date(record.published_at).toLocaleDateString("pt-BR")}
+                        </p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {record.likes.toLocaleString("pt-BR")} curtidas ·{" "}
+                          {record.comments.toLocaleString("pt-BR")} comentários ·{" "}
+                          {record.shares.toLocaleString("pt-BR")} compartilhamentos
+                        </p>
+                      </div>
+                      <Metric label="Views" value={record.views.toLocaleString("pt-BR")} />
+                      <Metric label="Cliques" value={record.clicks.toLocaleString("pt-BR")} />
+                      <Metric label="Pedidos" value={record.orders.toLocaleString("pt-BR")} />
+                      <Metric
+                        label="Receita"
+                        value={Number(record.revenue).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      />
+                      <div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (isEditing) {
+                              setEditingRecordId(null);
+                            } else {
+                              setEditingRecordId(record.id);
+                              setEditForm({
+                                clicks: record.clicks,
+                                orders: record.orders,
+                                revenue: Number(record.revenue),
+                              });
+                            }
+                          }}
+                        >
+                          <Pencil className="mr-1.5 size-3.5" />
+                          {isEditing ? "Fechar" : "Editar vendas"}
+                        </Button>
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {record.combination_number
-                        ? `Combinação ${record.combination_number}`
-                        : record.match_status === "pending"
-                          ? "Roteiro ainda não identificado"
-                          : "Roteiro normal"}{" "}
-                      · {new Date(record.published_at).toLocaleDateString("pt-BR")}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      {record.likes.toLocaleString("pt-BR")} curtidas ·{" "}
-                      {record.comments.toLocaleString("pt-BR")} comentários ·{" "}
-                      {record.shares.toLocaleString("pt-BR")} compartilhamentos
-                    </p>
+
+                    {isEditing && (
+                      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 mt-3">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Cliques no link</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={editForm.clicks}
+                            onChange={(e) => setEditForm({ ...editForm, clicks: Number(e.target.value) })}
+                            className="mt-1 h-9 w-28 bg-background"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Vendas (Pedidos)</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={editForm.orders}
+                            onChange={(e) => setEditForm({ ...editForm, orders: Number(e.target.value) })}
+                            className="mt-1 h-9 w-28 bg-background"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Receita R$ (Faturamento)</label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={editForm.revenue}
+                            onChange={(e) => setEditForm({ ...editForm, revenue: Number(e.target.value) })}
+                            className="mt-1 h-9 w-32 bg-background"
+                          />
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="hero"
+                          disabled={updateMetricsMutation.isPending}
+                          onClick={() =>
+                            updateMetricsMutation.mutate({
+                              id: record.id,
+                              clicks: editForm.clicks,
+                              orders: editForm.orders,
+                              revenue: editForm.revenue,
+                            })
+                          }
+                        >
+                          {updateMetricsMutation.isPending ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Check className="mr-1 size-4" />
+                          )}
+                          Salvar vendas
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                  <Metric label="Views" value={record.views} />
-                  <Metric label="Cliques" value={record.clicks} />
-                  <Metric label="Pedidos" value={record.orders} />
-                  <Metric
-                    label="Receita"
-                    value={Number(record.revenue).toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    })}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </>
