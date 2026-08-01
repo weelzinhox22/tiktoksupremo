@@ -1,64 +1,88 @@
 import { useState } from "react";
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-router";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn, DEMO_CREDENTIALS } from "@/lib/demo-auth";
+import { getCurrentUser } from "@/features/auth/server";
+import { resetPassword, signIn, signUp } from "@/features/auth/auth";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+
+const schema = z.object({
+  displayName: z.string(),
+  email: z.string().email("Informe um e-mail válido."),
+  password: z.string(),
+});
+type FormData = z.infer<typeof schema>;
+type Mode = "login" | "signup" | "recovery";
 
 export const Route = createFileRoute("/login")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "Entrar no Tik Supremo" },
-      {
-        name: "description",
-        content:
-          "Acesse sua central de inteligência artificial para roteiros e vídeos do TikTok Shop.",
-      },
-      { property: "og:title", content: "Entrar no Tik Supremo" },
-      { property: "og:description", content: "Do produto ao vídeo pronto para vender." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
+  beforeLoad: async () => {
+    const user = await getCurrentUser();
+    if (user) throw redirect({ to: "/dashboard" });
+  },
+  head: () => ({ meta: [{ title: "Entrar no Tik Supremo" }] }),
   component: LoginPage,
 });
 
 function LoginPage() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<Mode>("login");
   const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const configured = isSupabaseConfigured();
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: { displayName: "", email: "", password: "" },
+  });
+  const submit = handleSubmit(async (values) => {
     setError(null);
-    setLoading(true);
     try {
-      const user = signIn(username, password);
-      toast.success(`Bem-vindo de volta, ${user.fullName}.`);
-      navigate({ to: "/dashboard", replace: true });
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Não foi possível entrar.";
+      if (!configured)
+        throw new Error("Supabase não configurado. Consulte o arquivo .env.example.");
+      if (mode === "recovery") {
+        await resetPassword(values.email);
+        toast.success("Enviamos o link de recuperação, se o e-mail estiver cadastrado.");
+        setMode("login");
+        return;
+      }
+      if (mode === "signup") {
+        if (values.password.length < 6)
+          throw new Error("A senha precisa ter pelo menos 6 caracteres.");
+        const result = await signUp(values.email, values.password, values.displayName);
+        if (result.needsConfirmation) {
+          toast.success("Conta criada. Confirme o e-mail para entrar.");
+          setMode("login");
+          return;
+        }
+        toast.success("Conta criada com sucesso.");
+      } else {
+        await signIn(values.email, values.password);
+        toast.success("Bem-vindo de volta.");
+      }
+      await navigate({ to: "/dashboard", replace: true });
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Não foi possível continuar.";
       setError(message);
       toast.error(message);
-      setLoading(false);
     }
-  };
-
-  const fillDemo = () => {
-    setUsername(DEMO_CREDENTIALS.username);
-    setPassword(DEMO_CREDENTIALS.password);
-  };
-
+  });
+  const title =
+    mode === "signup"
+      ? "Criar sua conta"
+      : mode === "recovery"
+        ? "Recuperar senha"
+        : "Entrar no Tik Supremo";
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-10">
-      <div className="aurora" aria-hidden="true" />
-
+      <div className="aurora opacity-40" aria-hidden="true" />
       <div className="relative z-10 w-full max-w-md">
         <Link
           to="/"
@@ -66,71 +90,99 @@ function LoginPage() {
         >
           <ArrowLeft className="size-4" /> Voltar para a página inicial
         </Link>
-
-        <div className="surface-card glow-primary p-7 md:p-9">
-          <div className="flex items-center gap-2">
-            <span className="bg-gradient-supremo flex size-10 items-center justify-center rounded-xl">
-              <Sparkles className="size-5 text-primary-foreground" />
+        <div className="surface-card p-7 md:p-9">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+              <Sparkles className="size-5 text-primary" />
             </span>
             <div>
-              <h1 className="font-display text-xl font-bold">Entrar no Tik Supremo</h1>
+              <h1 className="font-display text-xl font-semibold tracking-tight">{title}</h1>
               <p className="text-xs text-muted-foreground">
                 Do produto ao vídeo pronto para vender.
               </p>
             </div>
           </div>
-
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          <form onSubmit={submit} className="mt-7 space-y-4">
+            {mode === "signup" && (
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Como podemos chamar você?</Label>
+                <Input id="displayName" autoComplete="name" {...register("displayName")} required />
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="username">Usuário</Label>
+              <Label htmlFor="email">E-mail</Label>
               <Input
-                id="username"
-                autoComplete="username"
-                placeholder="seu usuário"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="voce@exemplo.com"
+                {...register("email")}
                 required
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
+            {mode !== "recovery" && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                  placeholder="••••••••"
+                  {...register("password")}
+                  required
+                />
+              </div>
+            )}
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}
               </p>
             )}
-
-            <Button type="submit" variant="hero" size="lg" className="w-full" disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : null}
-              Entrar
+            <Button
+              type="submit"
+              variant="hero"
+              size="lg"
+              className="w-full"
+              disabled={isSubmitting || !configured}
+            >
+              {isSubmitting && <Loader2 className="animate-spin" />}
+              {mode === "signup" ? "Criar conta" : mode === "recovery" ? "Enviar link" : "Entrar"}
             </Button>
           </form>
-
-          <div className="mt-6 rounded-xl border border-border bg-secondary/40 p-4 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">Acesso de demonstração</p>
-            <p className="mt-1">
-              Usuário <span className="font-mono text-cyan">{DEMO_CREDENTIALS.username}</span> · senha{" "}
-              <span className="font-mono text-cyan">{DEMO_CREDENTIALS.password}</span>
-            </p>
-            <Button variant="soft" size="sm" className="mt-3" onClick={fillDemo} type="button">
-              Preencher automaticamente
-            </Button>
-            <p className="mt-3">
-              A sessão fica salva apenas neste navegador enquanto o banco de dados não estiver
-              ativo. Cadastro, recuperação de senha e login com Google entram junto com o backend.
-            </p>
+          {!configured && (
+            <div className="mt-5 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              Supabase ainda não está configurado. Preencha as variáveis descritas em{" "}
+              <code>.env.example</code>.
+            </div>
+          )}
+          <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm">
+            {mode !== "login" && (
+              <button
+                type="button"
+                className="font-medium text-primary hover:text-primary/80"
+                onClick={() => setMode("login")}
+              >
+                Já tenho conta
+              </button>
+            )}
+            {mode !== "signup" && (
+              <button
+                type="button"
+                className="font-medium text-primary hover:text-primary/80"
+                onClick={() => setMode("signup")}
+              >
+                Criar conta
+              </button>
+            )}
+            {mode !== "recovery" && (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setMode("recovery")}
+              >
+                Esqueci a senha
+              </button>
+            )}
           </div>
         </div>
       </div>

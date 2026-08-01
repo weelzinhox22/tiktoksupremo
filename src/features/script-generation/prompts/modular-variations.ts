@@ -1,0 +1,51 @@
+export const copyModuleBatchJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["kind", "modules"],
+  properties: {
+    kind: { type: "string", enum: ["hook", "body", "cta"] },
+    modules: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["title", "strategy", "scenes"],
+        properties: {
+          title: { type: "string" },
+          strategy: { type: "string" },
+          scenes: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["spoken_text", "veo_prompt"],
+              properties: {
+                spoken_text: { type: "string" },
+                veo_prompt: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export function buildCopyModulePrompt(
+  context: Record<string, unknown>,
+  kind: "hook" | "body" | "cta",
+  count: number,
+) {
+  const sceneCount = kind === "body" ? 2 : 1;
+  const role = kind === "hook" ? "GANCHO" : kind === "body" ? "CORPO" : "CTA";
+  return `Crie exatamente ${count} módulos diferentes de ${role} para um sistema modular de vídeos TikTok Shop. Cada módulo de ${role} deve conter exatamente ${sceneCount} cena(s), e cada cena deve durar exatamente 8 segundos. Cada combinação final terá 1 gancho + 2 cenas de corpo + 1 CTA, totalizando 4 cenas.
+
+Obedeça rigorosamente às configurações de formato UGC ou POV, personagem, cenário, roupa, aparência, energia, velocidade de voz, mão, interação com frasco, continuidade, câmera e tela. Em POV, a câmera representa os olhos/mãos da pessoa e não deve mostrar um creator falando para a câmera. Em UGC, o creator aparece e fala diretamente com naturalidade.
+
+Cada módulo precisa usar uma estratégia, texto falado e construção visual diferentes. Aprenda o linguajar das referências, mas não copie frases literalmente. Não invente preço, desconto, estoque, composição, venda, benefício médico ou promessa proibida. Use somente dados confirmados do produto. O campo veo_prompt deve conter o texto de spoken_text exatamente no DIALOGUE e manter a tela conforme a configuração.
+
+Retorne somente o JSON solicitado. kind deve ser "${kind}".
+
+CONTEXTO:
+${JSON.stringify(context)}`;
+}

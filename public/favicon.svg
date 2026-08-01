@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="18" fill="url(#tik_supremo_grad)"/>
+  <!-- Sparkles -->
+  <path d="M18 16L20 22L26 24L20 26L18 32L16 26L10 24L16 22L18 16Z" fill="#00F2FE"/>
+  <path d="M46 36L47.5 40.5L52 42L47.5 43.5L46 48L44.5 43.5L40 42L44.5 40.5L46 36Z" fill="#F43F5E"/>
+  <!-- Play Icon -->
+  <path d="M26 20V44L44 32L26 20Z" fill="white"/>
+  <defs>
+    <linearGradient id="tik_supremo_grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9333EA"/>
+      <stop offset="0.5" stop-color="#DB2777"/>
+      <stop offset="1" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+</svg>

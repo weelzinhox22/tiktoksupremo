@@ -1,0 +1,798 @@
+import { useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ArrowLeft, ArrowRight, Loader2, Search, Upload, Wand2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { generateProjectScript } from "@/features/script-generation/server";
+import { extractVideoFrames } from "@/features/video-analysis/extract-frames";
+import { importProductFromUrl } from "@/features/products/import-server";
+
+const schema = z.object({
+  projectName: z.string().max(160, "O nome do projeto deve ter no máximo 160 caracteres."),
+  productName: z.string().min(2, "Informe o produto."),
+  productUrl: z.string(),
+  category: z.string().min(1),
+  price: z.string(),
+  promotion: z.string(),
+  productVariation: z.string(),
+  commission: z.string(),
+  rating: z.string(),
+  reviewCount: z.string(),
+  knownSales: z.string(),
+  description: z.string().min(10),
+  benefits: z.string().min(3),
+  problems: z.string(),
+  objections: z.string(),
+  audience: z.string().min(3),
+  competition: z.string(),
+  productNotes: z.string(),
+  copy: z.string(),
+  duration: z.string(),
+  tone: z.string(),
+  character: z.string(),
+  setting: z.string(),
+  recordingStyle: z.string(),
+  objective: z.string(),
+  variations: z.string(),
+  sceneCount: z.string(),
+  videoFormat: z.string(),
+  apparentAge: z.string(),
+  outfit: z.string(),
+  appearance: z.string(),
+  characterEnergy: z.string(),
+  voiceSpeed: z.string(),
+  bottleHand: z.string(),
+  rotateBottle: z.string(),
+  bringBottleClose: z.string(),
+  bottleClosed: z.string(),
+  continuity: z.string(),
+  sameCamera: z.string(),
+  cleanScreen: z.string(),
+  finalCta: z.string(),
+  requiredInformation: z.string(),
+  forbiddenWords: z.string(),
+  modularVariations: z.boolean(),
+  notes: z.string(),
+});
+type FormData = z.infer<typeof schema>;
+const steps = ["Produto", "Referência", "Configuração", "Gerar"];
+const list = (value: string) =>
+  value
+    .split(/\n|,/)
+    .map((v) => v.trim())
+    .filter(Boolean);
+const nullableNumber = (value: string) => (value.trim() ? Number(value.replace(",", ".")) : null);
+const safeName = (name: string) =>
+  name
+    .normalize("NFKD")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .slice(-100);
+const buildProjectName = (customName: string, productName: string) => {
+  const requestedName = customName.trim() || `Roteiro — ${productName.trim()}`;
+  return requestedName.slice(0, 160).trim() || "Novo roteiro";
+};
+
+export const Route = createFileRoute("/_authenticated/projects/new")({
+  head: () => ({ meta: [{ title: "Novo roteiro — Tik Supremo" }] }),
+  component: NewProjectPage,
+});
+
+function NewProjectPage() {
+  const { user } = Route.useRouteContext();
+  const navigate = useNavigate();
+  const [step, setStep] = useState(0);
+  const [images, setImages] = useState<File[]>([]);
+  const [labelImages, setLabelImages] = useState<File[]>([]);
+  const [video, setVideo] = useState<File | null>(null);
+  const [progress, setProgress] = useState("Preparando...");
+  const [lastImportedUrl, setLastImportedUrl] = useState("");
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      projectName: "",
+      productName: "",
+      productUrl: "",
+      category: "Beleza e cuidados pessoais",
+      price: "",
+      promotion: "",
+      productVariation: "",
+      commission: "",
+      rating: "",
+      reviewCount: "",
+      knownSales: "",
+      description: "",
+      benefits: "",
+      problems: "",
+      objections: "",
+      audience: "Público brasileiro interessado em solução prática e bom custo-benefício",
+      competition: "",
+      productNotes: "",
+      copy: "",
+      duration: "30",
+      tone: "Natural, direto e curioso",
+      character: "Creator brasileiro autêntico",
+      setting: "Ambiente doméstico bem iluminado",
+      recordingStyle: "UGC com câmera de celular",
+      objective: "Conversão para TikTok Shop",
+      variations: "3",
+      sceneCount: "4",
+      videoFormat: "UGC",
+      apparentAge: "",
+      outfit: "",
+      appearance: "",
+      characterEnergy: "",
+      voiceSpeed: "Normal",
+      bottleHand: "",
+      rotateBottle: "",
+      bringBottleClose: "",
+      bottleClosed: "",
+      continuity: "",
+      sameCamera: "",
+      cleanScreen: "Sim",
+      finalCta: "",
+      requiredInformation: "",
+      forbiddenWords: "",
+      modularVariations: false,
+      notes: "",
+    },
+  });
+  const productImportMutation = useMutation({
+    mutationFn: (url: string) => importProductFromUrl({ data: { url } }),
+    onSuccess: (data) => {
+      setValue("productName", data.name, { shouldValidate: true });
+      if (data.description) setValue("description", data.description, { shouldValidate: true });
+      if (data.price) setValue("price", data.price);
+      if (data.category) setValue("category", data.category);
+      setLastImportedUrl(data.sourceUrl);
+      toast.success("Dados públicos do produto preenchidos.");
+    },
+    onError: (cause) =>
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível importar o produto."),
+  });
+  const mutation = useMutation({
+    mutationFn: async (values: FormData) => {
+      setProgress("Criando o projeto...");
+      if (!values.copy.trim() && !video) throw new Error("Adicione uma copy, um vídeo ou os dois.");
+      const supabase = getSupabaseBrowserClient();
+      const projectInsert = await supabase
+        .from("projects")
+        .insert({
+          user_id: user.id,
+          name: buildProjectName(values.projectName, values.productName),
+          status: "draft",
+          settings: {
+            duration_seconds: Number(values.duration),
+            tone: values.tone,
+            character: values.character,
+            setting: values.setting,
+            recording_style: values.recordingStyle,
+            objective: values.objective,
+            variations: Number(values.variations),
+            scene_count: Math.max(1, Number(values.sceneCount) || 4),
+            video_format: values.videoFormat,
+            promotion: values.promotion,
+            product_variation: values.productVariation,
+            apparent_age: values.apparentAge,
+            outfit: values.outfit,
+            appearance: values.appearance,
+            character_energy: values.characterEnergy,
+            voice_speed: values.voiceSpeed,
+            bottle_hand: values.bottleHand,
+            rotate_bottle: values.rotateBottle,
+            bring_bottle_close: values.bringBottleClose,
+            bottle_closed: values.bottleClosed,
+            continuity: values.continuity,
+            same_camera: values.sameCamera,
+            clean_screen: values.cleanScreen,
+            final_cta: values.finalCta,
+            required_information: values.requiredInformation,
+            forbidden_words: values.forbiddenWords,
+            modular_variations: values.modularVariations,
+            notes: values.notes,
+          },
+        })
+        .select("id")
+        .single();
+      if (projectInsert.error || !projectInsert.data)
+        throw new Error(
+          `Não foi possível criar o projeto: ${projectInsert.error?.message ?? "erro desconhecido"}`,
+        );
+      const projectId = projectInsert.data.id as string;
+      const imagePaths: string[] = [];
+      const labelImagePaths: string[] = [];
+      if (images.length) setProgress("Enviando fotos do produto...");
+      for (const [index, file] of images.entries()) {
+        const path = `${user.id}/${projectId}/${crypto.randomUUID()}-${index}-${safeName(file.name)}`;
+        const upload = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upload.error) throw new Error(`Falha ao enviar ${file.name}: ${upload.error.message}`);
+        imagePaths.push(path);
+      }
+      for (const [index, file] of labelImages.entries()) {
+        const path = `${user.id}/${projectId}/label/${crypto.randomUUID()}-${index}-${safeName(file.name)}`;
+        const upload = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upload.error)
+          throw new Error(`Falha ao enviar o rótulo ${file.name}: ${upload.error.message}`);
+        imagePaths.push(path);
+        labelImagePaths.push(path);
+      }
+      setProgress("Salvando informações do produto...");
+      const product = await supabase.from("products").insert({
+        project_id: projectId,
+        user_id: user.id,
+        name: values.productName,
+        product_url: values.productUrl || null,
+        category: values.category,
+        price: nullableNumber(values.price),
+        commission_rate: nullableNumber(values.commission),
+        rating: nullableNumber(values.rating),
+        review_count: nullableNumber(values.reviewCount),
+        known_sales: nullableNumber(values.knownSales),
+        description: values.description,
+        benefits: list(values.benefits),
+        problems_solved: list(values.problems),
+        objections: list(values.objections),
+        target_audience: values.audience,
+        perceived_competition: values.competition || null,
+        notes: values.productNotes || null,
+        image_paths: imagePaths,
+        raw_data: {
+          source: "manual",
+          trend_data_available: false,
+          promotion: values.promotion,
+          product_variation: values.productVariation,
+          label_image_paths: labelImagePaths,
+        },
+      });
+      if (product.error) throw new Error(`Falha ao salvar o produto: ${product.error.message}`);
+      if (values.copy.trim()) {
+        const copyInsert = await supabase.from("copies").insert({
+          project_id: projectId,
+          user_id: user.id,
+          content: values.copy.trim(),
+          source_type: "validated_copy",
+        });
+        if (copyInsert.error)
+          throw new Error(`Falha ao salvar a copy: ${copyInsert.error.message}`);
+      }
+      if (video) {
+        setProgress("Enviando vídeo de referência...");
+        const videoPath = `${user.id}/${projectId}/${crypto.randomUUID()}-${safeName(video.name)}`;
+        const upload = await supabase.storage
+          .from("reference-videos")
+          .upload(videoPath, video, { contentType: video.type, upsert: false });
+        if (upload.error) throw new Error(`Falha no vídeo: ${upload.error.message}`);
+        setProgress("Extraindo amostras visuais...");
+        const frames = await extractVideoFrames(video);
+        const framePaths: string[] = [];
+        for (const [index, frame] of frames.entries()) {
+          const path = `${user.id}/${projectId}/frames/${crypto.randomUUID()}-${index}.jpg`;
+          const frameUpload = await supabase.storage
+            .from("project-files")
+            .upload(path, frame, { contentType: "image/jpeg" });
+          if (!frameUpload.error) framePaths.push(path);
+        }
+        const videoInsert = await supabase.from("reference_videos").insert({
+          project_id: projectId,
+          user_id: user.id,
+          storage_path: videoPath,
+          original_filename: video.name,
+          duration_seconds: null,
+          processing_status: "pending",
+          analysis: { frame_paths: framePaths, sampling_method: "browser_even_intervals" },
+        });
+        if (videoInsert.error)
+          throw new Error(`Falha ao registrar o vídeo: ${videoInsert.error.message}`);
+      }
+      const count = values.modularVariations
+        ? 1
+        : Math.min(6, Math.max(1, Number(values.variations) || 3));
+      for (let i = 0; i < count; i++) {
+        setProgress(`Analisando e gerando versão ${i + 1} de ${count}...`);
+        await generateProjectScript({ data: { projectId } });
+      }
+      return projectId;
+    },
+    onSuccess: async (projectId) => {
+      toast.success("Projeto e roteiro salvos.");
+      await navigate({ to: "/projects/$projectId", params: { projectId } });
+    },
+    onError: (cause) =>
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível concluir."),
+  });
+  const next = async () => {
+    const fields: Record<number, (keyof FormData)[]> = {
+      0: ["productName", "description", "benefits"],
+      1: [],
+      2: [
+        "duration",
+        "tone",
+        "character",
+        "setting",
+        "recordingStyle",
+        "objective",
+        "variations",
+        "sceneCount",
+        "videoFormat",
+      ],
+    };
+    if (await trigger(fields[step] ?? [])) setStep((v) => Math.min(3, v + 1));
+  };
+  const productUrlField = register("productUrl");
+  const tryImportProduct = (url: string) => {
+    const normalized = url.trim();
+    if (!normalized || normalized === lastImportedUrl || productImportMutation.isPending) return;
+    try {
+      const host = new URL(normalized).hostname.toLowerCase();
+      if (host === "tiktok.com" || host.endsWith(".tiktok.com") || host === "kalodata.com" || host.endsWith(".kalodata.com")) {
+        productImportMutation.mutate(normalized);
+      }
+    } catch {
+      // A validação normal do formulário orientará o usuário.
+    }
+  };
+  return (
+    <div className="mx-auto max-w-5xl space-y-7 pb-12">
+      <header>
+        <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Novo projeto
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Criar roteiro</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+          Produto + referência → análise → roteiro → prompts Veo → Supabase.
+        </p>
+      </header>
+      <div className="grid grid-cols-4 gap-2 rounded-xl border border-border bg-card p-1.5">
+        {steps.map((label, index) => (
+          <div
+            key={label}
+            className={`rounded-lg px-2 py-2.5 text-center text-xs font-medium transition-colors ${index === step ? "bg-primary/10 text-primary" : "text-muted-foreground"}`}
+          >
+            {index + 1}. {label}
+          </div>
+        ))}
+      </div>
+      <form
+        onSubmit={handleSubmit((v) => mutation.mutate(v))}
+        className="surface-card space-y-6 p-5 md:p-8"
+      >
+        {step === 0 && (
+          <div className="space-y-6">
+            <div className="rounded-xl border border-primary/20 bg-primary/[0.06] p-4">
+              <p className="text-sm font-semibold text-primary">Modo rápido</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Preencha só o essencial. O nome do projeto, público e configuração já têm valores
+                inteligentes.
+              </p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Qual é o produto?" error={errors.productName?.message}>
+                <Input placeholder="Ex.: escova secadora 5 em 1" {...register("productName")} />
+              </Field>
+              <Field label="Link do produto (opcional)">
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    placeholder="TikTok Shop ou Kalodata"
+                    {...productUrlField}
+                    onBlur={(event) => {
+                      void productUrlField.onBlur(event);
+                      tryImportProduct(event.target.value);
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!watch("productUrl").trim() || productImportMutation.isPending}
+                    onClick={() => tryImportProduct(watch("productUrl"))}
+                  >
+                    {productImportMutation.isPending ? <Loader2 className="animate-spin" /> : <Search />}
+                    <span className="hidden sm:inline">Puxar dados</span>
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Preenche automaticamente os dados públicos disponíveis. Páginas privadas do Kalodata exigem integração autorizada.
+                </p>
+              </Field>
+              <Field label="Cole a descrição do produto" error={errors.description?.message} wide>
+                <Textarea
+                  rows={5}
+                  placeholder="Pode colar a descrição do anúncio ou escrever do seu jeito. Não precisa organizar."
+                  {...register("description")}
+                />
+              </Field>
+              <Field label="Principais benefícios" error={errors.benefits?.message}>
+                <Textarea
+                  rows={4}
+                  placeholder="Ex.: seca rápido, reduz frizz, fácil de usar"
+                  {...register("benefits")}
+                />
+              </Field>
+              <Field label="Fotos do produto">
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={(e) => setImages(Array.from(e.target.files ?? []))}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {images.length ? `${images.length} foto(s) selecionada(s)` : "Opcional"}
+                </p>
+              </Field>
+            </div>
+            <details className="group rounded-xl border border-border bg-secondary/20 p-4">
+              <summary className="cursor-pointer font-medium text-foreground">
+                Adicionar detalhes avançados{" "}
+                <span className="text-muted-foreground">(opcional)</span>
+              </summary>
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <Field label="Nome personalizado do projeto">
+                  <Input
+                    placeholder="Gerado automaticamente se ficar vazio"
+                    {...register("projectName")}
+                  />
+                </Field>
+                <Field label="Categoria">
+                  <Input {...register("category")} />
+                </Field>
+                <Field label="Preço">
+                  <Input inputMode="decimal" {...register("price")} />
+                </Field>
+                <Field label="Desconto ou promoção">
+                  <Input placeholder="Ex.: 20% OFF ou leve 3, pague 2" {...register("promotion")} />
+                </Field>
+                <Field label="Variação mostrada no vídeo">
+                  <Input placeholder="Ex.: frasco com 60, 90 ou 120 cápsulas" {...register("productVariation")} />
+                </Field>
+                <Field label="Comissão %">
+                  <Input inputMode="decimal" {...register("commission")} />
+                </Field>
+                <Field label="Avaliação">
+                  <Input inputMode="decimal" {...register("rating")} />
+                </Field>
+                <Field label="Quantidade de avaliações">
+                  <Input inputMode="numeric" {...register("reviewCount")} />
+                </Field>
+                <Field label="Vendas conhecidas">
+                  <Input inputMode="numeric" {...register("knownSales")} />
+                </Field>
+                <Field label="Concorrência percebida">
+                  <Input {...register("competition")} />
+                </Field>
+                <Field label="Problemas que resolve">
+                  <Textarea rows={4} {...register("problems")} />
+                </Field>
+                <Field label="Objeções do comprador">
+                  <Textarea rows={4} {...register("objections")} />
+                </Field>
+                <Field label="Público-alvo">
+                  <Textarea rows={4} {...register("audience")} />
+                </Field>
+                <Field label="Outras observações">
+                  <Textarea rows={4} {...register("productNotes")} />
+                </Field>
+                <Field label="Foto legível do verso do rótulo" wide>
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={(event) => setLabelImages(Array.from(event.target.files ?? []))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Opcional. Ajuda a mencionar composição, modo de uso e informações realmente presentes no rótulo.
+                  </p>
+                </Field>
+              </div>
+            </details>
+          </div>
+        )}
+        {step === 1 && (
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field label="Copy validada">
+              <Textarea
+                rows={16}
+                placeholder="Cole aqui a copy que já funciona..."
+                {...register("copy")}
+              />
+            </Field>
+            <Field label="Vídeo de referência">
+              <div className="rounded-xl border border-dashed border-border bg-secondary/15 p-6">
+                <Upload className="mb-3 text-primary" />
+                <Input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={(e) => setVideo(e.target.files?.[0] ?? null)}
+                />
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {video ? video.name : "Opcional. Use copy, vídeo ou os dois."}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Frames serão amostrados no navegador; áudio e texto serão processados no backend.
+                </p>
+              </div>
+            </Field>
+          </div>
+        )}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold">Escolha um estilo pronto</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Você pode continuar sem mudar nada.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <PresetButton
+                  title="Venda rápida"
+                  description="30s, direto e curioso"
+                  onClick={() => {
+                    setValue("duration", "30");
+                    setValue("tone", "Natural, direto e curioso");
+                    setValue("recordingStyle", "UGC com câmera de celular");
+                  }}
+                />
+                <PresetButton
+                  title="Demonstração"
+                  description="45s, mostra o produto em uso"
+                  onClick={() => {
+                    setValue("duration", "45");
+                    setValue("tone", "Didático, espontâneo e convincente");
+                    setValue("recordingStyle", "Demonstração prática em cortes rápidos");
+                  }}
+                />
+                <PresetButton
+                  title="Prova social"
+                  description="35s, experiência pessoal"
+                  onClick={() => {
+                    setValue("duration", "35");
+                    setValue("tone", "Depoimento natural e entusiasmado");
+                    setValue("recordingStyle", "UGC em primeira pessoa com antes e depois");
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Formato do vídeo</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Isso muda personagem, câmera, mãos e toda a construção do prompt.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <PresetButton
+                  title={watch("videoFormat") === "UGC" ? "✓ UGC selecionado" : "UGC"}
+                  description="Creator aparece e fala diretamente para a câmera"
+                  onClick={() => {
+                    setValue("videoFormat", "UGC");
+                    setValue("recordingStyle", "UGC com câmera de celular");
+                  }}
+                />
+                <PresetButton
+                  title={watch("videoFormat") === "POV" ? "✓ POV selecionado" : "POV"}
+                  description="A câmera representa os olhos e as mãos da pessoa"
+                  onClick={() => {
+                    setValue("videoFormat", "POV");
+                    setValue("recordingStyle", "POV em primeira pessoa");
+                  }}
+                />
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <Field label="Duração aproximada (segundos)">
+                <Input inputMode="numeric" {...register("duration")} />
+              </Field>
+              <Field label="Quantas versões?">
+                <Input inputMode="numeric" min="1" max="6" {...register("variations")} />
+                <p className="text-xs text-muted-foreground">Padrão: 3 versões no modo normal.</p>
+              </Field>
+              <Field label="Quantidade de cenas">
+                <Input inputMode="numeric" min="1" max="8" {...register("sceneCount")} />
+                <p className="text-xs text-muted-foreground">Padrão: 4 cenas de exatamente 8 segundos.</p>
+              </Field>
+            </div>
+            <label className="flex cursor-pointer gap-3 rounded-xl border border-primary/25 bg-primary/[0.06] p-4">
+              <input type="checkbox" className="mt-1 size-4" {...register("modularVariations")} />
+              <span>
+                <strong className="block text-sm text-foreground">Gerar pacote modular de 48 vídeos</strong>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  Cria 4 ganchos × 4 corpos × 3 CTAs em três ações separadas de IA. Cada combinação terá 4 cenas de 8 segundos.
+                </span>
+              </span>
+            </label>
+            <details className="rounded-xl border border-border bg-secondary/20 p-4">
+              <summary className="cursor-pointer font-medium">
+                Personalizar direção criativa
+              </summary>
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <Field label="Tom de voz">
+                  <Input {...register("tone")} />
+                </Field>
+                <Field label="Tipo de personagem">
+                  <Input {...register("character")} />
+                </Field>
+                <Field label="Cenário">
+                  <Input placeholder="Quarto, cozinha, sala, banheiro, academia..." {...register("setting")} />
+                </Field>
+                <Field label="Idade aparente da personagem">
+                  <Input placeholder="Ex.: 30 a 35 anos" {...register("apparentAge")} />
+                </Field>
+                <Field label="Roupa">
+                  <Input placeholder="Ex.: camiseta preta casual" {...register("outfit")} />
+                </Field>
+                <Field label="Cabelo e aparência">
+                  <Input placeholder="Ex.: cabelo curto, barba feita, aparência natural" {...register("appearance")} />
+                </Field>
+                <Field label="Energia da personagem">
+                  <OptionSelect field={register("characterEnergy")} options={["", "Calma", "Espontânea", "Curiosa", "Indignada", "Empolgada"]} />
+                </Field>
+                <Field label="Velocidade da voz">
+                  <OptionSelect field={register("voiceSpeed")} options={["Normal", "Rápida", "Extremamente rápida"]} />
+                </Field>
+                <Field label="Mão que segura o frasco">
+                  <OptionSelect field={register("bottleHand")} options={["", "Direita", "Esquerda"]} />
+                </Field>
+                <Field label="Pode girar o frasco para mostrar o rótulo?">
+                  <OptionSelect field={register("rotateBottle")} options={["", "Sim", "Não"]} />
+                </Field>
+                <Field label="Pode aproximar o frasco da câmera?">
+                  <OptionSelect field={register("bringBottleClose")} options={["", "Sim", "Não"]} />
+                </Field>
+                <Field label="O frasco deve permanecer fechado?">
+                  <OptionSelect field={register("bottleClosed")} options={["", "Sim", "Não"]} />
+                </Field>
+                <Field label="As cenas precisam ter continuidade?">
+                  <OptionSelect field={register("continuity")} options={["", "Sim", "Não"]} />
+                </Field>
+                <Field label="A câmera fica na mesma posição?">
+                  <OptionSelect field={register("sameCamera")} options={["", "Sim", "Não"]} />
+                </Field>
+                <Field label="Tela completamente limpa?">
+                  <OptionSelect field={register("cleanScreen")} options={["Sim", "Não"]} />
+                </Field>
+                <Field label="Estilo de gravação">
+                  <Input {...register("recordingStyle")} />
+                </Field>
+                <Field label="Objetivo principal">
+                  <Input {...register("objective")} />
+                </Field>
+                <Field label="CTA final">
+                  <Input placeholder="Abrir o carrinho, conferir opções ou aproveitar o desconto" {...register("finalCta")} />
+                </Field>
+                <Field label="Informações obrigatórias" wide>
+                  <Textarea
+                    rows={3}
+                    placeholder="Feno-grego, arginina, boro, sem açúcar, sem lactose, quantidade de cápsulas..."
+                    {...register("requiredInformation")}
+                  />
+                </Field>
+                <Field label="Palavras ou promessas proibidas" wide>
+                  <Textarea rows={3} {...register("forbiddenWords")} />
+                </Field>
+                <Field label="Observações adicionais">
+                  <Textarea {...register("notes")} />
+                </Field>
+              </div>
+            </details>
+          </div>
+        )}
+        {step === 3 && (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Pronto para processar</h2>
+            <p className="text-sm text-muted-foreground">
+              Projeto:{" "}
+              <strong className="text-foreground">
+                {buildProjectName(watch("projectName"), watch("productName"))}
+              </strong>
+              . O sistema salvará os dados e arquivos, transcreverá o vídeo se houver, analisará as
+              referências e criará {watch("modularVariations") ? "um pacote modular com 48 combinações" : `${watch("variations")} versão(ões)`}.
+            </p>
+            <div className="rounded-xl border border-border bg-secondary/20 p-4 text-sm">
+              Se <code>GROQ_API_KEY</code> ou <code>OPENAI_API_KEY</code> não estiver configurada no
+              backend, nenhum roteiro falso será criado: a versão ficará como falha, com o erro real
+              no histórico.
+            </div>
+          </div>
+        )}
+        <div className="flex justify-between border-t border-border pt-5">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={step === 0 || mutation.isPending}
+            onClick={() => setStep((v) => v - 1)}
+          >
+            <ArrowLeft />
+            Voltar
+          </Button>
+          {step < 3 ? (
+            <Button type="button" variant="hero" onClick={next}>
+              Continuar
+              <ArrowRight />
+            </Button>
+          ) : (
+            <Button type="submit" variant="hero" disabled={mutation.isPending}>
+              {mutation.isPending ? <Loader2 className="animate-spin" /> : <Wand2 />}
+              {mutation.isPending ? progress : "Salvar e gerar"}
+            </Button>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  error,
+  wide,
+  children,
+}: {
+  label: string;
+  error?: string | undefined;
+  wide?: boolean | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`space-y-2 ${wide ? "md:col-span-2" : ""}`}>
+      <Label>{label}</Label>
+      {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function PresetButton({
+  title,
+  description,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-xl border border-border bg-secondary/20 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.06]"
+    >
+      <span className="block font-semibold text-foreground">{title}</span>
+      <span className="mt-1 block text-xs text-muted-foreground">{description}</span>
+    </button>
+  );
+}
+
+function OptionSelect({
+  field,
+  options,
+}: {
+  field: UseFormRegisterReturn;
+  options: string[];
+}) {
+  return (
+    <select
+      className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground"
+      {...field}
+    >
+      {options.map((option) => (
+        <option key={option || "empty"} value={option}>
+          {option || "Não definido"}
+        </option>
+      ))}
+    </select>
+  );
+}
