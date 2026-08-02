@@ -145,6 +145,42 @@ function TranscriptionsPage() {
         </p>
       </header>
 
+      <section className="grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            icon: Upload,
+            step: "1",
+            title: "Envie o vídeo",
+            text: "MP4, WebM ou MOV de até 500 MB.",
+          },
+          {
+            icon: Sparkles,
+            step: "2",
+            title: "A IA separa a copy",
+            text: "Gancho, corpo, CTA, público e motivos de performance.",
+          },
+          {
+            icon: History,
+            step: "3",
+            title: "Reutilize quando quiser",
+            text: "Associe a qualquer projeto sem transcrever novamente.",
+          },
+        ].map(({ icon: Icon, step, title, text }) => (
+          <article key={step} className="bento-card interactive-card flex gap-3 p-4">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Icon className="size-4" />
+            </span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                Passo {step}
+              </p>
+              <h2 className="mt-1 text-sm font-semibold">{title}</h2>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+
       <section className="grid gap-4 md:grid-cols-[1fr_auto]">
         <div className="bento-card bento-card-accent p-6 md:p-7">
           <div className="flex items-center gap-3">
@@ -259,9 +295,18 @@ function TranscriptionsPage() {
                       {copiedId === transcription.id ? <Check /> : <Copy />} Copiar texto
                     </Button>
                   </div>
-                  <p className="mt-4 whitespace-pre-wrap rounded-xl border border-border bg-secondary/20 p-4 text-sm leading-6">
-                    {transcription.transcript || "Transcrição indisponível."}
-                  </p>
+                  <details className="group mt-4 rounded-xl border border-border bg-secondary/20 p-4">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-primary">
+                      Ver transcrição completa
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {transcription.transcript?.split(/\s+/).filter(Boolean).length ?? 0}{" "}
+                        palavras
+                      </span>
+                    </summary>
+                    <p className="mt-3 whitespace-pre-wrap border-t border-border pt-3 text-sm leading-6">
+                      {transcription.transcript || "Transcrição indisponível."}
+                    </p>
+                  </details>
                   <label className="mt-4 block space-y-2 text-xs font-medium text-muted-foreground">
                     Usar em um projeto
                     <select

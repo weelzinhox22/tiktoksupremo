@@ -6,6 +6,7 @@ import {
   ClipboardCopy,
   Code2,
   Camera,
+  ArrowRight,
   Loader2,
   Plus,
   Search,
@@ -34,6 +35,34 @@ const categoryLabels: Record<MovementPreset["category"], string> = {
   pov: "POV",
   cta: "CTA",
 };
+
+function movementActions(movement: MovementPreset) {
+  const json = movement.movement_json as Record<string, unknown>;
+  const sequence = json["action_sequence"];
+  if (Array.isArray(sequence)) {
+    return sequence.slice(0, 3).flatMap((step) => {
+      if (!step || typeof step !== "object") return [];
+      const item = step as Record<string, unknown>;
+      const action = typeof item["action"] === "string" ? item["action"] : "";
+      const time = typeof item["time"] === "string" ? item["time"] : "";
+      return action ? [{ action, time }] : [];
+    });
+  }
+  const legacy = json["sequence"];
+  return Array.isArray(legacy)
+    ? legacy.slice(0, 3).map((action, index) => ({ action: String(action), time: `${index + 1}` }))
+    : [];
+}
+
+function movementCamera(movement: MovementPreset) {
+  const camera = (movement.movement_json as Record<string, unknown>)["camera"];
+  if (typeof camera === "string") return camera;
+  if (!camera || Array.isArray(camera) || typeof camera !== "object") return "Câmera natural";
+  const detail = camera as Record<string, unknown>;
+  return [detail["framing"], detail["movement"], detail["focus"]]
+    .filter((value): value is string => typeof value === "string")
+    .join(" · ");
+}
 
 const defaultMovementJson = JSON.stringify(
   {
@@ -254,6 +283,23 @@ function MovementsPage() {
         </Button>
       </header>
 
+      <section className="grid gap-3 sm:grid-cols-3">
+        <div className="bento-card p-4">
+          <p className="text-2xl font-semibold text-primary">{query.data?.length ?? 0}</p>
+          <p className="mt-1 text-xs text-muted-foreground">movimentos reutilizáveis</p>
+        </div>
+        <div className="bento-card p-4">
+          <p className="text-2xl font-semibold text-cyan">
+            {(query.data ?? []).filter((item) => item.category === "fashion").length}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">direções para mostrar roupas</p>
+        </div>
+        <div className="bento-card p-4">
+          <p className="text-2xl font-semibold text-emerald-300">3 passos</p>
+          <p className="mt-1 text-xs text-muted-foreground">visualizados antes de copiar o JSON</p>
+        </div>
+      </section>
+
       {showForm && (
         <section className="bento-card bento-card-accent space-y-5 p-5 md:p-7">
           <div>
@@ -386,25 +432,53 @@ function MovementsPage() {
                   {movement.description}
                 </p>
               </div>
-              <div className="space-y-2 rounded-xl border border-border bg-[#09090b] p-3">
-                <div className="flex items-center justify-between gap-2">
+              {movementActions(movement).length > 0 && (
+                <div className="rounded-xl border border-border bg-secondary/20 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Sequência visual
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {movementActions(movement).map((step, index) => (
+                      <div key={`${step.time}-${index}`} className="flex items-center gap-2">
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">
+                          {index + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[11px] text-foreground/85">
+                          {step.action}
+                        </span>
+                        {index < movementActions(movement).length - 1 && (
+                          <ArrowRight className="size-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-3 border-t border-border pt-2 text-[10px] text-cyan">
+                    <Camera className="mr-1 inline size-3" /> {movementCamera(movement)}
+                  </p>
+                </div>
+              )}
+              <details className="space-y-2 rounded-xl border border-border bg-[#09090b] p-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-cyan">
-                    <Code2 className="size-3" /> JSON pronto
+                    <Code2 className="size-3" /> Ver JSON completo
                   </span>
                   <Button
                     size="sm"
                     variant="ghost"
                     className="h-7 px-2 text-[11px]"
-                    onClick={() => copyMovementJson(movement)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      void copyMovementJson(movement);
+                    }}
                   >
                     {copiedId === movement.id ? <Check /> : <ClipboardCopy />}
                     {copiedId === movement.id ? "Copiado" : "Copiar JSON"}
                   </Button>
-                </div>
+                </summary>
                 <pre className="max-h-52 overflow-auto whitespace-pre-wrap font-mono text-[11px] leading-5 text-slate-300">
                   {JSON.stringify(movement.movement_json, null, 2)}
                 </pre>
-              </div>
+              </details>
               <div className="flex items-center justify-between">
                 <div className="flex flex-wrap gap-1">
                   {movement.formats.map((format) => (

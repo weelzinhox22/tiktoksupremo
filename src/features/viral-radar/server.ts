@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const statusSchema = z.object({});
 const videoSearchSchema = z.object({
@@ -25,6 +24,7 @@ type CachedToken = { value: string; expiresAt: number };
 let cachedResearchToken: CachedToken | null = null;
 
 async function requireUser() {
+  const { getSupabaseServerClient } = await import("@/lib/supabase/server");
   const supabase = getSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Sessão expirada. Entre novamente.");
@@ -89,6 +89,47 @@ function numberValue(value: unknown) {
   return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : 0;
 }
 
+const shopHashtagFragments = [
+  "tiktokshop",
+  "tiktokshopbrasil",
+  "achadinhosdotiktok",
+  "achadinhostiktok",
+  "compreinotiktok",
+  "tiktokmademebuyit",
+];
+
+function hasCommissionTag(value: unknown): boolean {
+  if (!value) return false;
+  if (Array.isArray(value)) return value.some(hasCommissionTag);
+  if (typeof value !== "object") return Number(value) === 7;
+  const tag = value as Record<string, unknown>;
+  if (Number(tag["number"] ?? tag["tag_number"] ?? tag["value"]) === 7) return true;
+  return Object.values(tag).some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    return hasCommissionTag(entry);
+  });
+}
+
+function isTikTokShopVideo(video: Record<string, unknown>) {
+  if (hasCommissionTag(video["video_tag"])) {
+    return { matches: true, reason: "creator_commission_tag" as const };
+  }
+  const hashtags = Array.isArray(video["hashtag_names"])
+    ? video["hashtag_names"].map((value) => String(value).toLowerCase().replace(/^#/, ""))
+    : [];
+  const description = String(video["video_description"] ?? "").toLowerCase();
+  const hashtagMatch = hashtags.some((hashtag) =>
+    shopHashtagFragments.some((fragment) => hashtag.includes(fragment)),
+  );
+  const descriptionMatch = shopHashtagFragments.some((fragment) =>
+    description.replaceAll(" ", "").includes(fragment),
+  );
+  return {
+    matches: hashtagMatch || descriptionMatch,
+    reason: hashtagMatch || descriptionMatch ? ("shop_hashtag" as const) : null,
+  };
+}
+
 function apiError(error: TikTokError | undefined) {
   if (!error || error.code === "ok") return null;
   if (error.code === "scope_not_authorized") {
@@ -138,6 +179,7 @@ export const searchViralVideos = createServerFn({ method: "POST" })
       "username",
       "hashtag_names",
       "video_duration",
+      "video_tag",
     ].join(",");
     const response = await fetch(
       `https://open.tiktokapis.com/v2/research/video/query/?fields=${encodeURIComponent(fields)}`,
@@ -163,7 +205,9 @@ export const searchViralVideos = createServerFn({ method: "POST" })
       throw new Error(error || "Não foi possível consultar os vídeos no TikTok.");
     }
     const videos = (payload?.data?.videos ?? [])
-      .map((video) => {
+      .map((video) => ({ video, shopMatch: isTikTokShopVideo(video) }))
+      .filter(({ shopMatch }) => shopMatch.matches)
+      .map(({ video, shopMatch }) => {
         const views = numberValue(video["view_count"]);
         const likes = numberValue(video["like_count"]);
         const comments = numberValue(video["comment_count"]);
@@ -192,12 +236,19 @@ export const searchViralVideos = createServerFn({ method: "POST" })
           viralScore,
           hashtags: Array.isArray(video["hashtag_names"]) ? video["hashtag_names"].map(String) : [],
           duration: numberValue(video["video_duration"]),
+          shopEvidence: shopMatch.reason,
           url: username && id ? `https://www.tiktok.com/@${username}/video/${id}` : null,
         };
       })
       .sort((a, b) => b.viralScore - a.viralScore || b.views - a.views)
       .slice(0, 24);
-    return { videos, source: "tiktok_research_api" as const, archivedMetrics: true };
+    return {
+      videos,
+      source: "tiktok_research_api" as const,
+      archivedMetrics: true,
+      shopOnly: true,
+      filterMethod: "commission_tag_and_shop_hashtags" as const,
+    };
   });
 
 export const searchShopProducts = createServerFn({ method: "POST" })

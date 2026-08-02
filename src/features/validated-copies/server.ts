@@ -3,12 +3,14 @@ import {
   sceneRevisionRequestSchema,
   transcriptionRequestSchema,
 } from "@/features/script-generation/schemas";
-import { getAIProvider } from "@/lib/ai/factory";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const processTranscription = createServerFn({ method: "POST" })
   .validator(transcriptionRequestSchema)
   .handler(async ({ data }) => {
+    const [{ getSupabaseServerClient }, { getAIProvider }] = await Promise.all([
+      import("@/lib/supabase/server"),
+      import("@/lib/ai/factory"),
+    ]);
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
@@ -86,7 +88,9 @@ export const processTranscription = createServerFn({ method: "POST" })
         { onConflict: "source_transcription_id" },
       );
       if (libraryEntry.error)
-        throw new Error(`A copy foi analisada, mas não entrou na biblioteca: ${libraryEntry.error.message}`);
+        throw new Error(
+          `A copy foi analisada, mas não entrou na biblioteca: ${libraryEntry.error.message}`,
+        );
       const update = await supabase
         .from("transcriptions")
         .update({
@@ -113,6 +117,10 @@ export const processTranscription = createServerFn({ method: "POST" })
 export const reviseScenePrompt = createServerFn({ method: "POST" })
   .validator(sceneRevisionRequestSchema)
   .handler(async ({ data }) => {
+    const [{ getSupabaseServerClient }, { getAIProvider }] = await Promise.all([
+      import("@/lib/supabase/server"),
+      import("@/lib/ai/factory"),
+    ]);
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");

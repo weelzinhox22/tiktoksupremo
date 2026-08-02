@@ -34,6 +34,10 @@ function ProductsPage() {
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+  const allProducts = query.data ?? [];
+  const totalPhotos = allProducts.reduce((sum, item) => sum + item.image_paths.length, 0);
+  const totalUses = allProducts.reduce((sum, item) => sum + item.usage_count, 0);
+  const categories = new Set(allProducts.map((item) => item.category).filter(Boolean)).size;
 
   return (
     <div className="mx-auto max-w-6xl space-y-7 pb-12">
@@ -55,7 +59,13 @@ function ProductsPage() {
         </Button>
       </header>
 
-      <div className="relative max-w-md">
+      <section className="grid gap-3 sm:grid-cols-3">
+        <ProductMetric label="Produtos salvos" value={allProducts.length} />
+        <ProductMetric label="Fotos organizadas" value={totalPhotos} />
+        <ProductMetric label={`${categories} categorias`} value={totalUses} suffix=" usos" />
+      </section>
+
+      <div className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={search}
@@ -140,6 +150,26 @@ function ProductsPage() {
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ProductMetric({
+  label,
+  value,
+  suffix = "",
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+}) {
+  return (
+    <div className="bento-card p-4">
+      <p className="text-2xl font-semibold text-primary">
+        {value.toLocaleString("pt-BR")}
+        <span className="text-sm font-medium text-muted-foreground">{suffix}</span>
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }

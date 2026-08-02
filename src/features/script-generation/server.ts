@@ -1,12 +1,81 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generationRequestSchema } from "./schemas";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getAIProvider } from "@/lib/ai/factory";
 import { rankDiverseCombinations } from "./diversity";
+
+type CoherenceModule = {
+  title: string;
+  strategy: string;
+  scenes: Array<{ spoken_text: string; veo_prompt: string }>;
+};
+
+function validateModularCoherence(
+  hooks: CoherenceModule[],
+  bodies: CoherenceModule[],
+  ctas: CoherenceModule[],
+) {
+  const samples: Array<{
+    number: number;
+    label: string;
+    spoken_script: string[];
+    score: number;
+    issues: string[];
+  }> = [];
+  const abruptStart =
+    /^(isso|ele|ela|eles|elas|esse|essa|aí|daí|por isso|como eu (falei|disse))\b/i;
+  const action = /(confira|veja|toque|clique|escolha|garanta|aproveite|abre|clica|olha|testa)/i;
+  let number = 0;
+  hooks.forEach((hook, hookIndex) =>
+    bodies.forEach((body, bodyIndex) =>
+      ctas.forEach((cta, ctaIndex) => {
+        number += 1;
+        const spokenScript = [hook.scenes[0], body.scenes[0], body.scenes[1], cta.scenes[0]].map(
+          (scene) => scene?.spoken_text?.trim() ?? "",
+        );
+        const issues: string[] = [];
+        if (spokenScript.some((text) => text.split(/\s+/).filter(Boolean).length < 3)) {
+          issues.push("Há uma fala curta ou incompleta.");
+        }
+        if (spokenScript.slice(1).some((text) => abruptStart.test(text))) {
+          issues.push("Uma fala começa com referência que pode ficar sem antecedente.");
+        }
+        if (new Set(spokenScript.map((text) => text.toLowerCase())).size !== spokenScript.length) {
+          issues.push("Há falas repetidas na sequência.");
+        }
+        if (!action.test(spokenScript[3] ?? "")) {
+          issues.push("O CTA não traz uma ação clara.");
+        }
+        const score = Math.max(0, 100 - issues.length * 18);
+        samples.push({
+          number,
+          label: `Gancho ${hookIndex + 1} + Corpo ${bodyIndex + 1} + CTA ${ctaIndex + 1}`,
+          spoken_script: spokenScript,
+          score,
+          issues,
+        });
+      }),
+    ),
+  );
+  const automatedScore = samples.length
+    ? Math.round(samples.reduce((sum, sample) => sum + sample.score, 0) / samples.length)
+    : 0;
+  const commonIssues = [...new Set(samples.flatMap((sample) => sample.issues))];
+  return {
+    status: "needs_user_review" as const,
+    automated_score: automatedScore,
+    passed: automatedScore >= 70,
+    issues: commonIssues,
+    sample: samples[0] ?? null,
+    validated_combinations: samples.length,
+  };
+}
 
 export const generateProjectScript = createServerFn({ method: "POST" })
   .validator(generationRequestSchema)
   .handler(async ({ data }) => {
+    const [{ getSupabaseServerClient }, { getAIProvider }] = await Promise.all([
+      import("@/lib/supabase/server"),
+      import("@/lib/ai/factory"),
+    ]);
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
@@ -351,10 +420,29 @@ export const generateProjectScript = createServerFn({ method: "POST" })
           creative_direction: settings,
         };
         const hookBatch = await provider.generateCopyModules(modularContext, "hook", 4);
-        const bodyBatch = await provider.generateCopyModules(modularContext, "body", 4);
-        const ctaBatch = await provider.generateCopyModules(modularContext, "cta", 3);
         const hooks = hookBatch.modules.slice(0, 4);
+        const bodyBatch = await provider.generateCopyModules(
+          {
+            ...modularContext,
+            generated_hook_modules: hooks,
+            continuity_contract:
+              "Cada corpo deve funcionar depois de qualquer gancho e conter Corpo 1 + Corpo 2 conectados.",
+          },
+          "body",
+          4,
+        );
         const bodies = bodyBatch.modules.slice(0, 4);
+        const ctaBatch = await provider.generateCopyModules(
+          {
+            ...modularContext,
+            generated_hook_modules: hooks,
+            generated_body_modules: bodies,
+            continuity_contract:
+              "Cada CTA deve concluir naturalmente qualquer sequência Gancho 1 + Corpo 1 + Corpo 2.",
+          },
+          "cta",
+          3,
+        );
         const ctas = ctaBatch.modules.slice(0, 3);
         if (
           hooks.length !== 4 ||
@@ -373,6 +461,7 @@ export const generateProjectScript = createServerFn({ method: "POST" })
           performanceResult.data ?? [],
           12,
         );
+        const coherenceValidation = validateModularCoherence(hooks, bodies, ctas);
         modularVariations = {
           format: settings["video_format"] || "UGC",
           scene_duration_seconds: 8,
@@ -384,6 +473,7 @@ export const generateProjectScript = createServerFn({ method: "POST" })
           diversity_method: "local_lexical_and_component_distance",
           recommended_count: combinations.filter((item) => item.recommended).length,
           total_combinations: combinations.length,
+          coherence_validation: coherenceValidation,
         };
       }
       const persistedResult = { ...result, modular_variations: modularVariations };

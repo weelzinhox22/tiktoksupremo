@@ -1,8 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { GeminiProvider } from "@/lib/ai/gemini";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { getAuthorizedTikTokVideo } from "@/features/tiktok/server";
 
 const importPerformanceSchema = z
   .object({
@@ -170,6 +167,10 @@ function similarity(candidate: string, publishedText: string) {
 export const importTikTokPerformance = createServerFn({ method: "POST" })
   .validator(importPerformanceSchema)
   .handler(async ({ data }) => {
+    const [{ getSupabaseServerClient }, { getAuthorizedTikTokVideo }] = await Promise.all([
+      import("@/lib/supabase/server"),
+      import("@/features/tiktok/server"),
+    ]);
     const requestedUrl = assertTikTokUrl(data.url);
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
@@ -246,6 +247,7 @@ export const importTikTokPerformance = createServerFn({ method: "POST" })
     let transcript = "";
     let aiAnalysis: unknown = null;
     if (publicData.mediaUrl && process.env["GEMINI_API_KEY"]) {
+      const { GeminiProvider } = await import("@/lib/ai/gemini");
       const provider = new GeminiProvider();
       try {
         transcript = await provider.transcribeMediaUrl(publicData.mediaUrl);
@@ -386,6 +388,7 @@ const updateMetricsSchema = z.object({
 export const updateContentPerformanceMetrics = createServerFn({ method: "POST" })
   .validator(updateMetricsSchema)
   .handler(async ({ data }) => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
@@ -405,4 +408,3 @@ export const updateContentPerformanceMetrics = createServerFn({ method: "POST" }
     }
     return { success: true };
   });
-

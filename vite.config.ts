@@ -6,12 +6,16 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 const nitroOptions: Record<string, unknown> = {};
-const procEnv = (typeof process !== "undefined" ? process.env : {}) as Record<string, string | undefined>;
+const procEnv = (typeof process !== "undefined" ? process.env : {}) as Record<
+  string,
+  string | undefined
+>;
 if (procEnv["VERCEL"]) {
   nitroOptions["preset"] = "vercel";
 }
 
 export default defineConfig({
+  publicDir: "public",
   plugins: [
     tailwindcss(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),

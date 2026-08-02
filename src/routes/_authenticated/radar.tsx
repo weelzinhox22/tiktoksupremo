@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CircleAlert,
   Database,
   ExternalLink,
   Eye,
   Heart,
+  Link2,
   Loader2,
   PackageSearch,
   Radar,
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listPerformance, listProductLibrary } from "@/features/libraries/queries";
+import { importTikTokPerformance } from "@/features/performance/server";
 import {
   getViralRadarStatus,
   searchShopProducts,
@@ -40,6 +42,8 @@ function ViralRadarPage() {
   const [region, setRegion] = useState("BR");
   const [days, setDays] = useState("7");
   const [shopId, setShopId] = useState("");
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const queryClient = useQueryClient();
   const statusQuery = useQuery({
     queryKey: ["viral-radar-status"],
     queryFn: () => getViralRadarStatus({ data: {} }),
@@ -59,6 +63,15 @@ function ViralRadarPage() {
   });
   const productMutation = useMutation({
     mutationFn: () => searchShopProducts({ data: { shopId: shopId.trim() } }),
+    onError: (error) => toast.error(error.message),
+  });
+  const referenceMutation = useMutation({
+    mutationFn: () => importTikTokPerformance({ data: { url: referenceUrl.trim() } }),
+    onSuccess: async () => {
+      setReferenceUrl("");
+      await queryClient.invalidateQueries({ queryKey: ["performance"] });
+      toast.success("Referência adicionada à sua base de vencedores.");
+    },
     onError: (error) => toast.error(error.message),
   });
 
@@ -142,6 +155,39 @@ function ViralRadarPage() {
         </section>
       )}
 
+      <section className="bento-card overflow-hidden border-primary/20">
+        <div className="grid gap-5 p-5 md:grid-cols-[1fr_1.2fr] md:items-end md:p-6">
+          <div>
+            <Badge className="bg-primary/10 text-primary">
+              <Link2 className="mr-1 size-3" /> Funciona sem API de pesquisa
+            </Badge>
+            <h2 className="mt-3 font-semibold">Monte seu radar com links do TikTok Shop</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Cole um vídeo público de produto. O sistema guarda as métricas disponíveis, compara
+              com seus roteiros e passa a usá-lo no ranking da sua própria base.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <div className="space-y-2">
+              <Label>Link de referência TikTok Shop</Label>
+              <Input
+                value={referenceUrl}
+                onChange={(event) => setReferenceUrl(event.target.value)}
+                placeholder="https://www.tiktok.com/@criador/video/..."
+              />
+            </div>
+            <Button
+              variant="hero"
+              disabled={!referenceUrl.includes("tiktok.com/") || referenceMutation.isPending}
+              onClick={() => referenceMutation.mutate()}
+            >
+              {referenceMutation.isPending ? <Loader2 className="animate-spin" /> : <Link2 />}
+              Analisar link
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
         <div className="bento-card bento-card-accent overflow-hidden">
           <div className="flex border-b border-border p-2">
@@ -156,10 +202,11 @@ function ViralRadarPage() {
             {mode === "videos" ? (
               <div className="space-y-5">
                 <div>
-                  <h2 className="font-semibold">Pesquisar vídeos públicos</h2>
+                  <h2 className="font-semibold">Pesquisar vídeos de TikTok Shop</h2>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    O ranking combina visualizações, curtidas, comentários, compartilhamentos e
-                    favoritos. Vendas não fazem parte do objeto oficial de vídeo.
+                    Só entram vídeos com marca de comissão do criador ou hashtags explícitas de
+                    TikTok Shop. O ranking combina alcance e engajamento; vendas não fazem parte do
+                    objeto oficial de vídeo.
                   </p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-[1fr_120px_120px_auto] md:items-end">
@@ -291,6 +338,16 @@ function ViralRadarPage() {
             <Badge variant="outline">Métricas de pesquisa podem ter atraso</Badge>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {!videoMutation.data.videos.length && (
+              <div className="bento-card border-dashed p-8 text-center md:col-span-2 xl:col-span-3">
+                <ShoppingBag className="mx-auto size-7 text-muted-foreground" />
+                <p className="mt-3 font-semibold">Nenhum vídeo de TikTok Shop confirmado</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tente ampliar o período ou trocar a palavra-chave. Vídeos comuns foram removidos
+                  do resultado de propósito.
+                </p>
+              </div>
+            )}
             {videoMutation.data.videos.map((video, index) => (
               <article key={video.id} className="bento-card interactive-card p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -299,6 +356,11 @@ function ViralRadarPage() {
                     Score {video.viralScore}
                   </span>
                 </div>
+                <Badge variant="outline" className="mt-3 text-[10px]">
+                  {video.shopEvidence === "creator_commission_tag"
+                    ? "Comissão de criador confirmada"
+                    : "Hashtag TikTok Shop"}
+                </Badge>
                 <p className="mt-4 line-clamp-4 text-sm leading-6">
                   {video.description || "Vídeo sem descrição."}
                 </p>

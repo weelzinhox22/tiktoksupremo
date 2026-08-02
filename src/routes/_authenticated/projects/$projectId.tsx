@@ -88,6 +88,20 @@ type ProjectGenerationResult = {
       difference_summary?: string;
     }>;
     recommended_count?: number;
+    coherence_validation?: {
+      status?: string;
+      automated_score?: number;
+      passed?: boolean;
+      issues?: string[];
+      validated_combinations?: number;
+      sample?: {
+        number: number;
+        label: string;
+        spoken_script: string[];
+        score: number;
+        issues: string[];
+      } | null;
+    };
   };
 };
 
@@ -144,6 +158,7 @@ function ProjectPage() {
   });
 
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [modularReviews, setModularReviews] = useState<Record<string, "approved" | "manual">>({});
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<number>(1); // Guided Flow: 1=Diagnóstico, 2=Cenas VEO, 3=Roteiro Corrido, 4=TikTok Kit
   const [activeSceneIndex, setActiveSceneIndex] = useState<number>(0);
@@ -366,6 +381,19 @@ function ProjectPage() {
 
   const currentScene = scenes[activeSceneIndex] ?? scenes[0];
   const modular = result?.modular_variations;
+  const modularReview = activeGen?.id ? modularReviews[activeGen.id] : undefined;
+  const coherenceSample = modular?.coherence_validation?.sample ?? {
+    number: 1,
+    label: "Gancho 1 + Corpo 1 + CTA 1",
+    spoken_script: [
+      modular?.hook_modules?.[0]?.scenes?.[0]?.spoken_text ?? "",
+      modular?.body_modules?.[0]?.scenes?.[0]?.spoken_text ?? "",
+      modular?.body_modules?.[0]?.scenes?.[1]?.spoken_text ?? "",
+      modular?.cta_modules?.[0]?.scenes?.[0]?.spoken_text ?? "",
+    ].filter(Boolean),
+    score: modular?.coherence_validation?.automated_score ?? 0,
+    issues: modular?.coherence_validation?.issues ?? [],
+  };
   const selectedPerformanceCombination = modular?.combinations?.find(
     (combination) => String(combination.number) === performanceForm.combination,
   );
@@ -910,120 +938,237 @@ function ProjectPage() {
                   {modular.total_combinations ?? 48} combinações · {modular.format ?? "UGC"}
                 </Badge>
               </div>
-              {modular.combinations?.length ? (
-                <div className="rounded-2xl border border-cyan/20 bg-cyan/[0.05] p-5">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="rounded-2xl border border-primary/25 bg-primary/[0.05] p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
                     <div className="flex items-center gap-2">
-                      <Trophy className="size-5 text-cyan" />
-                      <div>
-                        <h4 className="font-semibold">Combinações mais diferentes</h4>
-                        <p className="text-xs text-muted-foreground">
-                          Ranking local sem custo, considerando linguagem, troca de módulos e
-                          resultados já cadastrados.
-                        </p>
-                      </div>
+                      <MessageSquareText className="size-5 text-primary" />
+                      <h4 className="font-semibold">Esta sequência faz sentido para você?</h4>
                     </div>
-                    <Badge variant="outline">Top {modular.recommended_count ?? 12}</Badge>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      A validação automática leu as quatro falas em sequência. Confirme a amostra
+                      antes de liberar o pacote completo.
+                    </p>
                   </div>
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {modular.combinations
-                      .filter((combination) => combination.recommended)
-                      .sort((a, b) => (a.recommended_rank ?? 99) - (b.recommended_rank ?? 99))
-                      .map((combination) => (
-                        <button
-                          key={combination.number}
-                          type="button"
-                          onClick={() => {
-                            setPerformanceForm((current) => ({
-                              ...current,
-                              combination: String(combination.number),
-                            }));
-                            toast.success(
-                              `Combinação ${combination.number} selecionada para acompanhamento.`,
-                            );
-                          }}
-                          className="rounded-xl border border-border bg-background/50 p-3 text-left transition hover:border-cyan/40"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-cyan">
-                              #{combination.recommended_rank} · Vídeo {combination.number}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {combination.diversity_score ?? 0}% diferente
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs font-medium">{combination.label}</p>
-                          <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
-                            {combination.difference_summary}
-                          </p>
-                        </button>
-                      ))}
-                  </div>
+                  <Badge
+                    className={
+                      modular.coherence_validation?.passed === false
+                        ? "bg-amber-500/10 text-amber-300"
+                        : "bg-emerald-500/10 text-emerald-300"
+                    }
+                  >
+                    Coerência {modular.coherence_validation?.automated_score ?? "—"}/100
+                  </Badge>
                 </div>
-              ) : null}
-              <div className="grid gap-5 xl:grid-cols-3">
-                {[
-                  {
-                    label: "4 prompts de gancho",
-                    modules: modular.hook_modules ?? [],
-                    key: "hook",
-                  },
-                  { label: "4 prompts de corpo", modules: modular.body_modules ?? [], key: "body" },
-                  { label: "3 prompts de CTA", modules: modular.cta_modules ?? [], key: "cta" },
-                ].map((group) => (
-                  <div key={group.key} className="space-y-3">
-                    <h4 className="text-sm font-semibold uppercase tracking-wider text-primary">
-                      {group.label}
-                    </h4>
-                    {group.modules.map((module, moduleIndex: number) => {
-                      const prompt = (module.scenes ?? [])
-                        .map((scene) => scene.veo_prompt)
-                        .join("\n\n--- PRÓXIMA CENA ---\n\n");
-                      return (
-                        <div
-                          key={moduleIndex}
-                          className="rounded-xl border border-border bg-secondary/20 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-semibold">
-                                {moduleIndex + 1}. {module.title}
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {module.strategy}
-                              </p>
-                            </div>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label={`Copiar ${group.label} ${moduleIndex + 1}`}
-                              onClick={() =>
-                                handleCopy(prompt, `module-${group.key}-${moduleIndex}`)
-                              }
-                            >
-                              {copiedSection === `module-${group.key}-${moduleIndex}` ? (
-                                <Check />
-                              ) : (
-                                <Copy />
-                              )}
-                            </Button>
-                          </div>
-                          <div className="mt-3 space-y-2">
-                            {(module.scenes ?? []).map((scene, sceneIndex: number) => (
-                              <p
-                                key={sceneIndex}
-                                className="rounded-lg bg-background/60 p-2 text-xs leading-5 text-foreground/85"
-                              >
-                                “{scene.spoken_text}”
-                              </p>
-                            ))}
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {coherenceSample.spoken_script.map((spokenText, index) => (
+                    <div key={`${index}-${spokenText}`} className="rounded-xl bg-background/60 p-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                        {index === 0
+                          ? "Gancho 1"
+                          : index === 1
+                            ? "Corpo 1"
+                            : index === 2
+                              ? "Corpo 2"
+                              : "CTA 1"}
+                      </p>
+                      <p className="mt-2 text-xs leading-5">“{spokenText}”</p>
+                    </div>
+                  ))}
+                </div>
+                {coherenceSample.issues.length > 0 && !modularReview && (
+                  <p className="mt-3 text-xs text-amber-200">
+                    Atenção da validação: {coherenceSample.issues.join(" ")}
+                  </p>
+                )}
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                  {modularReview ? (
+                    <>
+                      <Badge variant="outline">
+                        {modularReview === "approved"
+                          ? "Aprovado por você"
+                          : "Liberado para ajuste manual"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() =>
+                          activeGen?.id &&
+                          setModularReviews((current) => {
+                            const next = { ...current };
+                            delete next[activeGen.id];
+                            return next;
+                          })
+                        }
+                      >
+                        Revisar novamente
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        disabled={mutation.isPending}
+                        onClick={() => mutation.mutate()}
+                      >
+                        {mutation.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+                        Não, refazer mais conectado
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() =>
+                          activeGen?.id &&
+                          setModularReviews((current) => ({
+                            ...current,
+                            [activeGen.id]: "manual",
+                          }))
+                        }
+                      >
+                        <PencilLine /> Quero ajustar manualmente
+                      </Button>
+                      <Button
+                        variant="hero"
+                        onClick={() =>
+                          activeGen?.id &&
+                          setModularReviews((current) => ({
+                            ...current,
+                            [activeGen.id]: "approved",
+                          }))
+                        }
+                      >
+                        <CheckCircle2 /> Sim, faz sentido
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {modularReview ? (
+                <>
+                  {modular.combinations?.length ? (
+                    <div className="rounded-2xl border border-cyan/20 bg-cyan/[0.05] p-5">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="size-5 text-cyan" />
+                          <div>
+                            <h4 className="font-semibold">Combinações mais diferentes</h4>
+                            <p className="text-xs text-muted-foreground">
+                              Ranking local sem custo, considerando linguagem, troca de módulos e
+                              resultados já cadastrados.
+                            </p>
                           </div>
                         </div>
-                      );
-                    })}
+                        <Badge variant="outline">Top {modular.recommended_count ?? 12}</Badge>
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {modular.combinations
+                          .filter((combination) => combination.recommended)
+                          .sort((a, b) => (a.recommended_rank ?? 99) - (b.recommended_rank ?? 99))
+                          .map((combination) => (
+                            <button
+                              key={combination.number}
+                              type="button"
+                              onClick={() => {
+                                setPerformanceForm((current) => ({
+                                  ...current,
+                                  combination: String(combination.number),
+                                }));
+                                toast.success(
+                                  `Combinação ${combination.number} selecionada para acompanhamento.`,
+                                );
+                              }}
+                              className="rounded-xl border border-border bg-background/50 p-3 text-left transition hover:border-cyan/40"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-xs font-semibold text-cyan">
+                                  #{combination.recommended_rank} · Vídeo {combination.number}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {combination.diversity_score ?? 0}% diferente
+                                </span>
+                              </div>
+                              <p className="mt-1 text-xs font-medium">{combination.label}</p>
+                              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+                                {combination.difference_summary}
+                              </p>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="grid gap-5 xl:grid-cols-3">
+                    {[
+                      {
+                        label: "4 prompts de gancho",
+                        modules: modular.hook_modules ?? [],
+                        key: "hook",
+                      },
+                      {
+                        label: "4 prompts de corpo",
+                        modules: modular.body_modules ?? [],
+                        key: "body",
+                      },
+                      { label: "3 prompts de CTA", modules: modular.cta_modules ?? [], key: "cta" },
+                    ].map((group) => (
+                      <div key={group.key} className="space-y-3">
+                        <h4 className="text-sm font-semibold uppercase tracking-wider text-primary">
+                          {group.label}
+                        </h4>
+                        {group.modules.map((module, moduleIndex: number) => {
+                          const prompt = (module.scenes ?? [])
+                            .map((scene) => scene.veo_prompt)
+                            .join("\n\n--- PRÓXIMA CENA ---\n\n");
+                          return (
+                            <div
+                              key={moduleIndex}
+                              className="rounded-xl border border-border bg-secondary/20 p-4"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold">
+                                    {moduleIndex + 1}. {module.title}
+                                  </p>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {module.strategy}
+                                  </p>
+                                </div>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  aria-label={`Copiar ${group.label} ${moduleIndex + 1}`}
+                                  onClick={() =>
+                                    handleCopy(prompt, `module-${group.key}-${moduleIndex}`)
+                                  }
+                                >
+                                  {copiedSection === `module-${group.key}-${moduleIndex}` ? (
+                                    <Check />
+                                  ) : (
+                                    <Copy />
+                                  )}
+                                </Button>
+                              </div>
+                              <div className="mt-3 space-y-2">
+                                {(module.scenes ?? []).map((scene, sceneIndex: number) => (
+                                  <p
+                                    key={sceneIndex}
+                                    className="rounded-lg bg-background/60 p-2 text-xs leading-5 text-foreground/85"
+                                  >
+                                    “{scene.spoken_text}”
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border p-5 text-center text-xs leading-5 text-muted-foreground">
+                  O restante dos módulos fica oculto até você confirmar se a sequência acima está
+                  natural. Assim, variações desconectadas não seguem direto para produção.
+                </div>
+              )}
             </div>
           )}
 

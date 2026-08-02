@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 const avatarBriefSchema = z.object({
   name: z.string().trim().min(2).max(100),
@@ -21,6 +20,7 @@ const cloudflareAvatarSchema = z.object({
 export const generateAvatarImage = createServerFn({ method: "POST" })
   .validator(cloudflareAvatarSchema)
   .handler(async ({ data }) => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
@@ -130,6 +130,7 @@ Natural Brazilian social-commerce creator aesthetic, realistic face and skin tex
 export const createAvatarBrief = createServerFn({ method: "POST" })
   .validator(avatarBriefSchema)
   .handler(async ({ data }) => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
     const supabase = getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
