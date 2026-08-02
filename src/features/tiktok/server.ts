@@ -242,17 +242,6 @@ export const startTikTokConnection = createServerFn({ method: "POST" })
     };
   });
 
-export const startTikTokLogin = createServerFn({ method: "POST" })
-  .validator(emptySchema)
-  .handler(async () => {
-    const { clientKey, redirectUri } = requireConfig();
-    const state = crypto.randomUUID();
-    saveLoginState(state);
-    return {
-      authorizationUrl: createAuthorizationUrl(clientKey, redirectUri, state, "user.info.basic"),
-    };
-  });
-
 async function tiktokLoginEmail(openId: string) {
   const digest = new Uint8Array(
     await crypto.subtle.digest("SHA-256", new TextEncoder().encode(openId)),

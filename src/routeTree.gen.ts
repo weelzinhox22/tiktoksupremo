@@ -27,6 +27,7 @@ import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authen
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects/new'
 import { Route as AuthTiktokCallbackRouteImport } from './routes/auth/tiktok/callback'
+import { Route as ApiAuthTiktokStartRouteImport } from './routes/api/auth/tiktok/start'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -123,6 +124,11 @@ const AuthTiktokCallbackRoute = AuthTiktokCallbackRouteImport.update({
   path: '/auth/tiktok/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthTiktokStartRoute = ApiAuthTiktokStartRouteImport.update({
+  id: '/api/auth/tiktok/start',
+  path: '/api/auth/tiktok/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/auth/tiktok/start': typeof ApiAuthTiktokStartRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
+  '/api/auth/tiktok/start': typeof ApiAuthTiktokStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -182,6 +190,7 @@ export interface FileRoutesById {
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
+  '/api/auth/tiktok/start': typeof ApiAuthTiktokStartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -203,6 +212,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/auth/tiktok/callback'
     | '/projects/'
+    | '/api/auth/tiktok/start'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/auth/tiktok/callback'
     | '/projects'
+    | '/api/auth/tiktok/start'
   id:
     | '__root__'
     | '/'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/_authenticated/projects/new'
     | '/auth/tiktok/callback'
     | '/_authenticated/projects/'
+    | '/api/auth/tiktok/start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -251,6 +263,7 @@ export interface RootRouteChildren {
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
   AuthTiktokCallbackRoute: typeof AuthTiktokCallbackRoute
+  ApiAuthTiktokStartRoute: typeof ApiAuthTiktokStartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -381,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthTiktokCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/tiktok/start': {
+      id: '/api/auth/tiktok/start'
+      path: '/api/auth/tiktok/start'
+      fullPath: '/api/auth/tiktok/start'
+      preLoaderRoute: typeof ApiAuthTiktokStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -424,6 +444,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
   AuthTiktokCallbackRoute: AuthTiktokCallbackRoute,
+  ApiAuthTiktokStartRoute: ApiAuthTiktokStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

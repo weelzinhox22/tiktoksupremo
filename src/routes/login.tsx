@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { getCurrentUser } from "@/features/auth/server";
 import { resetPassword, signIn } from "@/features/auth/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { startTikTokLogin } from "@/features/tiktok/server";
 
 const schema = z.object({
   displayName: z.string().optional(),
@@ -75,18 +74,10 @@ function LoginPage() {
     }
   });
   const title = mode === "recovery" ? "Recuperar senha" : "Entrar no Tik Supremo";
-  const loginWithTikTok = async () => {
+  const loginWithTikTok = () => {
     setError(null);
     setIsTikTokLoading(true);
-    try {
-      const result = await startTikTokLogin({ data: {} });
-      window.location.assign(result.authorizationUrl);
-    } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : "Não foi possível iniciar o login com TikTok.";
-      setError(message);
-      setIsTikTokLoading(false);
-    }
+    window.location.assign("/api/auth/tiktok/start");
   };
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-10">
