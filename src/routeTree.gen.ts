@@ -21,12 +21,12 @@ import { Route as AuthenticatedMovementsRouteImport } from './routes/_authentica
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedRadarRouteImport } from './routes/_authenticated/radar'
-import { Route as AuthenticatedTiktokCallbackRouteImport } from './routes/_authenticated/tiktok-callback'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects/new'
+import { Route as AuthTiktokCallbackRouteImport } from './routes/auth/tiktok/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,12 +88,6 @@ const AuthenticatedRadarRoute = AuthenticatedRadarRouteImport.update({
   path: '/radar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedTiktokCallbackRoute =
-  AuthenticatedTiktokCallbackRouteImport.update({
-    id: '/tiktok-callback',
-    path: '/tiktok-callback',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedVideoCombinerRoute =
   AuthenticatedVideoCombinerRouteImport.update({
     id: '/video-combiner',
@@ -124,6 +118,11 @@ const AuthenticatedProjectsNewRoute =
     path: '/projects/new',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthTiktokCallbackRoute = AuthTiktokCallbackRouteImport.update({
+  id: '/auth/tiktok/callback',
+  path: '/auth/tiktok/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -137,11 +136,11 @@ export interface FileRoutesByFullPath {
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
-  '/tiktok-callback': typeof AuthenticatedTiktokCallbackRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -156,11 +155,11 @@ export interface FileRoutesByTo {
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
-  '/tiktok-callback': typeof AuthenticatedTiktokCallbackRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -177,11 +176,11 @@ export interface FileRoutesById {
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/radar': typeof AuthenticatedRadarRoute
-  '/_authenticated/tiktok-callback': typeof AuthenticatedTiktokCallbackRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
+  '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -198,11 +197,11 @@ export interface FileRouteTypes {
     | '/performance'
     | '/products'
     | '/radar'
-    | '/tiktok-callback'
     | '/video-combiner'
     | '/video-editor'
     | '/projects/$projectId'
     | '/projects/new'
+    | '/auth/tiktok/callback'
     | '/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -217,11 +216,11 @@ export interface FileRouteTypes {
     | '/performance'
     | '/products'
     | '/radar'
-    | '/tiktok-callback'
     | '/video-combiner'
     | '/video-editor'
     | '/projects/$projectId'
     | '/projects/new'
+    | '/auth/tiktok/callback'
     | '/projects'
   id:
     | '__root__'
@@ -237,11 +236,11 @@ export interface FileRouteTypes {
     | '/_authenticated/performance'
     | '/_authenticated/products'
     | '/_authenticated/radar'
-    | '/_authenticated/tiktok-callback'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/new'
+    | '/auth/tiktok/callback'
     | '/_authenticated/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -251,6 +250,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacidadeRoute: typeof PrivacidadeRoute
   TermosRoute: typeof TermosRoute
+  AuthTiktokCallbackRoute: typeof AuthTiktokCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -339,13 +339,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRadarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/tiktok-callback': {
-      id: '/_authenticated/tiktok-callback'
-      path: '/tiktok-callback'
-      fullPath: '/tiktok-callback'
-      preLoaderRoute: typeof AuthenticatedTiktokCallbackRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/video-combiner': {
       id: '/_authenticated/video-combiner'
       path: '/video-combiner'
@@ -381,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjectsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/auth/tiktok/callback': {
+      id: '/auth/tiktok/callback'
+      path: '/auth/tiktok/callback'
+      fullPath: '/auth/tiktok/callback'
+      preLoaderRoute: typeof AuthTiktokCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -392,7 +392,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedRadarRoute: typeof AuthenticatedRadarRoute
-  AuthenticatedTiktokCallbackRoute: typeof AuthenticatedTiktokCallbackRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
@@ -408,7 +407,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedRadarRoute: AuthenticatedRadarRoute,
-  AuthenticatedTiktokCallbackRoute: AuthenticatedTiktokCallbackRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
@@ -425,6 +423,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacidadeRoute: PrivacidadeRoute,
   TermosRoute: TermosRoute,
+  AuthTiktokCallbackRoute: AuthTiktokCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

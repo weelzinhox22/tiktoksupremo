@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-ro
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft, Music2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { getCurrentUser } from "@/features/auth/server";
 import { resetPassword, signIn } from "@/features/auth/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { startTikTokLogin } from "@/features/tiktok/server";
 
 const schema = z.object({
   displayName: z.string().optional(),
@@ -21,6 +22,9 @@ type FormData = z.infer<typeof schema>;
 type Mode = "login" | "recovery";
 
 export const Route = createFileRoute("/login")({
+  validateSearch: z.object({
+    tiktok_error: z.string().max(240).optional().catch(undefined),
+  }),
   beforeLoad: async () => {
     try {
       const user = await getCurrentUser();
@@ -36,9 +40,11 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
+  const search = Route.useSearch();
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
   const [error, setError] = useState<string | null>(null);
+  const [isTikTokLoading, setIsTikTokLoading] = useState(false);
   const configured = isSupabaseConfigured();
   const {
     register,
@@ -69,6 +75,19 @@ function LoginPage() {
     }
   });
   const title = mode === "recovery" ? "Recuperar senha" : "Entrar no Tik Supremo";
+  const loginWithTikTok = async () => {
+    setError(null);
+    setIsTikTokLoading(true);
+    try {
+      const result = await startTikTokLogin({ data: {} });
+      window.location.assign(result.authorizationUrl);
+    } catch (cause) {
+      const message =
+        cause instanceof Error ? cause.message : "Não foi possível iniciar o login com TikTok.";
+      setError(message);
+      setIsTikTokLoading(false);
+    }
+  };
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-10">
       <div className="aurora opacity-40" aria-hidden="true" />
@@ -92,6 +111,28 @@ function LoginPage() {
             </div>
           </div>
           <form onSubmit={submit} className="mt-7 space-y-4">
+            {mode === "login" && (
+              <>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full bg-[#fe2c55] text-white hover:bg-[#e6254c]"
+                  disabled={isTikTokLoading}
+                  onClick={loginWithTikTok}
+                >
+                  {isTikTokLoading ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Music2 className="size-5" />
+                  )}
+                  Continuar com TikTok
+                </Button>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" /> ou entre com e-mail
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -116,9 +157,9 @@ function LoginPage() {
                 />
               </div>
             )}
-            {error && (
+            {(error || search.tiktok_error) && (
               <p role="alert" className="text-sm text-destructive">
-                {error}
+                {error || search.tiktok_error}
               </p>
             )}
             <Button

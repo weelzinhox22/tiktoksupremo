@@ -1,7 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getCookies, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 const emptySchema = z.object({});
+const TIKTOK_LOGIN_STATE_COOKIE = "tiktok_login_state";
+const OFFICIAL_REDIRECT_URI = "https://tiktoksupremo.studiooryon.pro/auth/tiktok/callback";
 const callbackSchema = z.object({
   code: z.string().trim().min(4).max(2_000),
   state: z.string().uuid(),
@@ -42,7 +45,49 @@ function requireConfig() {
       "A conexão aguarda TIKTOK_CLIENT_KEY, TIKTOK_CLIENT_SECRET, TIKTOK_REDIRECT_URI e TIKTOK_TOKEN_ENCRYPTION_KEY.",
     );
   }
+  if (redirectUri !== OFFICIAL_REDIRECT_URI) {
+    throw new Error(`TIKTOK_REDIRECT_URI deve ser exatamente ${OFFICIAL_REDIRECT_URI}.`);
+  }
   return { clientKey, clientSecret, redirectUri, encryptionKey };
+}
+
+function saveLoginState(state: string) {
+  setCookie(TIKTOK_LOGIN_STATE_COOKIE, state, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/auth/tiktok/callback",
+    maxAge: 10 * 60,
+  });
+}
+
+function consumeLoginState(receivedState: string) {
+  const expectedState = getCookies()[TIKTOK_LOGIN_STATE_COOKIE];
+  setCookie(TIKTOK_LOGIN_STATE_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/auth/tiktok/callback",
+    maxAge: 0,
+  });
+  if (!expectedState || expectedState !== receivedState) {
+    throw new Error("A validação de segurança expirou. Inicie o login com TikTok novamente.");
+  }
+}
+
+function createAuthorizationUrl(
+  clientKey: string,
+  redirectUri: string,
+  state: string,
+  scope: string,
+) {
+  const authorizationUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
+  authorizationUrl.searchParams.set("client_key", clientKey);
+  authorizationUrl.searchParams.set("response_type", "code");
+  authorizationUrl.searchParams.set("scope", scope);
+  authorizationUrl.searchParams.set("redirect_uri", redirectUri);
+  authorizationUrl.searchParams.set("state", state);
+  return authorizationUrl.toString();
 }
 
 async function authenticatedUser() {
@@ -179,6 +224,7 @@ export const startTikTokConnection = createServerFn({ method: "POST" })
     const { clientKey, redirectUri } = requireConfig();
     const { supabase, user } = await authenticatedUser();
     const state = crypto.randomUUID();
+    saveLoginState(state);
     await supabase.from("tiktok_oauth_states").delete().eq("user_id", user.id);
     const saved = await supabase.from("tiktok_oauth_states").insert({
       state,
@@ -186,13 +232,144 @@ export const startTikTokConnection = createServerFn({ method: "POST" })
       expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
     });
     if (saved.error) throw new Error("Não foi possível iniciar a conexão segura com o TikTok.");
-    const authorizationUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
-    authorizationUrl.searchParams.set("client_key", clientKey);
-    authorizationUrl.searchParams.set("response_type", "code");
-    authorizationUrl.searchParams.set("scope", "user.info.basic,video.list");
-    authorizationUrl.searchParams.set("redirect_uri", redirectUri);
-    authorizationUrl.searchParams.set("state", state);
-    return { authorizationUrl: authorizationUrl.toString() };
+    return {
+      authorizationUrl: createAuthorizationUrl(
+        clientKey,
+        redirectUri,
+        state,
+        "user.info.basic,video.list",
+      ),
+    };
+  });
+
+export const startTikTokLogin = createServerFn({ method: "POST" })
+  .validator(emptySchema)
+  .handler(async () => {
+    const { clientKey, redirectUri } = requireConfig();
+    const state = crypto.randomUUID();
+    saveLoginState(state);
+    return {
+      authorizationUrl: createAuthorizationUrl(clientKey, redirectUri, state, "user.info.basic"),
+    };
+  });
+
+async function tiktokLoginEmail(openId: string) {
+  const digest = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(openId)),
+  );
+  const id = Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `tiktok-${id}@users.tiktoksupremo.invalid`;
+}
+
+export const completeTikTokLogin = createServerFn({ method: "POST" })
+  .validator(callbackSchema)
+  .handler(async ({ data }) => {
+    consumeLoginState(data.state);
+    const { clientKey, clientSecret, redirectUri, encryptionKey } = requireConfig();
+    const token = await exchangeToken(
+      new URLSearchParams({
+        client_key: clientKey,
+        client_secret: clientSecret,
+        code: data.code,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
+      }),
+    );
+    if (!token.refresh_token || !token.open_id) {
+      throw new Error("O TikTok retornou uma autorização incompleta.");
+    }
+
+    const profileResponse = await fetch(
+      "https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,avatar_url",
+      { headers: { Authorization: `Bearer ${token.access_token}` } },
+    );
+    const profilePayload = (await profileResponse.json().catch(() => null)) as {
+      data?: { user?: { open_id?: string; display_name?: string; avatar_url?: string } };
+      error?: { code?: string; message?: string };
+    } | null;
+    const profile = profilePayload?.data?.user;
+    if (!profileResponse.ok || !profile || profile.open_id !== token.open_id) {
+      throw new Error("Não foi possível confirmar o perfil no TikTok.");
+    }
+
+    const { getSupabaseAdminClient, getSupabaseServerClient } =
+      await import("@/lib/supabase/server");
+    const supabase = getSupabaseServerClient();
+    const currentUser = await supabase.auth.getUser();
+    const admin = getSupabaseAdminClient();
+    const existingConnection = await admin
+      .from("tiktok_connections")
+      .select("user_id")
+      .eq("open_id", token.open_id)
+      .maybeSingle();
+    if (existingConnection.error) throw new Error("Não foi possível localizar sua conta.");
+    let userId = currentUser.data.user?.id;
+
+    if (userId && existingConnection.data && existingConnection.data.user_id !== userId) {
+      throw new Error("Esta conta TikTok já está vinculada a outro usuário.");
+    }
+
+    if (!userId) {
+      let email = await tiktokLoginEmail(token.open_id);
+      if (existingConnection.data) {
+        const existingUser = await admin.auth.admin.getUserById(existingConnection.data.user_id);
+        if (existingUser.error || !existingUser.data.user?.email) {
+          throw new Error("Não foi possível recuperar sua conta.");
+        }
+        userId = existingUser.data.user.id;
+        email = existingUser.data.user.email;
+      }
+      const link = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: {
+          data: {
+            display_name: profile.display_name || "Creator TikTok",
+            avatar_url: profile.avatar_url || null,
+            tiktok_open_id: token.open_id,
+            auth_provider: "tiktok",
+          },
+        },
+      });
+      if (link.error || !link.data.user || !link.data.properties.hashed_token) {
+        throw new Error("Não foi possível criar sua conta. Tente novamente.");
+      }
+      userId ||= link.data.user.id;
+      const verified = await supabase.auth.verifyOtp({
+        token_hash: link.data.properties.hashed_token,
+        type: "magiclink",
+      });
+      if (verified.error || !verified.data.session) {
+        throw new Error("Sua conta foi criada, mas a sessão não pôde ser iniciada.");
+      }
+    }
+
+    const updated = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: {
+        ...(currentUser.data.user?.id === userId ? currentUser.data.user.user_metadata : {}),
+        display_name: profile.display_name || "Creator TikTok",
+        avatar_url: profile.avatar_url || null,
+        tiktok_open_id: token.open_id,
+        auth_provider: "tiktok",
+      },
+    });
+    if (updated.error) throw new Error("Não foi possível atualizar seu perfil.");
+
+    const saved = await admin.from("tiktok_connections").upsert({
+      user_id: userId,
+      open_id: token.open_id,
+      display_name: profile.display_name || "Conta TikTok conectada",
+      avatar_url: profile.avatar_url || null,
+      access_token_ciphertext: await encryptToken(token.access_token, encryptionKey),
+      refresh_token_ciphertext: await encryptToken(token.refresh_token, encryptionKey),
+      scopes: (token.scope ?? "").split(",").filter(Boolean),
+      access_expires_at: new Date(Date.now() + (token.expires_in ?? 86_400) * 1_000).toISOString(),
+      refresh_expires_at: new Date(
+        Date.now() + (token.refresh_expires_in ?? 31_536_000) * 1_000,
+      ).toISOString(),
+    });
+    if (saved.error) throw new Error("A conta foi autorizada, mas não pôde ser salva.");
+    return { authenticated: true };
   });
 
 export const completeTikTokConnection = createServerFn({ method: "POST" })
