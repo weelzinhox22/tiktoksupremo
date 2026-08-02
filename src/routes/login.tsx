@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate, Link, redirect } from "@tanstack/react-ro
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Sparkles, Loader2, ArrowLeft, Music2 } from "lucide-react";
+import { Sparkles, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +43,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<Mode>("login");
   const [error, setError] = useState<string | null>(null);
-  const [isTikTokLoading, setIsTikTokLoading] = useState(false);
+  // const [isTikTokLoading, setIsTikTokLoading] = useState(false); // TikTok OAuth desativado temporariamente
   const configured = isSupabaseConfigured();
   const {
     register,
@@ -74,11 +74,11 @@ function LoginPage() {
     }
   });
   const title = mode === "recovery" ? "Recuperar senha" : "Entrar no Tik Supremo";
-  const loginWithTikTok = () => {
-    setError(null);
-    setIsTikTokLoading(true);
-    window.location.assign("/api/auth/tiktok/start");
-  };
+  // const loginWithTikTok = () => {
+  //   setError(null);
+  //   setIsTikTokLoading(true);
+  //   window.location.assign("/api/auth/tiktok/start");
+  // }; // TikTok OAuth desativado temporariamente
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-5 py-10">
       <div className="aurora opacity-40" aria-hidden="true" />
@@ -102,6 +102,7 @@ function LoginPage() {
             </div>
           </div>
           <form onSubmit={submit} className="mt-7 space-y-4">
+            {/* TikTok OAuth desativado temporariamente — login disponível apenas por e-mail
             {mode === "login" && (
               <>
                 <Button
@@ -124,6 +125,7 @@ function LoginPage() {
                 </div>
               </>
             )}
+            */}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
