@@ -235,30 +235,33 @@ function VideoEditorPage() {
     if (!pending.length) return ffmpeg;
     setPhase("normalizing");
 
-    const onProgress = ({ progress: ratio }: { progress: number }) => {
-      const pct = Math.round(ratio * 100);
-      if (pct > 0 && pct <= 100) {
-        setProgress((current) => {
-          const base = current.split(" (")[0];
-          return `${base} (${pct}%)`;
-        });
-      }
-    };
-    ffmpeg.on("progress", onProgress);
-
     try {
       for (const [index, segment] of pending.entries()) {
         if (cancelRef.current) throw new Error("Processamento cancelado pelo usuário.");
-        setProgress(`Preparando cena ${index + 1} de ${pending.length}: ${segment.label}`);
-        const output = await normalizeSegment(ffmpeg, segment, {
-          removeAudio,
-          width,
-        });
-        normalizedRef.current.set(segment.id, output);
-        setNormalizationProgress({ done: index + 1, total: pending.length });
+        const stepLabel = `Preparando cena ${index + 1} de ${pending.length}: ${segment.label}`;
+        setProgress(stepLabel);
+
+        const onProgress = ({ progress: ratio }: { progress: number }) => {
+          const pct = Math.round(ratio * 100);
+          if (pct > 0 && pct <= 100) {
+            setProgress(`${stepLabel} (${pct}%)`);
+          }
+        };
+        ffmpeg.on("progress", onProgress);
+
+        try {
+          const output = await normalizeSegment(ffmpeg, segment, {
+            removeAudio,
+            width,
+          });
+          normalizedRef.current.set(segment.id, output);
+          setNormalizationProgress({ done: index + 1, total: pending.length });
+        } finally {
+          ffmpeg.off("progress", onProgress);
+        }
       }
-    } finally {
-      ffmpeg.off("progress", onProgress);
+    } catch (err) {
+      throw err;
     }
     return ffmpeg;
   };
