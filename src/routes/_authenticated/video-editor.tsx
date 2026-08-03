@@ -285,7 +285,9 @@ function ProfessionalVideoEditorPage() {
     const outputFiles = new Map<string, string>();
     try {
       setExportProgress("Carregando o motor de exportação...");
-      const ffmpeg = await loadVideoEngine();
+      const ffmpeg = await loadVideoEngine({
+        onProgress: (msg) => setExportProgress(msg),
+      });
       for (const [index, id] of project.timelineIds.entries()) {
         const segment = project.segments.find((item) => item.id === id);
         if (!segment?.file) throw new Error("Um dos clipes não possui arquivo de origem.");

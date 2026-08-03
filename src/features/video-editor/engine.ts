@@ -96,6 +96,8 @@ export type EditorCombination = {
 
 let ffmpegInstance: FFmpegType | null = null;
 let loaded = false;
+let cachedCoreBlobUrl: string | null = null;
+let cachedWasmBlobUrl: string | null = null;
 
 export function createCombinations(hookCount: number, bodyCount: number, ctaCount: number) {
   const result: EditorCombination[] = [];
@@ -271,30 +273,51 @@ export async function loadVideoEngine(
     onProgress?.("Conectando ao motor de vídeo local...");
     const { toBlobURL } = await import("@ffmpeg/util");
 
+    if (cachedCoreBlobUrl && cachedWasmBlobUrl) {
+      onProgress?.("Inicializando motor de vídeo a partir do cache local...");
+      try {
+        await timeoutPromise(
+          ffmpegInstance!.load({ coreURL: cachedCoreBlobUrl, wasmURL: cachedWasmBlobUrl }),
+          180000,
+          "Tempo limite excedido ao carregar a partir do cache.",
+        );
+        loaded = true;
+        return ffmpegInstance;
+      } catch (err) {
+        console.warn("Reutilização de cache falhou, realizando novo download:", err);
+        cachedCoreBlobUrl = null;
+        cachedWasmBlobUrl = null;
+      }
+    }
+
     const loadConfigs = [
       async () => {
-        onProgress?.("Baixando biblioteca do editor (jsdelivr)...");
+        onProgress?.("Baixando biblioteca do editor (jsdelivr, ~32MB)...");
         const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
         onProgress?.("Inicializando motor de vídeo WebAssembly...");
         await timeoutPromise(
           ffmpegInstance!.load({ coreURL, wasmURL }),
-          25000,
+          180000,
           "Tempo limite excedido ao carregar pelo jsdelivr.",
         );
+        cachedCoreBlobUrl = coreURL;
+        cachedWasmBlobUrl = wasmURL;
       },
       async () => {
-        onProgress?.("Baixando biblioteca do editor (unpkg)...");
+        onProgress?.("Baixando biblioteca do editor (unpkg, ~32MB)...");
         const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
         onProgress?.("Inicializando motor de vídeo WebAssembly...");
         await timeoutPromise(
           ffmpegInstance!.load({ coreURL, wasmURL }),
-          25000,
+          180000,
           "Tempo limite excedido ao carregar pelo unpkg.",
         );
+        cachedCoreBlobUrl = coreURL;
+        cachedWasmBlobUrl = wasmURL;
       },
       async () => {
         onProgress?.("Conectando ao motor de vídeo direto...");
@@ -304,7 +327,7 @@ export async function loadVideoEngine(
             coreURL: `${baseURL}/ffmpeg-core.js`,
             wasmURL: `${baseURL}/ffmpeg-core.wasm`,
           }),
-          25000,
+          180000,
           "Tempo limite excedido no modo direto.",
         );
       },

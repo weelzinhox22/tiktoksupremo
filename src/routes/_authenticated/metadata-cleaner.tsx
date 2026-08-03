@@ -215,7 +215,9 @@ function MetadataCleanerPage() {
     let successCount = 0;
     let errorCount = 0;
     try {
-      const ffmpeg = await loadVideoEngine();
+      const ffmpeg = await loadVideoEngine({
+        onProgress: (msg) => console.log("[MetadataCleaner]", msg),
+      });
       setLoadingEngine(false);
       for (const item of pending) {
         if (cancelRef.current) break;

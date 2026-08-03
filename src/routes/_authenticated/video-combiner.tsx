@@ -310,7 +310,24 @@ function VideoEditorPage() {
   const renderAll = async () => {
     try {
       cancelRef.current = false;
-      const ffmpeg = await prepareSegments(segments.map((segment) => segment.id));
+      const validCombinations = combinations.filter((combination) => {
+        const ids = segmentOrderFor(combination);
+        return ids.every((id) => {
+          const seg = segments.find((s) => s.id === id);
+          return Boolean(seg?.file);
+        });
+      });
+
+      if (!validCombinations.length) {
+        toast.error("Envie os arquivos de vídeo para pelo menos uma combinação inteira de Gancho, Corpo e CTA.");
+        return;
+      }
+
+      const requiredSegmentIds = Array.from(
+        new Set(validCombinations.flatMap((c) => segmentOrderFor(c))),
+      );
+
+      const ffmpeg = await prepareSegments(requiredSegmentIds);
       const { Zip, ZipPassThrough } = await import("fflate");
       const chunks: Uint8Array[] = [];
       let generatedCount = 0;
@@ -333,18 +350,18 @@ function VideoEditorPage() {
 
         void (async () => {
           try {
-            for (const combination of combinations) {
+            for (const [idx, combination] of validCombinations.entries()) {
               if (cancelRef.current) break;
               setPhase("rendering");
               setProgress(
-                `Gerando vídeo ${combination.number} de ${combinations.length} · ${combination.label}`,
+                `Gerando vídeo ${idx + 1} de ${validCombinations.length} · ${combination.label}`,
               );
 
               const onProgress = ({ progress: ratio }: { progress: number }) => {
                 const pct = Math.round(ratio * 100);
                 if (pct > 0 && pct <= 100) {
                   setProgress(
-                    `Gerando vídeo ${combination.number} de ${combinations.length} (${pct}%) · ${combination.label}`,
+                    `Gerando vídeo ${idx + 1} de ${validCombinations.length} (${pct}%) · ${combination.label}`,
                   );
                 }
               };
@@ -369,6 +386,8 @@ function VideoEditorPage() {
                 entry.push(new Uint8Array(await output.blob.arrayBuffer()), true);
                 generatedCount += 1;
                 setCompleted((current) => new Set(current).add(combination.number));
+              } catch (singleErr) {
+                console.error(`[Video Combiner] Erro ao renderizar vídeo ${combination.number}:`, singleErr);
               } finally {
                 ffmpeg.off("progress", onProgress);
               }
@@ -384,12 +403,14 @@ function VideoEditorPage() {
       const archive = await archivePromise;
       if (generatedCount > 0) {
         downloadVideo(archive, `tik-supremo-${generatedCount}-videos.zip`);
+        toast.success(
+          cancelRef.current
+            ? `${generatedCount} vídeos foram reunidos em um ZIP antes da interrupção.`
+            : `${generatedCount} vídeos foram gerados e reunidos em um arquivo ZIP!`,
+        );
+      } else {
+        toast.error("Não foi possível renderizar os vídeos. Verifique se os arquivos estão íntegros.");
       }
-      toast.success(
-        cancelRef.current
-          ? `${generatedCount} vídeos foram reunidos em um ZIP antes da interrupção.`
-          : `${generatedCount} vídeos foram reunidos em um único ZIP.`,
-      );
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível gerar o lote.");
     } finally {
