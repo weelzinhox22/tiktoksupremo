@@ -330,3 +330,40 @@
     transform: none;
   }
 }
+
+/* Custom scrollbar for sidebar */
+aside ::-webkit-scrollbar,
+[role="dialog"] ::-webkit-scrollbar {
+  width: 4px;
+}
+
+aside ::-webkit-scrollbar-track,
+[role="dialog"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+aside ::-webkit-scrollbar-thumb,
+[role="dialog"] ::-webkit-scrollbar-thumb {
+  background: oklch(0.28 0.01 270);
+  border-radius: 9999px;
+}
+
+aside ::-webkit-scrollbar-thumb:hover,
+[role="dialog"] ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.45 0.08 292);
+}
+
+/* Compact mode UI zoom */
+.compact-mode main {
+  zoom: 0.88;
+}
+
+@supports not (zoom: 0.88) {
+  .compact-mode main {
+    transform: scale(0.88);
+    transform-origin: top left;
+    width: 113.6%;
+  }
+}
+
+

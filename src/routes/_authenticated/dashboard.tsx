@@ -79,7 +79,7 @@ function Dashboard() {
     <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
       <header className="bento-hero p-6 md:p-8">
         <div className="grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="relative z-10">
+          <div className="relative z-1">
             <Badge className="border-primary/20 bg-primary/10 text-primary">
               <Sparkles className="mr-1 size-3" /> Seu estúdio está pronto
             </Badge>
@@ -102,7 +102,7 @@ function Dashboard() {
               </span>
             </div>
           </div>
-          <div className="relative z-10 flex flex-wrap gap-3">
+          <div className="relative z-1 flex flex-wrap gap-3">
             <Button variant="outline" size="lg" asChild>
               <Link to="/radar">
                 <Radar /> Abrir radar

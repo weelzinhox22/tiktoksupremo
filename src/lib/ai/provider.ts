@@ -8,6 +8,7 @@ import type { ReferenceVisualAnalysis } from "@/features/products/visual-analysi
 
 export type GenerationContext = Record<string, unknown>;
 export interface AIProvider {
+  generateText(prompt: string, temperature?: number): Promise<string>;
   transcribeMedia(media: Blob, filename: string): Promise<string>;
   transcribeMediaUrl?(signedUrl: string): Promise<string>;
   analyzeVideoFrames(frameUrls: string[], transcript: string): Promise<Record<string, unknown>>;

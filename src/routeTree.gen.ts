@@ -20,6 +20,7 @@ import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCopyModelerRouteImport } from './routes/_authenticated/copy-modeler'
 import { Route as AuthenticatedCreativeLabRouteImport } from './routes/_authenticated/creative-lab'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedHookStudioRouteImport } from './routes/_authenticated/hook-studio'
 import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
@@ -89,6 +90,11 @@ const AuthenticatedCreativeLabRoute =
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedHookStudioRoute = AuthenticatedHookStudioRouteImport.update({
+  id: '/hook-studio',
+  path: '/hook-studio',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedMetadataCleanerRoute =
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/_authenticated/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/_authenticated/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/hook-studio': typeof AuthenticatedHookStudioRoute
   '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
     | '/copy-modeler'
     | '/creative-lab'
     | '/dashboard'
+    | '/hook-studio'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/copy-modeler'
     | '/creative-lab'
     | '/dashboard'
+    | '/hook-studio'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/_authenticated/copy-modeler'
     | '/_authenticated/creative-lab'
     | '/_authenticated/dashboard'
+    | '/_authenticated/hook-studio'
     | '/_authenticated/metadata-cleaner'
     | '/_authenticated/movements'
     | '/_authenticated/performance'
@@ -419,6 +431,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hook-studio': {
+      id: '/_authenticated/hook-studio'
+      path: '/hook-studio'
+      fullPath: '/hook-studio'
+      preLoaderRoute: typeof AuthenticatedHookStudioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/metadata-cleaner': {
@@ -529,6 +548,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCopyModelerRoute: typeof AuthenticatedCopyModelerRoute
   AuthenticatedCreativeLabRoute: typeof AuthenticatedCreativeLabRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedHookStudioRoute: typeof AuthenticatedHookStudioRoute
   AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
@@ -550,6 +570,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCopyModelerRoute: AuthenticatedCopyModelerRoute,
   AuthenticatedCreativeLabRoute: AuthenticatedCreativeLabRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedHookStudioRoute: AuthenticatedHookStudioRoute,
   AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,

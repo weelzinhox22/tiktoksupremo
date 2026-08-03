@@ -354,6 +354,17 @@ export class GeminiProvider implements AIProvider {
     return outputPart?.text ?? "";
   }
 
+  async generateText(prompt: string, temperature = 0.7): Promise<string> {
+    const data = await this.requestGenerateContent([{ text: prompt }], {
+      generationConfig: { temperature, maxOutputTokens: 8192 },
+    });
+    const text = this.getGeneratedText(data, "generateText");
+    if (!text) {
+      throw new AIProviderError("A IA não retornou o texto solicitado.", "invalid_response");
+    }
+    return text.trim();
+  }
+
   async transcribeMedia(media: Blob, filename: string): Promise<string> {
     const maxInlineBytes = 20 * 1024 * 1024; // 20 MB
     if (media.size > maxInlineBytes) {

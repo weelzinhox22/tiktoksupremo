@@ -259,6 +259,24 @@ export class OpenAIProvider implements AIProvider {
       clearTimeout(timer);
     }
   }
+  async generateText(prompt: string, temperature = 0.7): Promise<string> {
+    const response = await this.request("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.requireKey()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
+        temperature,
+      }),
+    });
+    const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) {
+      throw new AIProviderError("A IA não retornou o texto solicitado.", "invalid_response");
+    }
+    return text.trim();
+  }
+
   async transcribeMedia(media: Blob, filename: string) {
     const form = new FormData();
     form.append("file", media, filename);

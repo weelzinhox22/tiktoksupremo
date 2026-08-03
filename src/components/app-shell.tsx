@@ -21,73 +21,152 @@ import {
   Wand2,
   Building2,
   FlaskConical,
+  Zap,
+  ChevronsLeft,
+  ChevronsRight,
+  Minimize2,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { signOut } from "@/features/auth/auth";
 import type { AppUser } from "@/lib/supabase/types";
 
-const navItems = [
-  { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
-  { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
-  { label: "Estúdio de Personagens", icon: UserRound, to: "/characters" as const },
-  { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
-  { label: "Laboratório de Criativos", icon: FlaskConical, to: "/creative-lab" as const },
-  { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
-  { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
-  { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
-  { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
-  { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
-  { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
-  { label: "Avatares", icon: UserRound, to: "/avatars" as const },
-  { label: "Produtos", icon: Package, to: "/products" as const },
-  { label: "Poses e movimentos", icon: PersonStanding, to: "/movements" as const },
-  { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
-  { label: "Radar viral", icon: Radar, to: "/radar" as const },
-  { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
+const navGroups = [
+  {
+    title: "Geral",
+    items: [
+      { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
+      { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
+      { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
+      { label: "Radar viral", icon: Radar, to: "/radar" as const },
+    ],
+  },
+  {
+    title: "Criação & IA",
+    items: [
+      { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
+      { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
+      { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
+      { label: "Laboratório de Criativos", icon: FlaskConical, to: "/creative-lab" as const },
+      { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
+    ],
+  },
+  {
+    title: "Edição & Ferramentas",
+    items: [
+      { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
+      { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
+      { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
+      { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
+    ],
+  },
+  {
+    title: "Estúdio & Ativos",
+    items: [
+      { label: "Estúdio de Personagens", icon: UserRound, to: "/characters" as const },
+      { label: "Avatares", icon: UserRound, to: "/avatars" as const },
+      { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
+      { label: "Poses e movimentos", icon: PersonStanding, to: "/movements" as const },
+      { label: "Produtos", icon: Package, to: "/products" as const },
+    ],
+  },
 ];
 
-function NavList({ onNavigate }: { onNavigate?: () => void }) {
+function NavList({
+  isCollapsed,
+  onNavigate,
+}: {
+  isCollapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+
   return (
-    <nav className="flex flex-col gap-1.5">
-      {navItems.map((item) => {
-        const active =
-          pathname === item.to ||
-          (item.to === "/projects" &&
-            pathname.startsWith("/projects/") &&
-            pathname !== "/projects/new");
-        return (
-          <Link
-            key={item.label}
-            to={item.to}
-            onClick={onNavigate}
-            className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${active ? "bg-gradient-to-r from-primary/18 to-cyan/8 text-sidebar-accent-foreground shadow-sm ring-1 ring-primary/15" : "text-muted-foreground hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-foreground"}`}
-          >
-            {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />}
-            <span
-              className={`flex size-7 items-center justify-center rounded-lg transition-colors ${active ? "bg-primary/15 text-primary" : "bg-white/[0.025] group-hover:bg-primary/10 group-hover:text-primary"}`}
-            >
-              <item.icon className="size-4" />
-            </span>
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
+    <div className="space-y-4">
+      {navGroups.map((group) => (
+        <div key={group.title} className="space-y-1">
+          {!isCollapsed ? (
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 select-none">
+              {group.title}
+            </div>
+          ) : (
+            <div className="my-1.5 border-t border-sidebar-border/40 mx-2" aria-hidden="true" />
+          )}
+          <nav className="flex flex-col gap-1">
+            {group.items.map((item) => {
+              const active =
+                pathname === item.to ||
+                (item.to === "/projects" &&
+                  pathname.startsWith("/projects/") &&
+                  pathname !== "/projects/new");
+
+              const linkContent = (
+                <Link
+                  key={item.label}
+                  to={item.to}
+                  onClick={onNavigate}
+                  className={`group relative flex items-center ${
+                    isCollapsed ? "justify-center px-0 py-2" : "gap-2.5 px-2.5 py-2"
+                  } rounded-lg text-xs font-medium transition-all duration-150 ${
+                    active
+                      ? "bg-gradient-to-r from-primary/18 to-cyan/8 text-sidebar-accent-foreground font-semibold shadow-sm ring-1 ring-primary/20"
+                      : "text-muted-foreground hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-foreground"
+                  }`}
+                >
+                  {active && (
+                    <span
+                      className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary ${
+                        isCollapsed ? "left-0" : ""
+                      }`}
+                    />
+                  )}
+                  <span
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-md transition-colors ${
+                      active
+                        ? "bg-primary/20 text-primary"
+                        : "bg-white/[0.03] group-hover:bg-primary/10 group-hover:text-primary"
+                    }`}
+                  >
+                    <item.icon className="size-3.5" />
+                  </span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              );
+
+              if (isCollapsed) {
+                return (
+                  <Tooltip key={item.label} delayDuration={0}>
+                    <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+                    <TooltipContent side="right" className="font-medium text-xs">
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return linkContent;
+            })}
+          </nav>
+        </div>
+      ))}
+    </div>
   );
 }
 
-function Brand() {
+function Brand({ isCollapsed }: { isCollapsed?: boolean }) {
   return (
-    <div className="flex items-center gap-2 px-1">
-      <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-cyan/15 shadow-lg shadow-primary/10 ring-1 ring-primary/25">
+    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"} px-1`}>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-cyan/15 shadow-lg shadow-primary/10 ring-1 ring-primary/25">
         <Sparkles className="size-4 text-primary" />
       </span>
-      <div className="leading-tight">
-        <p className="font-display text-sm font-semibold tracking-tight">Tik Supremo</p>
-        <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Studio</p>
-      </div>
+      {!isCollapsed && (
+        <div className="leading-tight truncate">
+          <p className="font-display text-sm font-semibold tracking-tight">Tik Supremo</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Studio</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -95,55 +174,176 @@ function Brand() {
 export function AppShell({ user, children }: { user: AppUser; children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar_collapsed") === "true";
+    }
+    return false;
+  });
+  const [compactMode, setCompactMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("ui_compact_mode") === "true";
+    }
+    return false;
+  });
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar_collapsed", String(next));
+      return next;
+    });
+  };
+
+  const toggleCompactMode = () => {
+    setCompactMode((prev) => {
+      const next = !prev;
+      localStorage.setItem("ui_compact_mode", String(next));
+      return next;
+    });
+  };
+
   const handleSignOut = async () => {
     await signOut();
     await navigate({ to: "/login", replace: true });
   };
+
   return (
-    <div className="relative min-h-screen bg-background">
-      <div className="aurora opacity-40" aria-hidden="true" />
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col gap-8 border-r border-sidebar-border bg-sidebar/95 px-4 py-5 shadow-2xl shadow-black/20 backdrop-blur-xl lg:flex">
-        <Brand />
-        <NavList />
-        <div className="mt-auto border-t border-sidebar-border px-1 pt-4">
-          <p className="text-xs text-muted-foreground">Sessão protegida</p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{user.email}</p>
-        </div>
-      </aside>
-      <div className="relative z-10 lg:pl-64">
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-3 border-b border-border bg-background/90 px-4 backdrop-blur-xl md:px-8">
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
-                <Menu />
+    <TooltipProvider delayDuration={100}>
+      <div className={`relative min-h-screen bg-background ${compactMode ? "compact-mode" : ""}`}>
+        <div className="aurora opacity-40" aria-hidden="true" />
+        <aside
+          className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-sidebar-border bg-sidebar/95 shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-300 ease-in-out lg:flex ${
+            isCollapsed ? "w-16" : "w-64"
+          }`}
+        >
+          <div
+            className={`flex h-16 shrink-0 items-center ${
+              isCollapsed ? "justify-center px-1" : "justify-between px-4"
+            } border-b border-sidebar-border/50`}
+          >
+            <Brand isCollapsed={isCollapsed} />
+            {!isCollapsed && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleCollapsed}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Recolher menu lateral"
+              >
+                <ChevronsLeft className="size-4" />
               </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 bg-sidebar p-4">
-              <SheetTitle className="sr-only">Menu principal</SheetTitle>
-              <div className="mb-6">
-                <Brand />
-              </div>
-              <NavList onNavigate={() => setMobileOpen(false)} />
-            </SheetContent>
-          </Sheet>
-          <p className="hidden text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground lg:block">
-            Content workspace
-          </p>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="hero" size="sm" onClick={() => navigate({ to: "/projects/new" })}>
-              <Plus />
-              <span className="hidden sm:inline">Novo projeto</span>
-            </Button>
-            <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
-              {user.displayName.slice(0, 2).toUpperCase()}
-            </span>
-            <Button variant="ghost" size="icon" aria-label="Sair" onClick={handleSignOut}>
-              <LogOut />
-            </Button>
+            )}
           </div>
-        </header>
-        <main className="px-4 py-7 md:px-8 md:py-10">{children}</main>
+
+          <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-5">
+            <NavList isCollapsed={isCollapsed} />
+          </div>
+
+          <div className="shrink-0 border-t border-sidebar-border p-3 bg-sidebar/50">
+            {isCollapsed ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <div className="flex justify-center">
+                    <span className="flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
+                      {user.displayName.slice(0, 2).toUpperCase()}
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="font-semibold">{user.displayName}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="min-w-0 pr-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Sessão protegida
+                </p>
+                <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">{user.email}</p>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        <div
+          className={`relative z-10 transition-all duration-300 ease-in-out ${
+            isCollapsed ? "lg:pl-16" : "lg:pl-64"
+          }`}
+        >
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-xl md:px-8 shadow-sm">
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="flex flex-col w-72 bg-sidebar p-0">
+                <SheetTitle className="sr-only">Menu principal</SheetTitle>
+                <div className="flex h-16 shrink-0 items-center px-4 border-b border-sidebar-border/50">
+                  <Brand />
+                </div>
+                <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+                  <NavList onNavigate={() => setMobileOpen(false)} />
+                </div>
+                <div className="shrink-0 border-t border-sidebar-border p-4 bg-sidebar/50">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sessão protegida</p>
+                  <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">{user.email}</p>
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleCollapsed}
+              className="hidden lg:flex text-muted-foreground hover:text-foreground"
+              aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+              title={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
+            >
+              {isCollapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+            </Button>
+
+            <p className="hidden text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground sm:block">
+              Content workspace
+            </p>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleCompactMode}
+                    className={`gap-1.5 text-xs ${compactMode ? "bg-primary/15 border-primary/30 text-primary" : "text-muted-foreground"}`}
+                  >
+                    {compactMode ? <Maximize2 className="size-3.5" /> : <Minimize2 className="size-3.5" />}
+                    <span className="hidden sm:inline">
+                      {compactMode ? "Tamanho normal" : "Reduzir tela"}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {compactMode ? "Restaurar tamanho normal da interface" : "Reduzir escala da tela (Visão compacta)"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Button variant="hero" size="sm" onClick={() => navigate({ to: "/projects/new" })}>
+                <Plus />
+                <span className="hidden sm:inline">Novo projeto</span>
+              </Button>
+              <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
+                {user.displayName.slice(0, 2).toUpperCase()}
+              </span>
+              <Button variant="ghost" size="icon" aria-label="Sair" onClick={handleSignOut}>
+                <LogOut />
+              </Button>
+            </div>
+          </header>
+
+          <main className="px-4 py-7 md:px-8 md:py-10">{children}</main>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

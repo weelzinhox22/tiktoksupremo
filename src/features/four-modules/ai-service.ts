@@ -51,7 +51,7 @@ Retorne estritamente um JSON no seguinte formato:
 {
   "audience": "público-alvo identificado",
   "tone": ["tom 1", "tom 2"],
-  "persuasionStructure": ["Gancho de curiosidade", "Apresentação de dor", "Demonstração do produto", "CTA com escassez"],
+  "persuasionStructure": ["Gancho de curiosidade / história", "Apresentação de dor", "Demonstração do produto", "CTA com escassez"],
   "strengths": ["Ponto forte 1"],
   "weaknesses": ["Ponto fraco 1"],
   "sensitiveClaims": [],
@@ -65,15 +65,7 @@ Retorne estritamente um JSON no seguinte formato:
 }`;
 
     try {
-      let responseText = "";
-      const p = provider as unknown as Record<string, (opts: unknown) => Promise<string>>;
-      if (typeof p["generateText"] === "function") {
-        responseText = await p["generateText"]({ prompt, temperature: 0.2 });
-      } else {
-        const res = await provider.analyzeReferenceCopy(data.text);
-        responseText = JSON.stringify(res);
-      }
-
+      const responseText = await provider.generateText(prompt, 0.2);
       const cleaned = responseText.replace(/```json\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
 
@@ -97,8 +89,8 @@ Retorne estritamente um JSON no seguinte formato:
         tone: Array.isArray(parsed["tone"]) ? (parsed["tone"] as string[]) : ["Informal"],
         persuasionStructure: Array.isArray(parsed["persuasionStructure"])
           ? (parsed["persuasionStructure"] as string[])
-          : ["Gancho", "Apresentação", "CTA"],
-        strengths: Array.isArray(parsed["strengths"]) ? (parsed["strengths"] as string[]) : ["Foco direto no produto."],
+          : ["Gancho", "Desenvolvimento", "CTA"],
+        strengths: Array.isArray(parsed["strengths"]) ? (parsed["strengths"] as string[]) : ["Foco direto no engajamento."],
         weaknesses: Array.isArray(parsed["weaknesses"]) ? (parsed["weaknesses"] as string[]) : [],
         sensitiveClaims: Array.isArray(parsed["sensitiveClaims"]) ? (parsed["sensitiveClaims"] as string[]) : [],
         complianceWarnings: Array.isArray(parsed["complianceWarnings"]) ? (parsed["complianceWarnings"] as string[]) : [],
@@ -117,7 +109,7 @@ Retorne estritamente um JSON no seguinte formato:
         audience: data.audience || "Público do TikTok Shop",
         tone: ["Natural", "Direto"],
         persuasionStructure: ["Gancho inicial", "Desenvolvimento", "Chamada para Ação"],
-        strengths: ["Leitura fluida e direta."],
+        strengths: ["Leitura fluida e narrativa engajante."],
         weaknesses: [],
         sensitiveClaims: [],
         complianceWarnings: [],
@@ -133,53 +125,56 @@ export const transformCopyServerFn = createServerFn({ method: "POST" })
     const { getAIProvider } = await import("@/lib/ai/factory");
     const { provider } = getAIProvider();
 
-    const prompt = `Você é o TIK SUPREMO, especialista em copies virais do TikTok Shop.
-Transforme a copy original em ${data.variationCount} nova(s) versão(ões) sem copiar o texto literalmente.
+    const prompt = `Você é o TIK SUPREMO, especialista mestre em Copywriting, Storytelling Viral e Modelagem Persuasiva do TikTok Shop.
+
+SUA MISSÃO:
+Modelar a copy original fornecida pelo usuário e gerar ${data.variationCount} nova(s) versão(ões) com altíssimo poder de conversão.
+
+REGRAS OBRIGATÓRIAS DE MODELAGEM:
+1. SE A COPY ORIGINAL FOR UMA HISTÓRIA OU RELATO PESSOAL (ex: um depoimento, drama, descoberta, relato de vida ou virada de chave):
+   - VOCÊ DEVE PRESERVAR O ARCO NARRATIVO COMPLETO E A RIQUEZA DE DETALHES DA HISTÓRIA ORIGINAL!
+   - NUNCA sub-substitua a história por um resumo raso ou bordão genérico.
+   - Crie uma história análoga com o mesmo suspense, emoção, conflito e revelação, adaptando os elementos para o produto: "${data.newProduct || "produto informado"}".
+2. ATAQUE DIRETO À DOR (PARA QUALQUER CATEGORIA DE PRODUTO):
+   - Para qualquer produto, atinja a dor mais visceral, frustração ou prejúizo do cliente no gancho inicial com força e provocação real.
+3. CADA VARIAÇÃO DEVE TER CONTEÚDO COMPLETO E DETALHADO PRONTO PARA FALA EM VÍDEO.
 
 COPY ORIGINAL DE REFERÊNCIA:
 """
 ${data.originalCopy}
 """
 
-PARÂMETROS DE TRANSFORMAÇÃO:
-- Modos solicitados: ${data.modes.join(", ")}
-- Novo produto: ${data.newProduct || "Mesmo da referência"}
-- Novo público: ${data.newAudience || "Mesmo da referência"}
+PARÂMETROS DE ADAPTAÇÃO:
+- Novo produto a vender: ${data.newProduct || "Mesmo da referência"}
+- Novo público-alvo: ${data.newAudience || "Mesmo da referência"}
 - Tom de voz: ${data.tone}
-${data.characterName ? `- Personagem: ${data.characterName}` : ""}
-${data.scenarioName ? `- Cenário: ${data.scenarioName}` : ""}
+${data.characterName ? `- Personagem do Estúdio: ${data.characterName}` : ""}
+${data.scenarioName ? `- Cenário do Estúdio: ${data.scenarioName}` : ""}
 
-Retorne estritamente um JSON no formato:
+Retorne ESTRITAMENTE um JSON no seguinte formato:
 {
   "versions": [
     {
-      "name": "Versão 1 — Foco em Curiosidade",
-      "strategy": "Explora o gancho de quebra de padrão com demonstração direta",
-      "content": "texto completo da nova copy",
+      "name": "Variação 1 — Storytelling Emocional / Gancho Inédito",
+      "strategy": "Preserva a narrativa envolvente com arco dramático idêntico",
+      "content": "Texto completo e rico da nova copy modelada para o vídeo",
       "segments": [
         { "type": "hook", "text": "trecho do gancho" },
-        { "type": "benefit", "text": "trecho do benefício" },
-        { "type": "cta", "text": "trecho do cta" }
+        { "type": "pain", "text": "trecho do conflito/história" },
+        { "type": "demonstration", "text": "trecho da solução/produto" },
+        { "type": "cta", "text": "trecho da chamada para ação" }
       ]
     }
   ]
 }`;
 
     try {
-      let responseText = "";
-      const p = provider as unknown as Record<string, (opts: unknown) => Promise<string>>;
-      if (typeof p["generateText"] === "function") {
-        responseText = await p["generateText"]({ prompt, temperature: 0.7 });
-      } else {
-        const res = await provider.analyzeReferenceCopy(data.originalCopy);
-        responseText = JSON.stringify(res);
-      }
-
+      const responseText = await provider.generateText(prompt, 0.7);
       const cleaned = responseText.replace(/```json\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
 
       const rawVersions = Array.isArray(parsed["versions"]) ? parsed["versions"] : [];
-      if (rawVersions.length === 0) throw new Error("No versions");
+      if (rawVersions.length === 0) throw new Error("No versions returned from AI");
 
       const versions: CopyVersion[] = rawVersions.map((v, idx) => {
         const item = v as Record<string, unknown>;
@@ -203,7 +198,7 @@ Retorne estritamente um JSON no formato:
           name: (item["name"] as string) || `Variação ${idx + 1}`,
           content,
           segments,
-          strategy: (item["strategy"] as string) || "Modelagem de estrutura persuasiva",
+          strategy: (item["strategy"] as string) || "Modelagem de estrutura narrativa",
           estimatedDurationSeconds: est.estimatedDurationSeconds,
           similarityRisk: sim.risk,
           similarityReasons: sim.reasons,
@@ -213,24 +208,30 @@ Retorne estritamente um JSON no formato:
       });
 
       return versions;
-    } catch {
-      // Fallback gracioso
-      const fallbackContent = `Gente, por favor não me diga que você ainda tá usando a versão antiga. Dá uma olhada nessa transformação do ${data.newProduct || "nosso produto"}. O link com desconto tá bem aqui no carrinho!`;
-      const sim = calculateSimilarityRisk(data.originalCopy, fallbackContent);
+    } catch (err) {
+      console.error("[transformCopyServerFn] Erro na IA, usando adaptação estrutural:", err);
+
+      const lines = data.originalCopy.split(/\n+/).filter(Boolean);
+      const adaptedContent = data.originalCopy
+        .replace(/essa esponja/gi, data.newProduct || "nosso produto")
+        .replace(/esse produto/gi, data.newProduct || "nosso produto");
+
+      const sim = calculateSimilarityRisk(data.originalCopy, adaptedContent);
+      const est = estimateSpeechDuration(adaptedContent, "natural");
 
       const versions: CopyVersion[] = [
         {
           id: `ver-${Date.now()}-1`,
           projectId: data.projectId,
-          name: "Variação 1 — Curiosidade e Recomendação",
-          content: fallbackContent,
-          segments: [
-            { id: "s1", type: "hook", text: "Gente, por favor não me diga que você ainda tá usando a versão antiga." },
-            { id: "s2", type: "demonstration", text: `Dá uma olhada nessa transformação do ${data.newProduct || "nosso produto"}.` },
-            { id: "s3", type: "cta", text: "O link com desconto tá bem aqui no carrinho!" },
-          ],
-          strategy: "Gancho de curiosidade com chamada direta ao carrinho",
-          estimatedDurationSeconds: 14,
+          name: "Variação 1 — Estrutura Fiel à História Original",
+          content: adaptedContent,
+          segments: lines.map((line, idx) => ({
+            id: `s-${idx + 1}`,
+            type: idx === 0 ? "hook" : idx === lines.length - 1 ? "cta" : "context",
+            text: line.trim(),
+          })),
+          strategy: "Adaptação fiel preservando o storytelling e arco narrativo original.",
+          estimatedDurationSeconds: est.estimatedDurationSeconds,
           similarityRisk: sim.risk,
           similarityReasons: sim.reasons,
           createdAt: new Date().toISOString(),
