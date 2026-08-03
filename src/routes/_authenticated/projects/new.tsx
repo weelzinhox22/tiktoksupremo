@@ -28,6 +28,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { generateProjectScript } from "@/features/script-generation/server";
 import { extractVideoFrames } from "@/features/video-analysis/extract-frames";
 import { importProductFromUrl } from "@/features/products/import-server";
+import { suggestProductFields, type ProductSuggestions } from "@/features/products/suggest-server";
 import { generateAvatarImage } from "@/features/avatars/server";
 import {
   listAvatarLibrary,
@@ -112,6 +113,9 @@ function NewProjectPage() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [aiSuggestions, setAiSuggestions] = useState<ProductSuggestions | null>(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsPending, setSuggestionsPending] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [labelImages, setLabelImages] = useState<File[]>([]);
   const [video, setVideo] = useState<File | null>(null);
@@ -655,8 +659,71 @@ function NewProjectPage() {
             )}
             <div className="grid gap-5 md:grid-cols-2">
               <Field label="Qual é o produto?" error={errors.productName?.message}>
-                <Input placeholder="Ex.: escova secadora 5 em 1" {...register("productName")} />
+                <div className="flex gap-2">
+                  <Input placeholder="Ex.: escova secadora 5 em 1" {...register("productName")} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="default"
+                    disabled={suggestionsPending || watch("productName").trim().length < 2}
+                    onClick={async () => {
+                      const name = watch("productName").trim();
+                      if (name.length < 2) return;
+                      setSuggestionsPending(true);
+                      setShowSuggestions(false);
+                      try {
+                        const result = await suggestProductFields({ data: { productName: name } });
+                        setAiSuggestions(result);
+                        setShowSuggestions(true);
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Não foi possível gerar sugestões.");
+                      } finally {
+                        setSuggestionsPending(false);
+                      }
+                    }}
+                    className="shrink-0 gap-1.5"
+                  >
+                    {suggestionsPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="size-4" />
+                    )}
+                    <span className="hidden sm:inline">{suggestionsPending ? "Analisando..." : "Sugerir"}</span>
+                  </Button>
+                </div>
+                {suggestionsPending && (
+                  <p className="mt-1.5 flex items-center gap-1.5 text-xs text-primary">
+                    <Sparkles className="size-3 animate-pulse" />
+                    Gemini está analisando o produto...
+                  </p>
+                )}
               </Field>
+              {showSuggestions && aiSuggestions && (
+                <div className="md:col-span-2">
+                  <AiSuggestionsPanel
+                    suggestions={aiSuggestions}
+                    onApplyAll={() => {
+                      setValue("description", aiSuggestions.description, { shouldValidate: true });
+                      setValue("benefits", aiSuggestions.benefits.join("\n"), { shouldValidate: true });
+                      setValue("problems", aiSuggestions.problems.join("\n"));
+                      setValue("objections", aiSuggestions.objections.join("\n"));
+                      setValue("audience", aiSuggestions.audience, { shouldValidate: true });
+                      if (aiSuggestions.category) setValue("category", aiSuggestions.category);
+                      setShowSuggestions(false);
+                      toast.success("Sugestões aplicadas! Revise e ajuste conforme necessário.");
+                    }}
+                    onApplyField={(field, value) => {
+                      if (field === "description") setValue("description", value, { shouldValidate: true });
+                      if (field === "benefits") setValue("benefits", value, { shouldValidate: true });
+                      if (field === "problems") setValue("problems", value);
+                      if (field === "objections") setValue("objections", value);
+                      if (field === "audience") setValue("audience", value, { shouldValidate: true });
+                      if (field === "category") setValue("category", value);
+                    }}
+                    onClose={() => setShowSuggestions(false)}
+                  />
+                </div>
+              )}
               <Field label="Link do produto (opcional)">
                 <div className="flex gap-2">
                   <Input
@@ -1430,3 +1497,182 @@ function OptionSelect({ field, options }: { field: UseFormRegisterReturn; option
     </select>
   );
 }
+
+function AiSuggestionsPanel({
+  suggestions,
+  onApplyAll,
+  onApplyField,
+  onClose,
+}: {
+  suggestions: import("@/features/products/suggest-server").ProductSuggestions;
+  onApplyAll: () => void;
+  onApplyField: (field: string, value: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.07] via-background to-primary/[0.04] shadow-lg">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-primary/20 px-5 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
+            <Sparkles className="size-4" />
+          </span>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Sugestões do Gemini</p>
+            <p className="text-[11px] text-muted-foreground">
+              Clique em "Aplicar" para preencher cada campo, ou use "Aplicar tudo"
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="hero"
+            onClick={onApplyAll}
+            className="gap-1.5 text-xs"
+          >
+            <Check className="size-3.5" />
+            Aplicar tudo
+          </Button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            aria-label="Fechar sugestões"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Suggestion rows */}
+      <div className="divide-y divide-border/50 px-5">
+        {/* Description */}
+        <SuggestionRow
+          icon="📝"
+          label="Descrição"
+          onApply={() => onApplyField("description", suggestions.description)}
+        >
+          <p className="text-sm leading-6 text-foreground/90">{suggestions.description}</p>
+        </SuggestionRow>
+
+        {/* Benefits */}
+        <SuggestionRow
+          icon="✅"
+          label="Benefícios"
+          onApply={() => onApplyField("benefits", suggestions.benefits.join("\n"))}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.benefits.map((b) => (
+              <span
+                key={b}
+                className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400"
+              >
+                {b}
+              </span>
+            ))}
+          </div>
+        </SuggestionRow>
+
+        {/* Problems */}
+        <SuggestionRow
+          icon="🎯"
+          label="Problemas que resolve"
+          onApply={() => onApplyField("problems", suggestions.problems.join("\n"))}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.problems.map((p) => (
+              <span
+                key={p}
+                className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-xs font-medium text-orange-400"
+              >
+                {p}
+              </span>
+            ))}
+          </div>
+        </SuggestionRow>
+
+        {/* Objections */}
+        <SuggestionRow
+          icon="🤔"
+          label="Objeções do comprador"
+          onApply={() => onApplyField("objections", suggestions.objections.join("\n"))}
+        >
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.objections.map((o) => (
+              <span
+                key={o}
+                className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-400"
+              >
+                {o}
+              </span>
+            ))}
+          </div>
+        </SuggestionRow>
+
+        {/* Audience */}
+        <SuggestionRow
+          icon="👥"
+          label="Público-alvo"
+          onApply={() => onApplyField("audience", suggestions.audience)}
+        >
+          <p className="text-sm leading-6 text-foreground/90">{suggestions.audience}</p>
+        </SuggestionRow>
+
+        {/* Category */}
+        <SuggestionRow
+          icon="🏷️"
+          label="Categoria"
+          onApply={() => onApplyField("category", suggestions.category)}
+        >
+          <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+            {suggestions.category}
+          </span>
+        </SuggestionRow>
+      </div>
+
+      {/* Footer note */}
+      <div className="px-5 py-3 text-center">
+        <p className="text-[11px] text-muted-foreground">
+          💡 Sugestões geradas por IA com base no nome do produto. Revise antes de publicar.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SuggestionRow({
+  icon,
+  label,
+  children,
+  onApply,
+}: {
+  icon: string;
+  label: string;
+  children: React.ReactNode;
+  onApply: () => void;
+}) {
+  return (
+    <div className="flex items-start gap-4 py-3.5">
+      <span className="mt-0.5 text-base leading-none">{icon}</span>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        {children}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={onApply}
+        className="mt-0.5 shrink-0 gap-1 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+      >
+        <Check className="size-3" />
+        Aplicar
+      </Button>
+    </div>
+  );
+}
+

@@ -626,4 +626,76 @@ export class GeminiProvider implements AIProvider {
     }
     return results;
   }
+
+  async suggestProductFields(productName: string): Promise<{
+    description: string;
+    benefits: string[];
+    problems: string[];
+    objections: string[];
+    audience: string;
+    category: string;
+  }> {
+    const schema = {
+      type: "object",
+      required: ["description", "benefits", "problems", "objections", "audience", "category"],
+      properties: {
+        description: { type: "string" },
+        benefits: { type: "array", items: { type: "string" } },
+        problems: { type: "array", items: { type: "string" } },
+        objections: { type: "array", items: { type: "string" } },
+        audience: { type: "string" },
+        category: { type: "string" },
+      },
+    };
+
+    const data = await this.requestGenerateContent(
+      [
+        {
+          text: `Produto: "${productName}"
+
+Você é um especialista em marketing de performance para TikTok Shop no Brasil.
+Gere sugestões em português brasileiro para preencher um formulário de roteiro de vídeo de vendas.
+
+Retorne JSON com exatamente estes campos:
+- description: descrição do produto em 2-3 frases (o que é, como funciona, diferencial)
+- benefits: array com 5 benefícios concisos (máx 8 palavras cada)
+- problems: array com 3 dores/problemas reais que o produto resolve
+- objections: array com 3 objeções típicas do consumidor brasileiro
+- audience: público-alvo detalhado (faixa etária, perfil, contexto)
+- category: categoria do TikTok Shop Brasil mais adequada`,
+        },
+      ],
+      {
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: sanitizeSchemaForGemini(schema),
+          temperature: 0.7,
+          maxOutputTokens: 4_000,
+        },
+      },
+    );
+
+    const text = this.getGeneratedText(data, "suggestProductFields");
+    if (!text) throw new AIProviderError("A IA não retornou sugestões.", "invalid_response");
+
+    try {
+      const parsed = this.safeParseJson(text) as Record<string, unknown>;
+      const toStringArray = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+      return {
+        description: typeof parsed["description"] === "string" ? parsed["description"] : "",
+        benefits: toStringArray(parsed["benefits"]),
+        problems: toStringArray(parsed["problems"]),
+        objections: toStringArray(parsed["objections"]),
+        audience: typeof parsed["audience"] === "string" ? parsed["audience"] : "",
+        category: typeof parsed["category"] === "string" ? parsed["category"] : "",
+      };
+    } catch {
+      throw new AIProviderError(
+        "A IA retornou um formato inesperado nas sugestões.",
+        "invalid_response",
+      );
+    }
+  }
 }
+

@@ -163,30 +163,72 @@ export async function inspectMediaMetadata(source: Blob) {
 }
 
 function privacyMetadataArgs(enabled: boolean | undefined) {
+  // Every field listed here will be explicitly cleared in the output container.
+  // Using flatMap avoids repeating "-metadata" for every entry.
+  const clearFields = [
+    // ── Core identity ─────────────────────────────────────────────────────────
+    "title", "artist", "author", "comment", "description", "synopsis",
+    // ── Dates & timestamps ────────────────────────────────────────────────────
+    "creation_time", "date", "year", "recording_time",
+    // ── Location / GPS ────────────────────────────────────────────────────────
+    "location", "location-eng",
+    // ── Device & software fingerprints ────────────────────────────────────────
+    "make", "model", "encoder", "encoded_by", "software", "handler_name",
+    // ── Copyright & publishing ────────────────────────────────────────────────
+    "copyright", "publisher", "url", "rating",
+    // ── Media catalogue ───────────────────────────────────────────────────────
+    "album", "genre", "track", "disc", "language",
+    // ── Streaming / broadcast ─────────────────────────────────────────────────
+    "show", "episode_id", "episode_sort", "season_number", "network",
+    // ── Apple QuickTime private udta tags ─────────────────────────────────────
+    "com.apple.quicktime.make",
+    "com.apple.quicktime.model",
+    "com.apple.quicktime.software",
+    "com.apple.quicktime.creationdate",
+    "com.apple.quicktime.location.ISO6709",
+    "com.apple.quicktime.camera.framereadouttimeinmicroseconds",
+    "com.apple.quicktime.camera.currentexposurebiasvalue",
+    "com.apple.quicktime.camera.identifier",
+    "com.apple.quicktime.player.version",
+    "com.apple.photos.originating.signature",
+    // ── Android / generic device tags ─────────────────────────────────────────
+    "com.android.version",
+    "com.android.capture.fps",
+  ];
+
   return enabled
     ? [
-        "-map_metadata",
-        "-1",
-        "-map_metadata:s:v",
-        "-1",
-        "-map_metadata:s:a",
-        "-1",
-        "-map_chapters",
-        "-1",
-        "-metadata",
-        "title=",
-        "-metadata",
-        "artist=",
-        "-metadata",
-        "author=",
-        "-metadata",
-        "comment=",
-        "-metadata",
-        "creation_time=",
-        "-metadata",
-        "location=",
+        // Strip all metadata from the global container and every stream type.
+        "-map_metadata", "-1",
+        "-map_metadata:s:v", "-1",
+        "-map_metadata:s:a", "-1",
+        "-map_metadata:s:s", "-1",
+        "-map_metadata:s:d", "-1",
+        // Remove all chapter metadata.
+        "-map_chapters", "-1",
+        // Explicitly zero-out every known sensitive field so container muxers
+        // cannot silently preserve them even after -map_metadata -1.
+        ...clearFields.flatMap((key) => ["-metadata", `${key}=`]),
       ]
     : [];
+}
+
+
+function fileExtension(filename: string) {
+  return filename.match(/\.([a-z0-9]{1,8})$/i)?.[1]?.toLowerCase() ?? "mp4";
+}
+
+function metadataOutputMimeType(extension: string, fallback: string) {
+  const knownTypes: Record<string, string> = {
+    avi: "video/x-msvideo",
+    m4v: "video/x-m4v",
+    mkv: "video/x-matroska",
+    mov: "video/quicktime",
+    mp4: "video/mp4",
+    ogv: "video/ogg",
+    webm: "video/webm",
+  };
+  return knownTypes[extension] ?? (fallback || "application/octet-stream");
 }
 
 export async function loadVideoEngine(onLog?: (message: string) => void) {
@@ -212,6 +254,59 @@ async function deleteIfPresent(ffmpeg: FFmpegType, path: string) {
     await ffmpeg.deleteFile(path);
   } catch {
     // O arquivo ainda não existe no sistema temporário.
+  }
+}
+
+export async function cleanVideoMetadata(ffmpeg: FFmpegType, file: File, id: string) {
+  const { fetchFile } = await import("@ffmpeg/util");
+  const extension = fileExtension(file.name);
+  const safeId = id.replace(/[^a-z0-9-]/gi, "").slice(0, 48) || crypto.randomUUID();
+  const input = `metadata-input-${safeId}.${extension}`;
+  const output = `metadata-output-${safeId}.${extension}`;
+  const originalBaseName = file.name.replace(/\.[^.]+$/, "") || "video";
+  const filename = `${originalBaseName}-sem-metadados.${extension}`;
+
+  await deleteIfPresent(ffmpeg, input);
+  await deleteIfPresent(ffmpeg, output);
+  await ffmpeg.writeFile(input, await fetchFile(file));
+
+  try {
+    const result = await ffmpeg.exec([
+      "-i",
+      input,
+      "-map",
+      "0:v?",
+      "-map",
+      "0:a?",
+      "-map",
+      "0:s?",
+      "-dn",
+      "-c",
+      "copy",
+      "-fflags",
+      "+bitexact",
+      ...privacyMetadataArgs(true),
+      ...(extension === "mp4" || extension === "mov" || extension === "m4v"
+        ? ["-movflags", "+faststart"]
+        : []),
+      output,
+    ]);
+    if (result !== 0) {
+      throw new Error(
+        `Não foi possível limpar ${file.name}. Tente converter o arquivo para MP4 primeiro.`,
+      );
+    }
+    const data = await ffmpeg.readFile(output);
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+    return {
+      blob: new Blob([bytes.slice().buffer], {
+        type: metadataOutputMimeType(extension, file.type),
+      }),
+      filename,
+    };
+  } finally {
+    await deleteIfPresent(ffmpeg, input);
+    await deleteIfPresent(ffmpeg, output);
   }
 }
 

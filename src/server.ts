@@ -49,7 +49,8 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return await normalizeCatastrophicSsrResponse(response);
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      return withCrossOriginIsolation(normalized);
     } catch (error) {
       console.error(error);
       return new Response(renderErrorPage(), {
@@ -59,3 +60,22 @@ export default {
     }
   },
 };
+
+/**
+ * Injects Cross-Origin-Opener-Policy and Cross-Origin-Embedder-Policy headers
+ * into every response so that SharedArrayBuffer (required by @ffmpeg/core WASM)
+ * is available in the browser. These headers enable cross-origin isolation
+ * without affecting functionality for regular API or page responses.
+ */
+function withCrossOriginIsolation(response: Response): Response {
+  // Clone the response headers and add isolation headers.
+  const headers = new Headers(response.headers);
+  headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  headers.set("Cross-Origin-Embedder-Policy", "require-corp");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+

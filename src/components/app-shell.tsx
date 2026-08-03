@@ -16,6 +16,8 @@ import {
   BarChart3,
   Radar,
   Video,
+  ShieldCheck,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -28,6 +30,8 @@ const navItems = [
   { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
   { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
   { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
+  { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
+  { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
   { label: "Avatares", icon: UserRound, to: "/avatars" as const },
   { label: "Produtos", icon: Package, to: "/products" as const },
   { label: "Poses e movimentos", icon: PersonStanding, to: "/movements" as const },

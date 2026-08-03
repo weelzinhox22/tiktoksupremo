@@ -16,6 +16,12 @@ if (procEnv["VERCEL"]) {
 
 export default defineConfig({
   publicDir: "public",
+  server: {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+    },
+  },
   plugins: [
     tailwindcss(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),

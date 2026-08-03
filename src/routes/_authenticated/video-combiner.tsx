@@ -16,7 +16,6 @@ import {
   VolumeX,
   Archive,
   SlidersHorizontal,
-  ShieldCheck,
   TrendingUp,
   Trophy,
   Type,
@@ -31,7 +30,6 @@ import {
   disposeVideoEngine,
   downloadVideo,
   getVideoDuration,
-  inspectMediaMetadata,
   loadVideoEngine,
   normalizeSegment,
   renderCombination,
@@ -101,8 +99,6 @@ function VideoEditorPage() {
   const [ctaCount, setCtaCount] = useState(3);
   const [segments, setSegments] = useState(initialSegments);
   const [removeAudio, setRemoveAudio] = useState(false);
-  const [stripMetadata, setStripMetadata] = useState(true);
-  const [privacyCheck, setPrivacyCheck] = useState<string | null>(null);
   const [width, setWidth] = useState<720 | 1080>(720);
   const [phase, setPhase] = useState<"idle" | "loading" | "normalizing" | "rendering">("idle");
   const [progress, setProgress] = useState("");
@@ -242,7 +238,6 @@ function VideoEditorPage() {
       const output = await normalizeSegment(ffmpeg, segment, {
         removeAudio,
         width,
-        stripMetadata,
       });
       normalizedRef.current.set(segment.id, output);
       setNormalizationProgress({ done: index + 1, total: pending.length });
@@ -264,9 +259,7 @@ function VideoEditorPage() {
         segmentIds,
         width,
         removeAudio,
-        stripMetadata,
       });
-      if (stripMetadata) await verifyPrivacyMetadata(output.blob);
       downloadVideo(output.blob, output.filename);
       setCompleted((current) => new Set(current).add(combination.number));
       if (!keepBusy) toast.success(`Vídeo ${combination.number} gerado e baixado.`);
@@ -287,7 +280,6 @@ function VideoEditorPage() {
       const { Zip, ZipPassThrough } = await import("fflate");
       const chunks: Uint8Array[] = [];
       let generatedCount = 0;
-      let privacyVerified = false;
       const archivePromise = new Promise<Blob>((resolve, reject) => {
         const archive = new Zip((error, data, final) => {
           if (error) {
@@ -320,12 +312,7 @@ function VideoEditorPage() {
                 segmentIds: segmentOrderFor(combination),
                 width,
                 removeAudio,
-                stripMetadata,
               });
-              if (stripMetadata && !privacyVerified) {
-                await verifyPrivacyMetadata(output.blob);
-                privacyVerified = true;
-              }
               const entry = new ZipPassThrough(output.filename);
               archive.add(entry);
               entry.push(new Uint8Array(await output.blob.arrayBuffer()), true);
@@ -357,18 +344,6 @@ function VideoEditorPage() {
     }
   };
 
-  const verifyPrivacyMetadata = async (blob: Blob) => {
-    const tags = await inspectMediaMetadata(blob);
-    const sensitiveKeys = Object.keys(tags).filter((key) =>
-      /(title|artist|author|comment|creation|location|gps|device|make|model)/i.test(key),
-    );
-    setPrivacyCheck(
-      sensitiveKeys.length
-        ? `Revise os campos restantes: ${sensitiveKeys.join(", ")}.`
-        : "Verificado: nenhum metadado pessoal conhecido foi encontrado no MP4.",
-    );
-  };
-
   const resetEditor = () => {
     cancelRef.current = true;
     disposeVideoEngine();
@@ -376,7 +351,6 @@ function VideoEditorPage() {
     setSegments(initialSegments(hookCount, bodyCount, ctaCount));
     setCompleted(new Set());
     setTimelineOrders({});
-    setPrivacyCheck(null);
     setProgress("");
     setPhase("idle");
     toast.success("Arquivos temporários removidos.");
@@ -453,7 +427,7 @@ function VideoEditorPage() {
             onChange={(value) => changeStructure({ ctas: value })}
           />
         </div>
-        <div className="grid gap-5 border-t border-border/70 pt-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 border-t border-border/70 pt-5 md:grid-cols-3">
           <label className="space-y-2 text-sm font-medium">
             Qualidade de saída
             <select
@@ -487,37 +461,12 @@ function VideoEditorPage() {
             )}
             Remover o áudio de todos os vídeos
           </label>
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4 text-sm">
-            <input
-              type="checkbox"
-              className="size-4"
-              checked={stripMetadata}
-              disabled={busy}
-              onChange={(event) => {
-                normalizedRef.current = new Map();
-                setStripMetadata(event.target.checked);
-                setPrivacyCheck(null);
-              }}
-            />
-            <ShieldCheck className="shrink-0 text-emerald-300" />
-            <span>
-              <span className="block font-medium">Limpar metadados privados</span>
-              <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">
-                Localização, dispositivo, autor, título, datas e capítulos.
-              </span>
-            </span>
-          </label>
           <div className="flex items-end gap-2">
             <Button variant="outline" className="w-full" disabled={busy} onClick={resetEditor}>
               <Trash2 /> Limpar tudo
             </Button>
           </div>
         </div>
-        {privacyCheck && (
-          <p className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3 text-xs text-emerald-200">
-            <ShieldCheck className="mr-2 inline size-4" /> {privacyCheck}
-          </p>
-        )}
         {combinations.length > 100 && (
           <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
             Este lote tem {combinations.length} vídeos. Para reduzir o uso de memória e o tempo de

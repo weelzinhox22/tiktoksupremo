@@ -17,10 +17,12 @@ import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAvatarsRouteImport } from './routes/_authenticated/avatars'
 import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated/copies'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedRadarRouteImport } from './routes/_authenticated/radar'
+import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_authenticated/tiktok-downloader'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
@@ -68,6 +70,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMetadataCleanerRoute =
+  AuthenticatedMetadataCleanerRouteImport.update({
+    id: '/metadata-cleaner',
+    path: '/metadata-cleaner',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMovementsRoute = AuthenticatedMovementsRouteImport.update({
   id: '/movements',
   path: '/movements',
@@ -89,6 +97,12 @@ const AuthenticatedRadarRoute = AuthenticatedRadarRouteImport.update({
   path: '/radar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTiktokDownloaderRoute =
+  AuthenticatedTiktokDownloaderRouteImport.update({
+    id: '/tiktok-downloader',
+    path: '/tiktok-downloader',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVideoCombinerRoute =
   AuthenticatedVideoCombinerRouteImport.update({
     id: '/video-combiner',
@@ -138,10 +152,12 @@ export interface FileRoutesByFullPath {
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/copies': typeof AuthenticatedCopiesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
+  '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -158,10 +174,12 @@ export interface FileRoutesByTo {
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/copies': typeof AuthenticatedCopiesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
+  '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -180,10 +198,12 @@ export interface FileRoutesById {
   '/_authenticated/avatars': typeof AuthenticatedAvatarsRoute
   '/_authenticated/copies': typeof AuthenticatedCopiesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/radar': typeof AuthenticatedRadarRoute
+  '/_authenticated/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -202,10 +222,12 @@ export interface FileRouteTypes {
     | '/avatars'
     | '/copies'
     | '/dashboard'
+    | '/metadata-cleaner'
     | '/movements'
     | '/performance'
     | '/products'
     | '/radar'
+    | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
     | '/projects/$projectId'
@@ -222,10 +244,12 @@ export interface FileRouteTypes {
     | '/avatars'
     | '/copies'
     | '/dashboard'
+    | '/metadata-cleaner'
     | '/movements'
     | '/performance'
     | '/products'
     | '/radar'
+    | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
     | '/projects/$projectId'
@@ -243,10 +267,12 @@ export interface FileRouteTypes {
     | '/_authenticated/avatars'
     | '/_authenticated/copies'
     | '/_authenticated/dashboard'
+    | '/_authenticated/metadata-cleaner'
     | '/_authenticated/movements'
     | '/_authenticated/performance'
     | '/_authenticated/products'
     | '/_authenticated/radar'
+    | '/_authenticated/tiktok-downloader'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
     | '/_authenticated/projects/$projectId'
@@ -324,6 +350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/metadata-cleaner': {
+      id: '/_authenticated/metadata-cleaner'
+      path: '/metadata-cleaner'
+      fullPath: '/metadata-cleaner'
+      preLoaderRoute: typeof AuthenticatedMetadataCleanerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/movements': {
       id: '/_authenticated/movements'
       path: '/movements'
@@ -350,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/radar'
       fullPath: '/radar'
       preLoaderRoute: typeof AuthenticatedRadarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/tiktok-downloader': {
+      id: '/_authenticated/tiktok-downloader'
+      path: '/tiktok-downloader'
+      fullPath: '/tiktok-downloader'
+      preLoaderRoute: typeof AuthenticatedTiktokDownloaderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/video-combiner': {
@@ -408,10 +448,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvatarsRoute: typeof AuthenticatedAvatarsRoute
   AuthenticatedCopiesRoute: typeof AuthenticatedCopiesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedRadarRoute: typeof AuthenticatedRadarRoute
+  AuthenticatedTiktokDownloaderRoute: typeof AuthenticatedTiktokDownloaderRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
@@ -423,10 +465,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvatarsRoute: AuthenticatedAvatarsRoute,
   AuthenticatedCopiesRoute: AuthenticatedCopiesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedRadarRoute: AuthenticatedRadarRoute,
+  AuthenticatedTiktokDownloaderRoute: AuthenticatedTiktokDownloaderRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
