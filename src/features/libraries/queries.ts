@@ -1,4 +1,5 @@
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getPublicSupabaseConfig } from "@/lib/supabase/config";
 import type {
   Avatar,
   ContentPerformance,
@@ -9,19 +10,79 @@ import type {
 export type ProductLibraryWithPreview = ProductLibraryItem & { previewUrl: string | null };
 export type AvatarWithPreview = Avatar & { previewUrl: string | null };
 
+function isDirectUrl(path: string | null | undefined): boolean {
+  if (!path) return false;
+  return /^https?:\/\//i.test(path) || /^data:/i.test(path) || /^blob:/i.test(path);
+}
+
+export function formatSupabaseUrl(signedUrl: string | null | undefined): string | null {
+  if (!signedUrl) return null;
+  if (isDirectUrl(signedUrl)) return signedUrl;
+  try {
+    const { url: supabaseUrl } = getPublicSupabaseConfig();
+    const cleanBase = supabaseUrl.replace(/\/$/, "");
+    const cleanPath = signedUrl.replace(/^\//, "");
+    if (cleanPath.startsWith("storage/v1/")) {
+      return `${cleanBase}/${cleanPath}`;
+    }
+    return `${cleanBase}/storage/v1/${cleanPath}`;
+  } catch {
+    return signedUrl;
+  }
+}
+
 async function signFirstImages<T extends { image_paths: string[] }>(rows: T[]) {
-  const paths = rows.flatMap((row) => row.image_paths.slice(0, 1));
-  if (!paths.length) return rows.map((row) => ({ ...row, previewUrl: null }));
-  const signed = await getSupabaseBrowserClient()
-    .storage.from("product-images")
-    .createSignedUrls(paths, 3_600);
-  const urls = new Map(
-    signed.data?.map((item) => [item.path, item.signedUrl ?? null] as const) ?? [],
-  );
-  return rows.map((row) => ({
-    ...row,
-    previewUrl: row.image_paths[0] ? (urls.get(row.image_paths[0]) ?? null) : null,
-  }));
+  const supabase = getSupabaseBrowserClient();
+  const rawPaths = rows.map((row) => row.image_paths[0]).filter((p): p is string => Boolean(p));
+  const storagePaths = Array.from(new Set(rawPaths.filter((p) => !isDirectUrl(p))));
+
+  const urls = new Map<string, string>();
+
+  if (storagePaths.length > 0) {
+    try {
+      const signed = await supabase.storage
+        .from("product-images")
+        .createSignedUrls(storagePaths, 3_600);
+
+      if (signed.data) {
+        signed.data.forEach((item, index) => {
+          const originalPath = storagePaths[index];
+          if (originalPath && item?.signedUrl) {
+            urls.set(originalPath, formatSupabaseUrl(item.signedUrl) ?? item.signedUrl);
+          }
+          if (item?.path && item?.signedUrl) {
+            urls.set(item.path, formatSupabaseUrl(item.signedUrl) ?? item.signedUrl);
+          }
+        });
+      }
+    } catch {
+      // Ignore batch error
+    }
+
+    for (const path of storagePaths) {
+      if (!urls.has(path)) {
+        try {
+          const single = await supabase.storage
+            .from("product-images")
+            .createSignedUrl(path, 3_600);
+          if (single.data?.signedUrl) {
+            const formatted = formatSupabaseUrl(single.data.signedUrl) ?? single.data.signedUrl;
+            urls.set(path, formatted);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  return rows.map((row) => {
+    const firstPath = row.image_paths[0];
+    if (!firstPath) return { ...row, previewUrl: null };
+    if (isDirectUrl(firstPath)) return { ...row, previewUrl: firstPath };
+    const signedUrl = urls.get(firstPath) ?? null;
+    return { ...row, previewUrl: signedUrl };
+  });
 }
 
 export async function listProductLibrary(): Promise<ProductLibraryWithPreview[]> {
@@ -58,20 +119,64 @@ export async function listAvatarLibrary(userId: string): Promise<AvatarWithPrevi
   if (result.error)
     throw new Error(`Não foi possível carregar os avatares: ${result.error.message}`);
   const rows = (result.data ?? []) as Avatar[];
-  const signed = rows.length
-    ? await supabase.storage.from("product-images").createSignedUrls(
-        rows.map((avatar) => avatar.image_path),
-        3_600,
-      )
-    : null;
-  const urls = new Map(
-    signed?.data?.map((item) => [item.path, item.signedUrl ?? null] as const) ?? [],
+
+  const storagePaths = Array.from(
+    new Set(
+      rows
+        .map((avatar) => avatar.image_path)
+        .filter((p): p is string => Boolean(p) && !isDirectUrl(p)),
+    ),
   );
-  return rows.map((avatar) => ({
-    ...avatar,
-    previewUrl: urls.get(avatar.image_path) ?? null,
-  }));
+
+  const urls = new Map<string, string>();
+  if (storagePaths.length > 0) {
+    try {
+      const signed = await supabase.storage
+        .from("product-images")
+        .createSignedUrls(storagePaths, 3_600);
+      if (signed.data) {
+        signed.data.forEach((item, index) => {
+          const originalPath = storagePaths[index];
+          if (originalPath && item?.signedUrl) {
+            urls.set(originalPath, formatSupabaseUrl(item.signedUrl) ?? item.signedUrl);
+          }
+          if (item?.path && item?.signedUrl) {
+            urls.set(item.path, formatSupabaseUrl(item.signedUrl) ?? item.signedUrl);
+          }
+        });
+      }
+    } catch {
+      // Ignore batch error
+    }
+
+    for (const path of storagePaths) {
+      if (!urls.has(path)) {
+        try {
+          const single = await supabase.storage
+            .from("product-images")
+            .createSignedUrl(path, 3_600);
+          if (single.data?.signedUrl) {
+            const formatted = formatSupabaseUrl(single.data.signedUrl) ?? single.data.signedUrl;
+            urls.set(path, formatted);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  return rows.map((avatar) => {
+    const path = avatar.image_path;
+    if (!path) return { ...avatar, previewUrl: null };
+    if (isDirectUrl(path)) return { ...avatar, previewUrl: path };
+    const previewUrl = urls.get(path) ?? null;
+    return { ...avatar, previewUrl };
+  });
 }
+
+
+
 
 export type PerformanceWithProject = ContentPerformance & {
   projects?: { name?: string } | null;

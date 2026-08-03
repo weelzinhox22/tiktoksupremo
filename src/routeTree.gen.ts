@@ -15,13 +15,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAvatarsRouteImport } from './routes/_authenticated/avatars'
+import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated/copies'
+import { Route as AuthenticatedCopyModelerRouteImport } from './routes/_authenticated/copy-modeler'
+import { Route as AuthenticatedCreativeLabRouteImport } from './routes/_authenticated/creative-lab'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedRadarRouteImport } from './routes/_authenticated/radar'
+import { Route as AuthenticatedScenariosRouteImport } from './routes/_authenticated/scenarios'
 import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_authenticated/tiktok-downloader'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
@@ -60,11 +64,28 @@ const AuthenticatedAvatarsRoute = AuthenticatedAvatarsRouteImport.update({
   path: '/avatars',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCharactersRoute = AuthenticatedCharactersRouteImport.update({
+  id: '/characters',
+  path: '/characters',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCopiesRoute = AuthenticatedCopiesRouteImport.update({
   id: '/copies',
   path: '/copies',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCopyModelerRoute =
+  AuthenticatedCopyModelerRouteImport.update({
+    id: '/copy-modeler',
+    path: '/copy-modeler',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCreativeLabRoute =
+  AuthenticatedCreativeLabRouteImport.update({
+    id: '/creative-lab',
+    path: '/creative-lab',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -95,6 +116,11 @@ const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
 const AuthenticatedRadarRoute = AuthenticatedRadarRouteImport.update({
   id: '/radar',
   path: '/radar',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedScenariosRoute = AuthenticatedScenariosRouteImport.update({
+  id: '/scenarios',
+  path: '/scenarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTiktokDownloaderRoute =
@@ -150,13 +176,17 @@ export interface FileRoutesByFullPath {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
+  '/characters': typeof AuthenticatedCharactersRoute
   '/copies': typeof AuthenticatedCopiesRoute
+  '/copy-modeler': typeof AuthenticatedCopyModelerRoute
+  '/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
+  '/scenarios': typeof AuthenticatedScenariosRoute
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
@@ -172,13 +202,17 @@ export interface FileRoutesByTo {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
+  '/characters': typeof AuthenticatedCharactersRoute
   '/copies': typeof AuthenticatedCopiesRoute
+  '/copy-modeler': typeof AuthenticatedCopyModelerRoute
+  '/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
+  '/scenarios': typeof AuthenticatedScenariosRoute
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
@@ -196,13 +230,17 @@ export interface FileRoutesById {
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
   '/_authenticated/avatars': typeof AuthenticatedAvatarsRoute
+  '/_authenticated/characters': typeof AuthenticatedCharactersRoute
   '/_authenticated/copies': typeof AuthenticatedCopiesRoute
+  '/_authenticated/copy-modeler': typeof AuthenticatedCopyModelerRoute
+  '/_authenticated/creative-lab': typeof AuthenticatedCreativeLabRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/radar': typeof AuthenticatedRadarRoute
+  '/_authenticated/scenarios': typeof AuthenticatedScenariosRoute
   '/_authenticated/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
@@ -220,13 +258,17 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/avatars'
+    | '/characters'
     | '/copies'
+    | '/copy-modeler'
+    | '/creative-lab'
     | '/dashboard'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
     | '/products'
     | '/radar'
+    | '/scenarios'
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
@@ -242,13 +284,17 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/avatars'
+    | '/characters'
     | '/copies'
+    | '/copy-modeler'
+    | '/creative-lab'
     | '/dashboard'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
     | '/products'
     | '/radar'
+    | '/scenarios'
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
@@ -265,13 +311,17 @@ export interface FileRouteTypes {
     | '/privacidade'
     | '/termos'
     | '/_authenticated/avatars'
+    | '/_authenticated/characters'
     | '/_authenticated/copies'
+    | '/_authenticated/copy-modeler'
+    | '/_authenticated/creative-lab'
     | '/_authenticated/dashboard'
     | '/_authenticated/metadata-cleaner'
     | '/_authenticated/movements'
     | '/_authenticated/performance'
     | '/_authenticated/products'
     | '/_authenticated/radar'
+    | '/_authenticated/scenarios'
     | '/_authenticated/tiktok-downloader'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
@@ -336,11 +386,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAvatarsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/characters': {
+      id: '/_authenticated/characters'
+      path: '/characters'
+      fullPath: '/characters'
+      preLoaderRoute: typeof AuthenticatedCharactersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/copies': {
       id: '/_authenticated/copies'
       path: '/copies'
       fullPath: '/copies'
       preLoaderRoute: typeof AuthenticatedCopiesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/copy-modeler': {
+      id: '/_authenticated/copy-modeler'
+      path: '/copy-modeler'
+      fullPath: '/copy-modeler'
+      preLoaderRoute: typeof AuthenticatedCopyModelerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/creative-lab': {
+      id: '/_authenticated/creative-lab'
+      path: '/creative-lab'
+      fullPath: '/creative-lab'
+      preLoaderRoute: typeof AuthenticatedCreativeLabRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -383,6 +454,13 @@ declare module '@tanstack/react-router' {
       path: '/radar'
       fullPath: '/radar'
       preLoaderRoute: typeof AuthenticatedRadarRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/scenarios': {
+      id: '/_authenticated/scenarios'
+      path: '/scenarios'
+      fullPath: '/scenarios'
+      preLoaderRoute: typeof AuthenticatedScenariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/tiktok-downloader': {
@@ -446,13 +524,17 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAvatarsRoute: typeof AuthenticatedAvatarsRoute
+  AuthenticatedCharactersRoute: typeof AuthenticatedCharactersRoute
   AuthenticatedCopiesRoute: typeof AuthenticatedCopiesRoute
+  AuthenticatedCopyModelerRoute: typeof AuthenticatedCopyModelerRoute
+  AuthenticatedCreativeLabRoute: typeof AuthenticatedCreativeLabRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedRadarRoute: typeof AuthenticatedRadarRoute
+  AuthenticatedScenariosRoute: typeof AuthenticatedScenariosRoute
   AuthenticatedTiktokDownloaderRoute: typeof AuthenticatedTiktokDownloaderRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
@@ -463,13 +545,17 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAvatarsRoute: AuthenticatedAvatarsRoute,
+  AuthenticatedCharactersRoute: AuthenticatedCharactersRoute,
   AuthenticatedCopiesRoute: AuthenticatedCopiesRoute,
+  AuthenticatedCopyModelerRoute: AuthenticatedCopyModelerRoute,
+  AuthenticatedCreativeLabRoute: AuthenticatedCreativeLabRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedRadarRoute: AuthenticatedRadarRoute,
+  AuthenticatedScenariosRoute: AuthenticatedScenariosRoute,
   AuthenticatedTiktokDownloaderRoute: AuthenticatedTiktokDownloaderRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,

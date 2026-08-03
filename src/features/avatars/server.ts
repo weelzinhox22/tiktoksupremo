@@ -123,9 +123,16 @@ Natural Brazilian social-commerce creator aesthetic, realistic face and skin tex
       await supabase.storage.from("product-images").remove([imagePath]);
       throw new Error("O avatar foi criado, mas não pôde entrar na biblioteca.");
     }
+    const { formatSupabaseUrl } = await import("@/features/libraries/queries");
     const signed = await supabase.storage.from("product-images").createSignedUrl(imagePath, 3_600);
-    return { ...avatar.data, previewUrl: signed.data?.signedUrl ?? null };
+    const previewUrl =
+      formatSupabaseUrl(signed.data?.signedUrl) ??
+      formatSupabaseUrl(supabase.storage.from("product-images").getPublicUrl(imagePath).data?.publicUrl) ??
+      null;
+    return { ...avatar.data, previewUrl };
   });
+
+
 
 export const createAvatarBrief = createServerFn({ method: "POST" })
   .validator(avatarBriefSchema)

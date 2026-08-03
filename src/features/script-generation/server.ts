@@ -178,9 +178,34 @@ export const generateProjectScript = createServerFn({ method: "POST" })
       );
     }
     const version = (versionsResult.data?.[0]?.version ?? 0) + 1;
+    const rawScriptFormat = (settings["script_format"] ?? null) as {
+      formatId?: string;
+      choiceMode?: string;
+      treadmillConfig?: unknown;
+    } | null;
+    const { getFormatById } = await import("@/features/script-formats/formats-data");
+    const formatDef = rawScriptFormat?.formatId ? getFormatById(rawScriptFormat.formatId) : null;
+    const selectedFormatData = formatDef
+      ? {
+          format_id: formatDef.id,
+          name: formatDef.name,
+          category: formatDef.category,
+          full_description: formatDef.fullDescription,
+          scene_structure: formatDef.sceneStructure,
+          prompt_rules: formatDef.promptRules,
+          negative_prompt_rules: formatDef.negativePromptRules,
+          requires_real_product: formatDef.requiresRealProduct,
+          requires_real_person: formatDef.requiresRealPerson,
+          choice_mode: rawScriptFormat?.choiceMode ?? "auto",
+          treadmill_config: rawScriptFormat?.treadmillConfig ?? null,
+        }
+      : null;
+
     const snapshot = {
       project: projectResult.data,
       product: productResult.data,
+      selected_format: selectedFormatData,
+
       selected_avatar: selectedAvatar?.data
         ? {
             id: selectedAvatar.data.id,

@@ -38,6 +38,8 @@ import {
   type ProductLibraryWithPreview,
 } from "@/features/libraries/queries";
 import type { Avatar, MovementPreset } from "@/lib/supabase/types";
+import { FormatStepSelector } from "@/features/script-formats/components/FormatStepSelector";
+import type { SelectedFormat } from "@/features/script-formats/types";
 
 const schema = z.object({
   projectName: z.string().max(160, "O nome do projeto deve ter no máximo 160 caracteres."),
@@ -87,7 +89,7 @@ const schema = z.object({
   notes: z.string(),
 });
 type FormData = z.infer<typeof schema>;
-const steps = ["Produto", "Referência", "Configuração", "Gerar"];
+const steps = ["Produto", "Referência", "Formato", "Configuração", "Gerar"];
 const list = (value: string) =>
   value
     .split(/\n|,/)
@@ -128,10 +130,12 @@ function NewProjectPage() {
   const [movements, setMovements] = useState<MovementPreset[]>([]);
   const [selectedMovementIds, setSelectedMovementIds] = useState<string[]>([]);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
+  const [selectedStylePreset, setSelectedStylePreset] = useState<string>("Venda rápida");
   const [avatarMode, setAvatarMode] = useState<"none" | "library" | "upload" | "generate">("none");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarName, setAvatarName] = useState("");
   const [avatarDescription, setAvatarDescription] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState<SelectedFormat | null>(null);
   const selectedAvatar = avatars.find((avatar) => avatar.id === selectedAvatarId) ?? null;
   const selectedLibraryProduct =
     libraryProducts.find((product) => product.id === selectedLibraryProductId) ?? null;
@@ -257,8 +261,17 @@ function NewProjectPage() {
       const signed = await supabase.storage
         .from("product-images")
         .createSignedUrl(imagePath, 3_600);
-      return { ...(result.data as Avatar), previewUrl: signed.data?.signedUrl ?? null };
+      const { formatSupabaseUrl } = await import("@/features/libraries/queries");
+      const previewUrl =
+        formatSupabaseUrl(signed.data?.signedUrl) ??
+        formatSupabaseUrl(supabase.storage.from("product-images").getPublicUrl(imagePath).data?.publicUrl) ??
+        null;
+      return { ...(result.data as Avatar), previewUrl };
     },
+
+
+
+
     onSuccess: (avatar) => {
       setAvatars((current) => [avatar, ...current]);
       setSelectedAvatarId(avatar.id);
@@ -336,6 +349,8 @@ function NewProjectPage() {
             avatar_id: selectedAvatarId,
             movement_ids: selectedMovementIds,
             notes: values.notes,
+            script_format: selectedFormat ?? null,
+
           },
         })
         .select("id")
@@ -502,7 +517,8 @@ function NewProjectPage() {
     const fields: Record<number, (keyof FormData)[]> = {
       0: ["productName", "description", "benefits"],
       1: [],
-      2: [
+      2: [], // Format step — selectedFormat is validated separately
+      3: [
         "duration",
         "tone",
         "character",
@@ -514,7 +530,14 @@ function NewProjectPage() {
         "videoFormat",
       ],
     };
-    if (await trigger(fields[step] ?? [])) setStep((v) => Math.min(3, v + 1));
+    // Step 2: format selection — warn but don't block
+    if (step === 2 && !selectedFormat) {
+      toast.warning("Escolha um formato de vídeo antes de continuar, ou pule esta etapa.", {
+        action: { label: "Pular", onClick: () => setStep((v) => Math.min(4, v + 1)) },
+      });
+      return;
+    }
+    if (await trigger(fields[step] ?? [])) setStep((v) => Math.min(4, v + 1));
   };
   const productUrlField = register("productUrl");
   const tryImportProduct = (url: string) => {
@@ -640,8 +663,10 @@ function NewProjectPage() {
                           <img
                             src={product.previewUrl}
                             alt={product.name}
+                            crossOrigin="anonymous"
                             className="size-full object-cover"
                           />
+
                         ) : (
                           <PackageCheck className="m-3 size-6 text-muted-foreground" />
                         )}
@@ -912,6 +937,22 @@ function NewProjectPage() {
         )}
         {step === 2 && (
           <div className="space-y-6">
+            <FormatStepSelector
+              category={watch("category")}
+              description={watch("description")}
+              benefits={watch("benefits")}
+              audience={watch("audience")}
+              price={watch("price") ? Number(watch("price").replace(",", ".")) : null}
+              productVariation={watch("productVariation")}
+              value={selectedFormat}
+              onChange={setSelectedFormat}
+              hasPhysicalProduct={false}
+              realPersonAvailable={false}
+            />
+          </div>
+        )}
+        {step === 3 && (
+          <div className="space-y-6">
             <div>
               <h2 className="text-lg font-semibold">Escolha um estilo pronto</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -921,7 +962,9 @@ function NewProjectPage() {
                 <PresetButton
                   title="Venda rápida"
                   description="30s, direto e curioso"
+                  active={selectedStylePreset === "Venda rápida"}
                   onClick={() => {
+                    setSelectedStylePreset("Venda rápida");
                     setValue("duration", "30");
                     setValue("tone", "Natural, direto e curioso");
                     setValue("recordingStyle", "UGC com câmera de celular");
@@ -930,7 +973,9 @@ function NewProjectPage() {
                 <PresetButton
                   title="Demonstração"
                   description="45s, mostra o produto em uso"
+                  active={selectedStylePreset === "Demonstração"}
                   onClick={() => {
+                    setSelectedStylePreset("Demonstração");
                     setValue("duration", "45");
                     setValue("tone", "Didático, espontâneo e convincente");
                     setValue("recordingStyle", "Demonstração prática em cortes rápidos");
@@ -939,7 +984,9 @@ function NewProjectPage() {
                 <PresetButton
                   title="Prova social"
                   description="35s, experiência pessoal"
+                  active={selectedStylePreset === "Prova social"}
                   onClick={() => {
+                    setSelectedStylePreset("Prova social");
                     setValue("duration", "35");
                     setValue("tone", "Depoimento natural e entusiasmado");
                     setValue("recordingStyle", "UGC em primeira pessoa com antes e depois");
@@ -954,16 +1001,18 @@ function NewProjectPage() {
               </p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
                 <PresetButton
-                  title={watch("videoFormat") === "UGC" ? "✓ UGC selecionado" : "UGC"}
+                  title="UGC"
                   description="Creator aparece e fala diretamente para a câmera"
+                  active={watch("videoFormat") === "UGC"}
                   onClick={() => {
                     setValue("videoFormat", "UGC");
                     setValue("recordingStyle", "UGC com câmera de celular");
                   }}
                 />
                 <PresetButton
-                  title={watch("videoFormat") === "POV" ? "✓ POV selecionado" : "POV"}
+                  title="POV"
                   description="A câmera representa os olhos e as mãos da pessoa"
+                  active={watch("videoFormat") === "POV"}
                   onClick={() => {
                     setValue("videoFormat", "POV");
                     setValue("recordingStyle", "POV em primeira pessoa");
@@ -1043,8 +1092,10 @@ function NewProjectPage() {
                               <img
                                 src={avatar.previewUrl}
                                 alt={avatar.name}
+                                crossOrigin="anonymous"
                                 className="size-full object-cover"
                               />
+
                             ) : (
                               <div className="flex size-full items-center justify-center text-muted-foreground">
                                 <UserRound />
@@ -1187,16 +1238,36 @@ function NewProjectPage() {
               </div>
               <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
                 {movements
-                  .filter((movement) => movement.formats.includes(watch("videoFormat")))
+                  .filter((movement) => {
+                    const currentFormat = (watch("videoFormat") || "").toUpperCase();
+                    if (!currentFormat) return true;
+                    return movement.formats.some((f) =>
+                      f.toUpperCase().includes(currentFormat) || currentFormat.includes(f.toUpperCase()) || f === "UGC"
+                    );
+                  })
                   .map((movement) => {
                     const selected = selectedMovementIds.includes(movement.id);
+                    const productText = `${watch("category")} ${watch("productName")} ${watch("description")}`.toLowerCase();
+                    const isFemaleClothing = /roupa|blusa|top|cropped|vestido|feminin|moda|saia|short|calça|look|sutiã|lingerie|alça/i.test(productText);
+                    const isRecommended = isFemaleClothing && (
+                      movement.id === "10000000-0000-4000-8000-000000000034" ||
+                      movement.id === "10000000-0000-4000-8000-000000000035" ||
+                      movement.name.includes("Puxando Alça") ||
+                      movement.name.includes("Gira 45")
+                    );
+
                     return (
                       <button
                         type="button"
                         key={movement.id}
                         onClick={() => toggleMovement(movement.id)}
-                        className={`rounded-xl border p-4 text-left transition ${selected ? "border-cyan bg-cyan/[0.08] ring-1 ring-cyan/20" : "border-border bg-background/30 hover:border-cyan/30"}`}
+                        className={`relative rounded-xl border p-4 text-left transition ${selected ? "border-cyan bg-cyan/[0.08] ring-1 ring-cyan/20" : "border-border bg-background/30 hover:border-cyan/30"}`}
                       >
+                        {isRecommended && (
+                          <span className="mb-2 inline-block rounded bg-cyan/20 px-2 py-0.5 text-[10px] font-semibold text-cyan">
+                            Recomendado para Roupa Feminina
+                          </span>
+                        )}
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-sm font-semibold">{movement.name}</p>
                           {selected && <Check className="size-4 text-cyan" />}
@@ -1207,6 +1278,7 @@ function NewProjectPage() {
                       </button>
                     );
                   })}
+
               </div>
             </section>
 
@@ -1362,7 +1434,7 @@ function NewProjectPage() {
             </details>
           </div>
         )}
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold">Pronto para processar</h2>
             <p className="text-sm text-muted-foreground">
@@ -1378,8 +1450,21 @@ function NewProjectPage() {
                 ? "um pacote modular com 48 combinações"
                 : `${watch("variations")} versão(ões)`}
             </p>
+            {selectedFormat && (
+              <div className="rounded-xl border border-primary/20 bg-primary/[0.05] px-4 py-3">
+                <p className="text-xs font-medium text-primary">
+                  Formato selecionado:{" "}
+                  <span className="capitalize">{selectedFormat.formatId.replace(/_/g, " ")}</span>
+                  {" — "}
+                  <span className="text-muted-foreground">
+                    {selectedFormat.choiceMode === "auto" ? "recomendado automaticamente" : "escolhido manualmente"}
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
         )}
+
         <div className="flex justify-between border-t border-border pt-5">
           <Button
             type="button"
@@ -1390,7 +1475,7 @@ function NewProjectPage() {
             <ArrowLeft />
             Voltar
           </Button>
-          {step < 3 ? (
+          {step < 4 ? (
             <Button type="button" variant="hero" onClick={next}>
               Continuar
               <ArrowRight />
@@ -1466,18 +1551,33 @@ function PresetButton({
   title,
   description,
   onClick,
+  active = false,
 }: {
   title: string;
   description: string;
   onClick: () => void;
+  active?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-xl border border-border bg-secondary/20 p-4 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.06]"
+      className={`relative rounded-xl border p-4 text-left transition-all ${
+        active
+          ? "border-primary bg-primary/10 ring-2 ring-primary/20 shadow-sm"
+          : "border-border bg-secondary/20 hover:border-primary/40 hover:bg-primary/[0.06]"
+      }`}
     >
-      <span className="block font-semibold text-foreground">{title}</span>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`font-semibold ${active ? "text-primary" : "text-foreground"}`}>
+          {title}
+        </span>
+        {active && (
+          <span className="flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Check className="size-3" />
+          </span>
+        )}
+      </div>
       <span className="mt-1 block text-xs text-muted-foreground">{description}</span>
     </button>
   );

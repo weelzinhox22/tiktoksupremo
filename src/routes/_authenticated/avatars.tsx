@@ -291,16 +291,13 @@ function AvatarsPage() {
               <article key={avatar.id} className="avatar-card group overflow-hidden">
                 <div className="relative aspect-[4/5] overflow-hidden bg-secondary/30">
                   {avatar.previewUrl ? (
-                    <img
-                      src={avatar.previewUrl}
-                      alt={avatar.name}
-                      className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
-                    />
+                    <AvatarImage src={avatar.previewUrl} alt={avatar.name} />
                   ) : (
                     <div className="flex size-full items-center justify-center">
                       <UserRound className="size-10 text-muted-foreground" />
                     </div>
                   )}
+
                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-12">
                     <Badge className="bg-black/45 text-white backdrop-blur">
                       {avatar.source === "generated" ? "FLUX" : "Upload"}
@@ -344,3 +341,27 @@ function AvatarsPage() {
     </div>
   );
 }
+
+function AvatarImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <div className="flex size-full items-center justify-center">
+        <UserRound className="size-10 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      crossOrigin="anonymous"
+      onError={() => setFailed(true)}
+      className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+    />
+  );
+
+}
+

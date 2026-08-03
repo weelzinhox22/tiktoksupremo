@@ -88,8 +88,10 @@ function ProductsPage() {
                   <img
                     src={product.previewUrl}
                     alt={product.name}
+                    crossOrigin="anonymous"
                     className="size-full object-cover transition duration-500 group-hover:scale-[1.035]"
                   />
+
                 ) : (
                   <div className="flex size-full items-center justify-center">
                     <Package className="size-10 text-muted-foreground" />

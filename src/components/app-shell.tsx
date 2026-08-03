@@ -18,6 +18,9 @@ import {
   Video,
   ShieldCheck,
   Download,
+  Wand2,
+  Building2,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -26,6 +29,10 @@ import type { AppUser } from "@/lib/supabase/types";
 
 const navItems = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
+  { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
+  { label: "Estúdio de Personagens", icon: UserRound, to: "/characters" as const },
+  { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
+  { label: "Laboratório de Criativos", icon: FlaskConical, to: "/creative-lab" as const },
   { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
   { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
   { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
