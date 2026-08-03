@@ -27,6 +27,12 @@ import {
   referenceVisualAnalysisJsonSchema,
   referenceVisualAnalysisSchema,
 } from "@/features/products/visual-analysis";
+import {
+  autoClipJsonSchema,
+  autoClipResultSchema,
+  buildAutoClipPrompt,
+  type AutoClipRequest,
+} from "@/features/auto-clips/ai-contract";
 
 type GeminiInteractionResponse = {
   output_text?: string;
@@ -93,7 +99,6 @@ function sanitizeSchemaForGemini(schema: Record<string, unknown>): Record<string
   }
   return result;
 }
-
 
 function parseGoogleError(errText: string): string {
   try {
@@ -163,10 +168,7 @@ export class GeminiProvider implements AIProvider {
       if (!response.ok) {
         const errorBody = await response.text().catch(() => "(sem corpo)");
         console.error(`[Gemini] erro ${response.status} na interactions API:`, errorBody);
-        throw new AIProviderError(
-          `A IA retornou erro ${response.status}.`,
-          "provider",
-        );
+        throw new AIProviderError(`A IA retornou erro ${response.status}.`, "provider");
       }
       return (await response.json()) as GeminiInteractionResponse;
     } catch (error) {
@@ -382,8 +384,7 @@ export class GeminiProvider implements AIProvider {
       { inline_data: { mime_type: mimeType, data: base64 } },
     ]);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text)
-      throw new AIProviderError("A IA não retornou a transcrição.", "invalid_response");
+    if (!text) throw new AIProviderError("A IA não retornou a transcrição.", "invalid_response");
     return text.trim();
   }
 
@@ -469,6 +470,39 @@ export class GeminiProvider implements AIProvider {
         limitations:
           "Análise visual não disponível; roteiro gerado com transcrição e dados do produto.",
       };
+    }
+  }
+
+  async analyzeAutoClips(request: AutoClipRequest) {
+    const imageParts = request.videos.map((video) => {
+      const [header, data = ""] = video.contactSheet.split(",", 2);
+      const mimeType = header?.match(/^data:([^;]+);base64$/)?.[1] ?? "image/jpeg";
+      return { inline_data: { mime_type: mimeType, data } };
+    });
+    const result = await this.requestGenerateContent(
+      [{ text: buildAutoClipPrompt(request) }, ...imageParts],
+      {
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: sanitizeSchemaForGemini(
+            autoClipJsonSchema as unknown as Record<string, unknown>,
+          ),
+          temperature: 0.2,
+          maxOutputTokens: 4_096,
+        },
+      },
+    );
+    const text = this.getGeneratedText(result, "analyzeAutoClips");
+    if (!text) {
+      throw new AIProviderError("A IA não retornou uma seleção de cortes.", "invalid_response");
+    }
+    try {
+      return autoClipResultSchema.parse(this.safeParseJson(text));
+    } catch {
+      throw new AIProviderError(
+        "A seleção de cortes retornou um formato inválido.",
+        "invalid_response",
+      );
     }
   }
 
@@ -709,4 +743,3 @@ Retorne JSON com exatamente estes campos:
     }
   }
 }
-

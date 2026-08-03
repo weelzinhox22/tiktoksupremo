@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as AuthenticatedAutoClipsRouteImport } from './routes/_authenticated/auto-clips'
 import { Route as AuthenticatedAvatarsRouteImport } from './routes/_authenticated/avatars'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
 import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated/copies'
@@ -59,6 +60,11 @@ const TermosRoute = TermosRouteImport.update({
   id: '/termos',
   path: '/termos',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAutoClipsRoute = AuthenticatedAutoClipsRouteImport.update({
+  id: '/auto-clips',
+  path: '/auto-clips',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAvatarsRoute = AuthenticatedAvatarsRouteImport.update({
   id: '/avatars',
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/characters': typeof AuthenticatedCharactersRoute
   '/copies': typeof AuthenticatedCopiesRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/characters': typeof AuthenticatedCharactersRoute
   '/copies': typeof AuthenticatedCopiesRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/_authenticated/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/_authenticated/avatars': typeof AuthenticatedAvatarsRoute
   '/_authenticated/characters': typeof AuthenticatedCharactersRoute
   '/_authenticated/copies': typeof AuthenticatedCopiesRoute
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/auto-clips'
     | '/avatars'
     | '/characters'
     | '/copies'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/auto-clips'
     | '/avatars'
     | '/characters'
     | '/copies'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/_authenticated/auto-clips'
     | '/_authenticated/avatars'
     | '/_authenticated/characters'
     | '/_authenticated/copies'
@@ -390,6 +402,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/auto-clips': {
+      id: '/_authenticated/auto-clips'
+      path: '/auto-clips'
+      fullPath: '/auto-clips'
+      preLoaderRoute: typeof AuthenticatedAutoClipsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/avatars': {
       id: '/_authenticated/avatars'
@@ -542,6 +561,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAutoClipsRoute: typeof AuthenticatedAutoClipsRoute
   AuthenticatedAvatarsRoute: typeof AuthenticatedAvatarsRoute
   AuthenticatedCharactersRoute: typeof AuthenticatedCharactersRoute
   AuthenticatedCopiesRoute: typeof AuthenticatedCopiesRoute
@@ -564,6 +584,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAutoClipsRoute: AuthenticatedAutoClipsRoute,
   AuthenticatedAvatarsRoute: AuthenticatedAvatarsRoute,
   AuthenticatedCharactersRoute: AuthenticatedCharactersRoute,
   AuthenticatedCopiesRoute: AuthenticatedCopiesRoute,

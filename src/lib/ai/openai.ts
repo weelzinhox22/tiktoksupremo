@@ -24,6 +24,12 @@ import {
   referenceVisualAnalysisJsonSchema,
   referenceVisualAnalysisSchema,
 } from "@/features/products/visual-analysis";
+import {
+  autoClipJsonSchema,
+  autoClipResultSchema,
+  buildAutoClipPrompt,
+  type AutoClipRequest,
+} from "@/features/auto-clips/ai-contract";
 import { AIProviderError, type AIProvider, type GenerationContext } from "./provider";
 
 export const scriptJsonSchema = {
@@ -455,6 +461,53 @@ export class OpenAIProvider implements AIProvider {
       transcript_available: Boolean(transcript),
       delegatedToStructuredGeneration: true,
     };
+  }
+  async analyzeAutoClips(request: AutoClipRequest) {
+    const response = await this.request("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.requireKey()}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: buildAutoClipPrompt(request) },
+              ...request.videos.map((video) => ({
+                type: "input_image",
+                image_url: video.contactSheet,
+                detail: "high",
+              })),
+            ],
+          },
+        ],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "automatic_clip_selection",
+            strict: true,
+            schema: autoClipJsonSchema,
+          },
+        },
+      }),
+    });
+    const raw = (await response.json()) as {
+      output?: Array<{ content?: Array<{ type?: string; text?: string }> }>;
+    };
+    const text = raw.output
+      ?.flatMap((item) => item.content ?? [])
+      .find((item) => item.type === "output_text")?.text;
+    if (!text) {
+      throw new AIProviderError("A IA não retornou uma seleção de cortes.", "invalid_response");
+    }
+    try {
+      return autoClipResultSchema.parse(JSON.parse(text));
+    } catch {
+      throw new AIProviderError(
+        "A seleção de cortes retornou um formato inválido.",
+        "invalid_response",
+      );
+    }
   }
   async analyzeProduct(context: GenerationContext) {
     return { context, delegatedToStructuredGeneration: true };

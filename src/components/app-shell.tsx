@@ -22,6 +22,7 @@ import {
   Building2,
   FlaskConical,
   Zap,
+  Scissors,
   ChevronsLeft,
   ChevronsRight,
   Minimize2,
@@ -56,6 +57,7 @@ const navGroups = [
   {
     title: "Edição & Ferramentas",
     items: [
+      { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },
       { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
       { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
       { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
@@ -74,13 +76,7 @@ const navGroups = [
   },
 ];
 
-function NavList({
-  isCollapsed,
-  onNavigate,
-}: {
-  isCollapsed?: boolean;
-  onNavigate?: () => void;
-}) {
+function NavList({ isCollapsed, onNavigate }: { isCollapsed?: boolean; onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -260,7 +256,9 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Sessão protegida
                 </p>
-                <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">{user.email}</p>
+                <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">
+                  {user.email}
+                </p>
               </div>
             )}
           </div>
@@ -287,8 +285,12 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
                   <NavList onNavigate={() => setMobileOpen(false)} />
                 </div>
                 <div className="shrink-0 border-t border-sidebar-border p-4 bg-sidebar/50">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Sessão protegida</p>
-                  <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">{user.email}</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Sessão protegida
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">
+                    {user.email}
+                  </p>
                 </div>
               </SheetContent>
             </Sheet>
@@ -301,7 +303,11 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
               aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
               title={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
             >
-              {isCollapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+              {isCollapsed ? (
+                <ChevronsRight className="size-4" />
+              ) : (
+                <ChevronsLeft className="size-4" />
+              )}
             </Button>
 
             <p className="hidden text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground sm:block">
@@ -317,14 +323,20 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
                     onClick={toggleCompactMode}
                     className={`gap-1.5 text-xs ${compactMode ? "bg-primary/15 border-primary/30 text-primary" : "text-muted-foreground"}`}
                   >
-                    {compactMode ? <Maximize2 className="size-3.5" /> : <Minimize2 className="size-3.5" />}
+                    {compactMode ? (
+                      <Maximize2 className="size-3.5" />
+                    ) : (
+                      <Minimize2 className="size-3.5" />
+                    )}
                     <span className="hidden sm:inline">
                       {compactMode ? "Tamanho normal" : "Reduzir tela"}
                     </span>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {compactMode ? "Restaurar tamanho normal da interface" : "Reduzir escala da tela (Visão compacta)"}
+                  {compactMode
+                    ? "Restaurar tamanho normal da interface"
+                    : "Reduzir escala da tela (Visão compacta)"}
                 </TooltipContent>
               </Tooltip>
 

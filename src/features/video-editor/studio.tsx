@@ -2711,11 +2711,23 @@ function ColorControl({
 
 const transitionNames: Record<EditorSegment["transition"], string> = {
   none: "Sem transição",
-  fade: "Dissolver",
-  wipeleft: "Varredura",
-  slideleft: "Deslizar",
-  circleopen: "Círculo",
-  smoothleft: "Movimento suave",
+  fade: "Dissolver (Fade)",
+  fadeblacks: "Fade em Preto",
+  fadewhites: "Fade em Branco",
+  wipeleft: "Varredura Esquerda",
+  wiperight: "Varredura Direita",
+  wipeup: "Varredura Cima",
+  wipedown: "Varredura Baixo",
+  slideleft: "Deslizar Esquerda",
+  slideright: "Deslizar Direita",
+  slideup: "Deslizar Cima",
+  slidedown: "Deslizar Baixo",
+  smoothleft: "Deslizar Suave Esquerda",
+  smoothright: "Deslizar Suave Direita",
+  circleopen: "Círculo Abrindo",
+  circleclose: "Círculo Fechando",
+  pixelize: "Pixelizar",
+  zoomin: "Zoom In",
 };
 
 function clamp(value: number, min: number, max: number) {

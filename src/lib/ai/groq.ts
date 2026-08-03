@@ -26,6 +26,11 @@ import {
   buildReferenceVisualAnalysisPrompt,
   referenceVisualAnalysisSchema,
 } from "@/features/products/visual-analysis";
+import {
+  autoClipResultSchema,
+  buildAutoClipPrompt,
+  type AutoClipRequest,
+} from "@/features/auto-clips/ai-contract";
 
 type GroqChatResponse = {
   choices?: Array<{ message?: { content?: string } }>;
@@ -278,6 +283,47 @@ export class GroqProvider implements AIProvider {
         }
       }
       throw error;
+    }
+  }
+
+  async analyzeAutoClips(request: AutoClipRequest) {
+    const response = await this.request("/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.requireKey()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: this.visionModel,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: buildAutoClipPrompt(request) },
+              ...request.videos.map((video) => ({
+                type: "image_url",
+                image_url: { url: video.contactSheet },
+              })),
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.2,
+        max_completion_tokens: 2_500,
+      }),
+    });
+    const data = (await response.json()) as GroqChatResponse;
+    const text = data.choices?.[0]?.message?.content;
+    if (!text) {
+      throw new AIProviderError("A IA não retornou uma seleção de cortes.", "invalid_response");
+    }
+    try {
+      return autoClipResultSchema.parse(JSON.parse(text));
+    } catch {
+      throw new AIProviderError(
+        "A seleção de cortes retornou um formato inválido.",
+        "invalid_response",
+      );
     }
   }
 

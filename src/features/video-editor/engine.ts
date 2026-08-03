@@ -24,7 +24,25 @@ export type EditorSegment = {
   animationIn: "none" | "fade" | "fade-white" | "zoom" | "pulse" | "blur" | "shake";
   animationOut: "none" | "fade" | "fade-white" | "zoom" | "pulse" | "blur" | "shake";
   animationDuration: number;
-  transition: "none" | "fade" | "wipeleft" | "slideleft" | "circleopen" | "smoothleft";
+  transition:
+    | "none"
+    | "fade"
+    | "fadeblacks"
+    | "fadewhites"
+    | "wipeleft"
+    | "wiperight"
+    | "wipeup"
+    | "wipedown"
+    | "slideleft"
+    | "slideright"
+    | "slideup"
+    | "slidedown"
+    | "smoothleft"
+    | "smoothright"
+    | "circleopen"
+    | "circleclose"
+    | "pixelize"
+    | "zoomin";
   transitionDuration: number;
   audioDetached: boolean;
   hideOverlay: boolean;
@@ -98,6 +116,7 @@ let ffmpegInstance: FFmpegType | null = null;
 let loaded = false;
 let cachedCoreBlobUrl: string | null = null;
 let cachedWasmBlobUrl: string | null = null;
+let activeLogListener: ((event: { message: string }) => void) | null = null;
 
 export function createCombinations(hookCount: number, bodyCount: number, ctaCount: number) {
   const result: EditorCombination[] = [];
@@ -169,19 +188,44 @@ function privacyMetadataArgs(enabled: boolean | undefined) {
   // Using flatMap avoids repeating "-metadata" for every entry.
   const clearFields = [
     // ── Core identity ─────────────────────────────────────────────────────────
-    "title", "artist", "author", "comment", "description", "synopsis",
+    "title",
+    "artist",
+    "author",
+    "comment",
+    "description",
+    "synopsis",
     // ── Dates & timestamps ────────────────────────────────────────────────────
-    "creation_time", "date", "year", "recording_time",
+    "creation_time",
+    "date",
+    "year",
+    "recording_time",
     // ── Location / GPS ────────────────────────────────────────────────────────
-    "location", "location-eng",
+    "location",
+    "location-eng",
     // ── Device & software fingerprints ────────────────────────────────────────
-    "make", "model", "encoder", "encoded_by", "software", "handler_name",
+    "make",
+    "model",
+    "encoder",
+    "encoded_by",
+    "software",
+    "handler_name",
     // ── Copyright & publishing ────────────────────────────────────────────────
-    "copyright", "publisher", "url", "rating",
+    "copyright",
+    "publisher",
+    "url",
+    "rating",
     // ── Media catalogue ───────────────────────────────────────────────────────
-    "album", "genre", "track", "disc", "language",
+    "album",
+    "genre",
+    "track",
+    "disc",
+    "language",
     // ── Streaming / broadcast ─────────────────────────────────────────────────
-    "show", "episode_id", "episode_sort", "season_number", "network",
+    "show",
+    "episode_id",
+    "episode_sort",
+    "season_number",
+    "network",
     // ── Apple QuickTime private udta tags ─────────────────────────────────────
     "com.apple.quicktime.make",
     "com.apple.quicktime.model",
@@ -201,20 +245,25 @@ function privacyMetadataArgs(enabled: boolean | undefined) {
   return enabled
     ? [
         // Strip all metadata from the global container and every stream type.
-        "-map_metadata", "-1",
-        "-map_metadata:s:v", "-1",
-        "-map_metadata:s:a", "-1",
-        "-map_metadata:s:s", "-1",
-        "-map_metadata:s:d", "-1",
+        "-map_metadata",
+        "-1",
+        "-map_metadata:s:v",
+        "-1",
+        "-map_metadata:s:a",
+        "-1",
+        "-map_metadata:s:s",
+        "-1",
+        "-map_metadata:s:d",
+        "-1",
         // Remove all chapter metadata.
-        "-map_chapters", "-1",
+        "-map_chapters",
+        "-1",
         // Explicitly zero-out every known sensitive field so container muxers
         // cannot silently preserve them even after -map_metadata -1.
         ...clearFields.flatMap((key) => ["-metadata", `${key}=`]),
       ]
     : [];
 }
-
 
 function fileExtension(filename: string) {
   return filename.match(/\.([a-z0-9]{1,8})$/i)?.[1]?.toLowerCase() ?? "mp4";
@@ -255,18 +304,24 @@ export async function loadVideoEngine(
         onProgress?: (message: string) => void;
         onLog?: (message: string) => void;
       },
-) {
+): Promise<FFmpegType> {
   const onLog = typeof options === "function" ? options : options?.onLog;
   const onProgress = typeof options === "function" ? undefined : options?.onProgress;
 
-  if (!ffmpegInstance) {
-    const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-    ffmpegInstance = new FFmpeg();
-  }
+  const ensureFFmpeg = async () => {
+    if (!ffmpegInstance) {
+      const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+      ffmpegInstance = new FFmpeg();
+    }
+    return ffmpegInstance;
+  };
+
+  const instance = await ensureFFmpeg();
 
   if (onLog) {
-    ffmpegInstance.off("log");
-    ffmpegInstance.on("log", ({ message }) => onLog(message));
+    if (activeLogListener) instance.off("log", activeLogListener);
+    activeLogListener = ({ message }) => onLog(message);
+    instance.on("log", activeLogListener);
   }
 
   if (!loaded) {
@@ -276,13 +331,14 @@ export async function loadVideoEngine(
     if (cachedCoreBlobUrl && cachedWasmBlobUrl) {
       onProgress?.("Inicializando motor de vídeo a partir do cache local...");
       try {
+        const activeEngine = await ensureFFmpeg();
         await timeoutPromise(
-          ffmpegInstance!.load({ coreURL: cachedCoreBlobUrl, wasmURL: cachedWasmBlobUrl }),
+          activeEngine.load({ coreURL: cachedCoreBlobUrl, wasmURL: cachedWasmBlobUrl }),
           180000,
           "Tempo limite excedido ao carregar a partir do cache.",
         );
         loaded = true;
-        return ffmpegInstance;
+        return activeEngine;
       } catch (err) {
         console.warn("Reutilização de cache falhou, realizando novo download:", err);
         cachedCoreBlobUrl = null;
@@ -297,8 +353,9 @@ export async function loadVideoEngine(
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
         onProgress?.("Inicializando motor de vídeo WebAssembly...");
+        const activeEngine = await ensureFFmpeg();
         await timeoutPromise(
-          ffmpegInstance!.load({ coreURL, wasmURL }),
+          activeEngine.load({ coreURL, wasmURL }),
           180000,
           "Tempo limite excedido ao carregar pelo jsdelivr.",
         );
@@ -311,8 +368,9 @@ export async function loadVideoEngine(
         const coreURL = await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
         const wasmURL = await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
         onProgress?.("Inicializando motor de vídeo WebAssembly...");
+        const activeEngine = await ensureFFmpeg();
         await timeoutPromise(
-          ffmpegInstance!.load({ coreURL, wasmURL }),
+          activeEngine.load({ coreURL, wasmURL }),
           180000,
           "Tempo limite excedido ao carregar pelo unpkg.",
         );
@@ -322,8 +380,9 @@ export async function loadVideoEngine(
       async () => {
         onProgress?.("Conectando ao motor de vídeo direto...");
         const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
+        const activeEngine = await ensureFFmpeg();
         await timeoutPromise(
-          ffmpegInstance!.load({
+          activeEngine.load({
             coreURL: `${baseURL}/ffmpeg-core.js`,
             wasmURL: `${baseURL}/ffmpeg-core.wasm`,
           }),
@@ -365,7 +424,7 @@ export async function loadVideoEngine(
     }
     loaded = true;
   }
-  return ffmpegInstance;
+  return ffmpegInstance!;
 }
 
 async function deleteIfPresent(ffmpeg: FFmpegType, path: string) {
@@ -707,8 +766,7 @@ export async function renderCombination(
       "0",
       "-i",
       listFile,
-      "-c",
-      "copy",
+      ...(options?.removeAudio ? ["-an", "-c:v", "copy"] : ["-c", "copy"]),
       ...privacyMetadataArgs(options?.stripMetadata),
       "-movflags",
       "+faststart",

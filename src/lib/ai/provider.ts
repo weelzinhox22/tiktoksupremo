@@ -5,6 +5,7 @@ import type {
   ValidatedCopyAnalysis,
 } from "@/features/script-generation/schemas";
 import type { ReferenceVisualAnalysis } from "@/features/products/visual-analysis";
+import type { AutoClipRequest, AutoClipResult } from "@/features/auto-clips/ai-contract";
 
 export type GenerationContext = Record<string, unknown>;
 export interface AIProvider {
@@ -12,6 +13,7 @@ export interface AIProvider {
   transcribeMedia(media: Blob, filename: string): Promise<string>;
   transcribeMediaUrl?(signedUrl: string): Promise<string>;
   analyzeVideoFrames(frameUrls: string[], transcript: string): Promise<Record<string, unknown>>;
+  analyzeAutoClips(request: AutoClipRequest): Promise<AutoClipResult>;
   analyzeReferenceImages(
     imageUrls: string[],
     referenceType: "product" | "avatar",
