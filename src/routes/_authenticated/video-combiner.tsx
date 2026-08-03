@@ -226,21 +226,39 @@ function VideoEditorPage() {
     const missing = requiredSegments.filter((segment) => !segment.file);
     if (missing.length) throw new Error(`Envie o arquivo de ${missing[0]!.label} antes de gerar.`);
     setPhase("loading");
-    setProgress("Carregando o editor local pela primeira vez...");
-    const ffmpeg = await loadVideoEngine();
+    setProgress("Conectando ao editor local...");
+    const ffmpeg = await loadVideoEngine({
+      onProgress: (msg) => setProgress(msg),
+    });
     const pending = requiredSegments.filter((segment) => !normalizedRef.current.has(segment.id));
     setNormalizationProgress({ done: 0, total: pending.length });
     if (!pending.length) return ffmpeg;
     setPhase("normalizing");
-    for (const [index, segment] of pending.entries()) {
-      if (cancelRef.current) throw new Error("Processamento cancelado.");
-      setProgress(`Preparando cena ${index + 1} de ${pending.length}: ${segment.label}`);
-      const output = await normalizeSegment(ffmpeg, segment, {
-        removeAudio,
-        width,
-      });
-      normalizedRef.current.set(segment.id, output);
-      setNormalizationProgress({ done: index + 1, total: pending.length });
+
+    const onProgress = ({ progress: ratio }: { progress: number }) => {
+      const pct = Math.round(ratio * 100);
+      if (pct > 0 && pct <= 100) {
+        setProgress((current) => {
+          const base = current.split(" (")[0];
+          return `${base} (${pct}%)`;
+        });
+      }
+    };
+    ffmpeg.on("progress", onProgress);
+
+    try {
+      for (const [index, segment] of pending.entries()) {
+        if (cancelRef.current) throw new Error("Processamento cancelado pelo usuário.");
+        setProgress(`Preparando cena ${index + 1} de ${pending.length}: ${segment.label}`);
+        const output = await normalizeSegment(ffmpeg, segment, {
+          removeAudio,
+          width,
+        });
+        normalizedRef.current.set(segment.id, output);
+        setNormalizationProgress({ done: index + 1, total: pending.length });
+      }
+    } finally {
+      ffmpeg.off("progress", onProgress);
     }
     return ffmpeg;
   };
@@ -252,17 +270,30 @@ function VideoEditorPage() {
       const ffmpeg = await prepareSegments(segmentIds);
       setPhase("rendering");
       setProgress(`Montando ${combination.label}...`);
-      const output = await renderCombination(ffmpeg, combination, normalizedRef.current, {
-        segments,
-        textOverlays: [],
-        audioLayers: [],
-        segmentIds,
-        width,
-        removeAudio,
-      });
-      downloadVideo(output.blob, output.filename);
-      setCompleted((current) => new Set(current).add(combination.number));
-      if (!keepBusy) toast.success(`Vídeo ${combination.number} gerado e baixado.`);
+
+      const onProgress = ({ progress: ratio }: { progress: number }) => {
+        const pct = Math.round(ratio * 100);
+        if (pct > 0 && pct <= 100) {
+          setProgress(`Montando ${combination.label} (${pct}%)...`);
+        }
+      };
+      ffmpeg.on("progress", onProgress);
+
+      try {
+        const output = await renderCombination(ffmpeg, combination, normalizedRef.current, {
+          segments,
+          textOverlays: [],
+          audioLayers: [],
+          segmentIds,
+          width,
+          removeAudio,
+        });
+        downloadVideo(output.blob, output.filename);
+        setCompleted((current) => new Set(current).add(combination.number));
+        if (!keepBusy) toast.success(`Vídeo ${combination.number} gerado e baixado.`);
+      } finally {
+        ffmpeg.off("progress", onProgress);
+      }
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível gerar o vídeo.");
     } finally {
@@ -305,19 +336,39 @@ function VideoEditorPage() {
               setProgress(
                 `Gerando vídeo ${combination.number} de ${combinations.length} · ${combination.label}`,
               );
-              const output = await renderCombination(ffmpeg, combination, normalizedRef.current, {
-                segments,
-                textOverlays: [],
-                audioLayers: [],
-                segmentIds: segmentOrderFor(combination),
-                width,
-                removeAudio,
-              });
-              const entry = new ZipPassThrough(output.filename);
-              archive.add(entry);
-              entry.push(new Uint8Array(await output.blob.arrayBuffer()), true);
-              generatedCount += 1;
-              setCompleted((current) => new Set(current).add(combination.number));
+
+              const onProgress = ({ progress: ratio }: { progress: number }) => {
+                const pct = Math.round(ratio * 100);
+                if (pct > 0 && pct <= 100) {
+                  setProgress(
+                    `Gerando vídeo ${combination.number} de ${combinations.length} (${pct}%) · ${combination.label}`,
+                  );
+                }
+              };
+              ffmpeg.on("progress", onProgress);
+
+              try {
+                const output = await renderCombination(
+                  ffmpeg,
+                  combination,
+                  normalizedRef.current,
+                  {
+                    segments,
+                    textOverlays: [],
+                    audioLayers: [],
+                    segmentIds: segmentOrderFor(combination),
+                    width,
+                    removeAudio,
+                  },
+                );
+                const entry = new ZipPassThrough(output.filename);
+                archive.add(entry);
+                entry.push(new Uint8Array(await output.blob.arrayBuffer()), true);
+                generatedCount += 1;
+                setCompleted((current) => new Set(current).add(combination.number));
+              } finally {
+                ffmpeg.off("progress", onProgress);
+              }
             }
             archive.end();
           } catch (cause) {

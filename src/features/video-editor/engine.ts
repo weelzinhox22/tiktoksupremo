@@ -231,20 +231,111 @@ function metadataOutputMimeType(extension: string, fallback: string) {
   return knownTypes[extension] ?? (fallback || "application/octet-stream");
 }
 
-export async function loadVideoEngine(onLog?: (message: string) => void) {
+async function fetchToBlobURL(
+  url: string,
+  mimeType: string,
+  onProgress?: (percent: number) => void,
+) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Não foi possível baixar ${url} (${response.status})`);
+  const contentLength = Number(response.headers.get("content-length") || 0);
+  if (!response.body || !contentLength) {
+    const blob = await response.blob();
+    onProgress?.(100);
+    return URL.createObjectURL(blob);
+  }
+  const reader = response.body.getReader();
+  let receivedLength = 0;
+  const chunks: Uint8Array[] = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    receivedLength += value.length;
+    if (contentLength > 0) {
+      onProgress?.(Math.round((receivedLength / contentLength) * 100));
+    }
+  }
+  const blob = new Blob(chunks, { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
+export async function loadVideoEngine(
+  options?:
+    | ((message: string) => void)
+    | {
+        onProgress?: (message: string) => void;
+        onLog?: (message: string) => void;
+      },
+) {
+  const onLog = typeof options === "function" ? options : options?.onLog;
+  const onProgress = typeof options === "function" ? undefined : options?.onProgress;
+
   if (!ffmpegInstance) {
     const { FFmpeg } = await import("@ffmpeg/ffmpeg");
     ffmpegInstance = new FFmpeg();
-    ffmpegInstance.on("log", ({ message }) => onLog?.(message));
   }
+
+  if (onLog) {
+    ffmpegInstance.off("log");
+    ffmpegInstance.on("log", ({ message }) => onLog(message));
+  }
+
   if (!loaded) {
-    const { toBlobURL } = await import("@ffmpeg/util");
-    const baseURL = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm";
-    await ffmpegInstance.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
-    });
-    loaded = true;
+    try {
+      onProgress?.("Conectando ao motor de vídeo local...");
+      const cdns = [
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm",
+        "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm",
+      ];
+      let loadedSuccessfully = false;
+      let lastError: unknown = null;
+
+      for (const baseURL of cdns) {
+        try {
+          onProgress?.("Baixando biblioteca de vídeo...");
+          const coreURL = await fetchToBlobURL(
+            `${baseURL}/ffmpeg-core.js`,
+            "text/javascript",
+            (p) => {
+              onProgress?.(`Baixando biblioteca (${Math.round(p * 0.1)}%)...`);
+            },
+          );
+          const wasmURL = await fetchToBlobURL(
+            `${baseURL}/ffmpeg-core.wasm`,
+            "application/wasm",
+            (p) => {
+              onProgress?.(
+                `Baixando motor de vídeo WebAssembly (${10 + Math.round(p * 0.9)}%)...`,
+              );
+            },
+          );
+
+          onProgress?.("Inicializando motor de vídeo WebAssembly...");
+          await ffmpegInstance.load({ coreURL, wasmURL });
+          loadedSuccessfully = true;
+          break;
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      if (!loadedSuccessfully) {
+        throw lastError || new Error("Não foi possível carregar o motor de vídeo local.");
+      }
+      loaded = true;
+    } catch (err) {
+      if (ffmpegInstance) {
+        try {
+          ffmpegInstance.terminate();
+        } catch {
+          // Ignorar erro se já finalizado
+        }
+      }
+      ffmpegInstance = null;
+      loaded = false;
+      throw err;
+    }
   }
   return ffmpegInstance;
 }
@@ -330,12 +421,13 @@ export async function normalizeSegment(
   const selectedDuration = Math.max(0.1, segment.end - segment.start);
   const playedDuration = selectedDuration / segment.playbackRate;
   const height = options.width === 1080 ? 1920 : 1280;
-  const scaleFilter = `scale=${options.width}:${height}:force_original_aspect_ratio=decrease`;
+  const scaleFilter = `scale=${options.width}:${height}:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+  const padFilter = `pad=${options.width}:${height}:x='trunc((ow-iw)/2)':y='trunc((oh-ih)/2)':color=black`;
   const videoFilters = [
     `trim=duration=${selectedDuration}`,
     `setpts=(PTS-STARTPTS)/${segment.playbackRate}`,
     scaleFilter,
-    `pad=${options.width}:${height}:(ow-iw)/2:(oh-ih)/2:black`,
+    padFilter,
     ...(segment.mirror ? ["hflip"] : []),
     `eq=brightness=${segment.brightness}:contrast=${segment.contrast}:saturation=${segment.saturation}`,
     "fps=30",
@@ -406,7 +498,6 @@ export async function normalizeSegment(
       `fade=t=out:st=${Math.max(0, playedDuration - fadeOutDuration)}:d=${fadeOutDuration}${segment.animationOut === "fade-white" ? ":color=white" : ""}`,
     );
   }
-  videoFilters.push(`trim=duration=${playedDuration}`);
   const videoFilter = videoFilters.join(",");
 
   const base = ["-ss", String(segment.start), "-i", input];
