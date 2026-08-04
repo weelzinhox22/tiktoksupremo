@@ -69,7 +69,6 @@ const navGroups = [
   {
     title: "Edição & Mídia",
     items: [
-      { label: "Gerador de Vídeos IA", icon: Film, to: "/ai-video-generator" as const },
       { label: "Remover marca d'água", icon: Scissors, to: "/watermark-remover" as const },
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
       { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },
