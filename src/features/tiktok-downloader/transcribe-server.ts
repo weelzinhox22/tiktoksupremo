@@ -91,3 +91,34 @@ export const transcribeMediaUrlServerFn = createServerFn({ method: "POST" })
       authorName,
     };
   });
+
+const transcribeFileSchema = z.object({
+  base64: z.string().min(1, "Conteúdo do arquivo não fornecido"),
+  filename: z.string().min(1, "Nome do arquivo necessário"),
+  mimeType: z.string().optional(),
+});
+
+export const transcribeLocalFileServerFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => transcribeFileSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { getAIProvider } = await import("@/lib/ai/factory");
+    const { provider } = getAIProvider();
+
+    const buffer = Buffer.from(data.base64, "base64");
+    if (buffer.length > 30 * 1024 * 1024) {
+      throw new Error("O vídeo/áudio excede 30 MB. Selecione um arquivo menor.");
+    }
+
+    const blob = new Blob([buffer], { type: data.mimeType || "audio/mp3" });
+    const transcript = await provider.transcribeMedia(blob, data.filename);
+
+    if (!transcript || !transcript.trim()) {
+      throw new Error("Nenhuma fala compreensível foi identificada no arquivo enviado.");
+    }
+
+    return {
+      success: true as const,
+      transcript: transcript.trim(),
+      filename: data.filename,
+    };
+  });

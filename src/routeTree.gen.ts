@@ -34,6 +34,7 @@ import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authen
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
 import { Route as AuthenticatedVideoTranscriberRouteImport } from './routes/_authenticated/video-transcriber'
 import { Route as AuthenticatedVoiceStudioRouteImport } from './routes/_authenticated/voice-studio'
+import { Route as AuthenticatedWatermarkRemoverRouteImport } from './routes/_authenticated/watermark-remover'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects/new'
@@ -174,6 +175,12 @@ const AuthenticatedVoiceStudioRoute =
     path: '/voice-studio',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedWatermarkRemoverRoute =
+  AuthenticatedWatermarkRemoverRouteImport.update({
+    id: '/watermark-remover',
+    path: '/watermark-remover',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectsIndexRoute =
   AuthenticatedProjectsIndexRouteImport.update({
     id: '/projects/',
@@ -228,6 +235,7 @@ export interface FileRoutesByFullPath {
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
+  '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -259,6 +267,7 @@ export interface FileRoutesByTo {
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
+  '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -292,6 +301,7 @@ export interface FileRoutesById {
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
   '/_authenticated/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/_authenticated/voice-studio': typeof AuthenticatedVoiceStudioRoute
+  '/_authenticated/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -325,6 +335,7 @@ export interface FileRouteTypes {
     | '/video-editor'
     | '/video-transcriber'
     | '/voice-studio'
+    | '/watermark-remover'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -356,6 +367,7 @@ export interface FileRouteTypes {
     | '/video-editor'
     | '/video-transcriber'
     | '/voice-studio'
+    | '/watermark-remover'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -388,6 +400,7 @@ export interface FileRouteTypes {
     | '/_authenticated/video-editor'
     | '/_authenticated/video-transcriber'
     | '/_authenticated/voice-studio'
+    | '/_authenticated/watermark-remover'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/new'
     | '/auth/tiktok/callback'
@@ -582,6 +595,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVoiceStudioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/watermark-remover': {
+      id: '/_authenticated/watermark-remover'
+      path: '/watermark-remover'
+      fullPath: '/watermark-remover'
+      preLoaderRoute: typeof AuthenticatedWatermarkRemoverRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projects/': {
       id: '/_authenticated/projects/'
       path: '/projects'
@@ -641,6 +661,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
   AuthenticatedVideoTranscriberRoute: typeof AuthenticatedVideoTranscriberRoute
   AuthenticatedVoiceStudioRoute: typeof AuthenticatedVoiceStudioRoute
+  AuthenticatedWatermarkRemoverRoute: typeof AuthenticatedWatermarkRemoverRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
@@ -667,6 +688,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
   AuthenticatedVideoTranscriberRoute: AuthenticatedVideoTranscriberRoute,
   AuthenticatedVoiceStudioRoute: AuthenticatedVoiceStudioRoute,
+  AuthenticatedWatermarkRemoverRoute: AuthenticatedWatermarkRemoverRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
