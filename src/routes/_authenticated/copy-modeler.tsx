@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -13,10 +13,19 @@ import {
   Layers,
   AlertTriangle,
   Play,
+  Loader2,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field } from "@/components/field";
 import { toast } from "sonner";
 import type { CopyAnalysis, CopyVersion } from "@/features/four-modules/types";
@@ -25,13 +34,19 @@ import { characterRepository, scenarioRepository } from "@/features/four-modules
 import { estimateSpeechDuration } from "@/features/four-modules/services";
 import { SimilarityRiskBadge } from "@/features/four-modules/components/SimilarityRiskBadge";
 import { CopyDiffViewer } from "@/features/four-modules/components/CopyDiffViewer";
+import { transcribeMediaUrlServerFn } from "@/features/tiktok-downloader/transcribe-server";
 
 export const Route = createFileRoute("/_authenticated/copy-modeler")({
+  validateSearch: (search: Record<string, unknown>): { text?: string } => {
+    const textVal = search["text"];
+    return typeof textVal === "string" && textVal ? { text: textVal } : {};
+  },
   component: CopyModelerPage,
 });
 
 function CopyModelerPage() {
   const { user } = Route.useRouteContext();
+  const searchParams = Route.useSearch();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<"input" | "analysis" | "config" | "result">("input");
@@ -39,8 +54,46 @@ function CopyModelerPage() {
   // Form State - Input
   const [projectName, setProjectName] = useState("Modelagem de Copy Viral");
   const [originalCopy, setOriginalCopy] = useState(
-    "Gente, por favor não me diga que você ainda tá lavando louça com essa esponja tradicional cheia de bactéria. Eu descobri essa esponja de silicone viral do TikTok Shop que limpa tudo sem arranhar a panela. E o melhor: voltou o estoque com 40% de desconto! Clica no carrinho aqui embaixo antes que acabe tudo.",
+    searchParams.text ||
+      "Gente, por favor não me diga que você ainda tá lavando louça com essa esponja tradicional cheia de bactéria. Eu descobri essa esponja de silicone viral do TikTok Shop que limpa tudo sem arranhar a panela. E o melhor: voltou o estoque com 40% de desconto! Clica no carrinho aqui embaixo antes que acabe tudo.",
   );
+
+  useEffect(() => {
+    if (searchParams.text) {
+      setOriginalCopy(searchParams.text);
+    }
+  }, [searchParams.text]);
+
+  const [urlInputModalOpen, setUrlInputModalOpen] = useState(false);
+  const [transcribeUrlInput, setTranscribeUrlInput] = useState("");
+  const [isTranscribingUrl, setIsTranscribingUrl] = useState(false);
+
+  const handleTranscribeUrlInModeler = async () => {
+    const trimmed = transcribeUrlInput.trim();
+    if (!trimmed) {
+      toast.error("Insira o link de um vídeo do TikTok ou arquivo de mídia.");
+      return;
+    }
+
+    setIsTranscribingUrl(true);
+    const toastId = toast.loading("Transcrevendo vídeo via IA (na nuvem)...");
+
+    try {
+      const res = await transcribeMediaUrlServerFn({ data: { url: trimmed } });
+      if (res.success && res.transcript) {
+        setOriginalCopy(res.transcript);
+        if (res.videoTitle) setProjectName(`Modelagem: ${res.videoTitle.slice(0, 30)}`);
+        setUrlInputModalOpen(false);
+        setTranscribeUrlInput("");
+        toast.success("Transcrição do vídeo obtida e preenchida com sucesso!", { id: toastId });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Não foi possível transcrever a URL.";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setIsTranscribingUrl(false);
+    }
+  };
   const [originalProduct, setOriginalProduct] = useState("Esponja de Silicone Viral");
   const [originalAudience, setOriginalAudience] = useState("Donas de casa e jovens adultos");
 
@@ -206,16 +259,28 @@ function CopyModelerPage() {
       {/* STEP 1: ENTRADA DA COPY ORIGINAL */}
       {step === "input" && (
         <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-xl">
-          <div className="flex items-center gap-3 border-b border-border pb-4">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <FileText className="size-5" />
-            </span>
-            <div>
-              <h2 className="font-semibold">Inserir Copy Validada de Referência</h2>
-              <p className="text-xs text-muted-foreground">
-                Cole a transcrição de um vídeo viral ou uma copy de vendas validada do seu nicho.
-              </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-4">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <FileText className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-semibold">Inserir Copy Validada de Referência</h2>
+                <p className="text-xs text-muted-foreground">
+                  Cole a transcrição ou transcreva diretamente um vídeo do TikTok via link (sem baixar nada).
+                </p>
+              </div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setUrlInputModalOpen(true)}
+              className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10 hover:text-emerald-200"
+            >
+              <Wand2 className="mr-2 size-4 text-emerald-400" />
+              Transcrever de Link de Vídeo
+            </Button>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -231,10 +296,62 @@ function CopyModelerPage() {
             <Textarea
               rows={6}
               value={originalCopy}
-              placeholder="Cole aqui o texto completo da copy..."
+              placeholder="Cole aqui o texto completo da copy ou use o botão de transcrever vídeo por link acima..."
               onChange={(e) => setOriginalCopy(e.target.value)}
             />
           </Field>
+
+          {/* Modal de Transcrição por URL no Modeler */}
+          <Dialog open={urlInputModalOpen} onOpenChange={setUrlInputModalOpen}>
+            <DialogContent className="max-w-md border-emerald-500/20 bg-slate-950/95 backdrop-blur-xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-lg font-semibold text-emerald-400">
+                  <Link className="size-5" /> Transcrever Vídeo por URL
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Cole um link do TikTok ou URL de áudio/vídeo. A IA irá extrair a fala em tempo real na nuvem sem precisar baixar o arquivo.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2">
+                <Input
+                  type="url"
+                  placeholder="https://www.tiktok.com/@usuario/video/..."
+                  value={transcribeUrlInput}
+                  onChange={(e) => setTranscribeUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void handleTranscribeUrlInModeler()}
+                  className="border-emerald-500/30 bg-slate-900/60 focus-visible:ring-emerald-500"
+                />
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setUrlInputModalOpen(false)}
+                    disabled={isTranscribingUrl}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => void handleTranscribeUrlInModeler()}
+                    disabled={isTranscribingUrl}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+                  >
+                    {isTranscribingUrl ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" /> Transcrevendo...
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="mr-2 size-4" /> Transcrever
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Field label="Público-Alvo Original (Opcional)">
             <Input value={originalAudience} onChange={(e) => setOriginalAudience(e.target.value)} />

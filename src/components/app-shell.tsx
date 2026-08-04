@@ -11,6 +11,7 @@ import {
   Mic,
   Plus,
   FileCheck2,
+  FileText,
   Shuffle,
   UserRound,
   Package,
@@ -47,28 +48,34 @@ const navGroups = [
     ],
   },
   {
-    title: "Criação & IA",
+    title: "Criação & Copy",
     items: [
-      { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
       { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
+      { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
       { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
       { label: "Laboratório de Criativos", icon: FlaskConical, to: "/creative-lab" as const },
-      { label: "Transcrever vídeos", icon: FileCheck2, to: "/copies" as const },
     ],
   },
   {
-    title: "Edição & Ferramentas",
+    title: "Transcrição & Download",
+    items: [
+      { label: "Transcrever por Link", icon: FileText, to: "/video-transcriber" as const },
+      { label: "Transcrever arquivo", icon: FileCheck2, to: "/copies" as const },
+      { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
+    ],
+  },
+  {
+    title: "Edição & Mídia",
     items: [
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
       { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },
       { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
       { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
       { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
-      { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
     ],
   },
   {
-    title: "Estúdio & Ativos",
+    title: "Personagens & Ativos",
     items: [
       { label: "Estúdio de Personagens", icon: UserRound, to: "/characters" as const },
       { label: "Avatares", icon: UserRound, to: "/avatars" as const },

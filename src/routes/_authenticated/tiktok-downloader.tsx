@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
+  Copy,
   Download,
   Eye,
   FileAudio,
+  FileText,
   Heart,
   Loader2,
   MessageCircle,
@@ -13,19 +15,29 @@ import {
   ShieldCheck,
   Sparkles,
   Video,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   fetchTikTokVideoInfo,
   type TikTokVideoMetadata,
 } from "@/features/tiktok-downloader/server";
+import { transcribeMediaUrlServerFn } from "@/features/tiktok-downloader/transcribe-server";
 
 export const Route = createFileRoute("/_authenticated/tiktok-downloader")({
   component: TikTokDownloaderPage,
-  head: () => ({ meta: [{ title: "Baixar vídeo do TikTok — Tik Supremo" }] }),
+  head: () => ({ meta: [{ title: "Baixar e Transcrever vídeo do TikTok — Tik Supremo" }] }),
 });
 
 function formatNumber(num: number) {
@@ -41,10 +53,48 @@ function sanitizeFilename(name: string) {
 function TikTokDownloaderPage() {
   const [urlInput, setUrlInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [transcriptResult, setTranscriptResult] = useState<{
+    text: string;
+    title?: string;
+    author?: string;
+  } | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [videoData, setVideoData] = useState<TikTokVideoMetadata | null>(null);
   const [history, setHistory] = useState<TikTokVideoMetadata[]>([]);
   const [downloadingType, setDownloadingType] = useState<"video" | "audio" | null>(null);
   const navigate = useNavigate();
+
+  const handleTranscribe = async (targetUrlOverride?: string) => {
+    const targetUrl = targetUrlOverride || urlInput.trim();
+    if (!targetUrl) {
+      toast.error("Cole um link do TikTok para transcrever.");
+      return;
+    }
+
+    setTranscribing(true);
+    const toastId = toast.loading("Transcrevendo áudio do vídeo com IA (processado na nuvem)...");
+
+    try {
+      const res = await transcribeMediaUrlServerFn({ data: { url: targetUrl } });
+      if (res.success && res.transcript) {
+        const titleVal = res.videoTitle || videoData?.title;
+        const authorVal = res.authorName || videoData?.author.nickname;
+        setTranscriptResult({
+          text: res.transcript,
+          ...(titleVal ? { title: titleVal } : {}),
+          ...(authorVal ? { author: authorVal } : {}),
+        });
+        setIsModalOpen(true);
+        toast.success("Transcrição concluída com sucesso!", { id: toastId });
+      }
+    } catch (cause) {
+      const msg = cause instanceof Error ? cause.message : "Falha na transcrição do vídeo.";
+      toast.error(msg, { id: toastId });
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   const handleFetch = async () => {
     const trimmed = urlInput.trim();
@@ -287,7 +337,7 @@ function TikTokDownloaderPage() {
               {/* Actions */}
               <div className="flex flex-wrap gap-2.5 pt-2">
                 <Button
-                  disabled={downloadingType !== null}
+                  disabled={downloadingType !== null || transcribing}
                   onClick={() =>
                     void handleDownloadMedia(
                       videoData.playUrl,
@@ -304,10 +354,24 @@ function TikTokDownloaderPage() {
                   Baixar vídeo sem marca (HD)
                 </Button>
 
+                <Button
+                  variant="secondary"
+                  disabled={downloadingType !== null || transcribing}
+                  onClick={() => void handleTranscribe(urlInput)}
+                  className="bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30"
+                >
+                  {transcribing ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Wand2 className="size-4 text-emerald-400" />
+                  )}
+                  Transcrever com IA (Sem Baixar)
+                </Button>
+
                 {videoData.musicUrl && (
                   <Button
                     variant="outline"
-                    disabled={downloadingType !== null}
+                    disabled={downloadingType !== null || transcribing}
                     onClick={() =>
                       void handleDownloadMedia(
                         videoData.musicUrl,
@@ -338,6 +402,61 @@ function TikTokDownloaderPage() {
           </div>
         </section>
       )}
+
+      {/* Transcript Result Dialog */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-2xl border-emerald-500/20 bg-slate-950/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-emerald-400">
+              <FileText className="size-5" /> Transcrição do Vídeo (Sem Download)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {transcriptResult?.title
+                ? `Texto extraído de "${transcriptResult.title}"`
+                : "Transcrição extraída diretamente do áudio na nuvem pela IA."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <Textarea
+              readOnly
+              value={transcriptResult?.text || ""}
+              rows={8}
+              className="font-mono text-sm leading-relaxed border-emerald-500/20 bg-slate-900/60 focus-visible:ring-emerald-500/50"
+            />
+
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (transcriptResult?.text) {
+                    void navigator.clipboard.writeText(transcriptResult.text);
+                    toast.success("Transcrição copiada para a área de transferência!");
+                  }
+                }}
+                className="border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/10"
+              >
+                <Copy className="mr-2 size-4" /> Copiar Texto
+              </Button>
+
+              <Button
+                onClick={() => {
+                  if (transcriptResult?.text) {
+                    setIsModalOpen(false);
+                    void navigate({
+                      to: "/copy-modeler",
+                      search: { text: transcriptResult.text },
+                    });
+                  }
+                }}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+              >
+                <Wand2 className="mr-2 size-4" /> Modelar no Copy Modeler
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* History */}
       {history.length > 0 && (

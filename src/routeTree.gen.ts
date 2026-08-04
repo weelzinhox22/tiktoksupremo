@@ -32,6 +32,7 @@ import { Route as AuthenticatedScenariosRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_authenticated/tiktok-downloader'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
+import { Route as AuthenticatedVideoTranscriberRouteImport } from './routes/_authenticated/video-transcriber'
 import { Route as AuthenticatedVoiceStudioRouteImport } from './routes/_authenticated/voice-studio'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
@@ -161,6 +162,12 @@ const AuthenticatedVideoEditorRoute =
     path: '/video-editor',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedVideoTranscriberRoute =
+  AuthenticatedVideoTranscriberRouteImport.update({
+    id: '/video-transcriber',
+    path: '/video-transcriber',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedVoiceStudioRoute =
   AuthenticatedVoiceStudioRouteImport.update({
     id: '/voice-studio',
@@ -219,6 +226,7 @@ export interface FileRoutesByFullPath {
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
@@ -249,6 +257,7 @@ export interface FileRoutesByTo {
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
@@ -281,6 +290,7 @@ export interface FileRoutesById {
   '/_authenticated/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/_authenticated/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
   '/_authenticated/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
+    | '/video-transcriber'
     | '/voice-studio'
     | '/projects/$projectId'
     | '/projects/new'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
+    | '/video-transcriber'
     | '/voice-studio'
     | '/projects/$projectId'
     | '/projects/new'
@@ -374,6 +386,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tiktok-downloader'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
+    | '/_authenticated/video-transcriber'
     | '/_authenticated/voice-studio'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/new'
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVideoEditorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/video-transcriber': {
+      id: '/_authenticated/video-transcriber'
+      path: '/video-transcriber'
+      fullPath: '/video-transcriber'
+      preLoaderRoute: typeof AuthenticatedVideoTranscriberRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/voice-studio': {
       id: '/_authenticated/voice-studio'
       path: '/voice-studio'
@@ -619,6 +639,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTiktokDownloaderRoute: typeof AuthenticatedTiktokDownloaderRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
+  AuthenticatedVideoTranscriberRoute: typeof AuthenticatedVideoTranscriberRoute
   AuthenticatedVoiceStudioRoute: typeof AuthenticatedVoiceStudioRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
@@ -644,6 +665,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTiktokDownloaderRoute: AuthenticatedTiktokDownloaderRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
+  AuthenticatedVideoTranscriberRoute: AuthenticatedVideoTranscriberRoute,
   AuthenticatedVoiceStudioRoute: AuthenticatedVoiceStudioRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
