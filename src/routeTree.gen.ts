@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as TermosRouteImport } from './routes/termos'
+import { Route as AuthenticatedAiVideoGeneratorRouteImport } from './routes/_authenticated/ai-video-generator'
 import { Route as AuthenticatedAutoClipsRouteImport } from './routes/_authenticated/auto-clips'
 import { Route as AuthenticatedAvatarsRouteImport } from './routes/_authenticated/avatars'
 import { Route as AuthenticatedCharactersRouteImport } from './routes/_authenticated/characters'
@@ -31,6 +32,7 @@ import { Route as AuthenticatedScenariosRouteImport } from './routes/_authentica
 import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_authenticated/tiktok-downloader'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
+import { Route as AuthenticatedVoiceStudioRouteImport } from './routes/_authenticated/voice-studio'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects/new'
@@ -61,6 +63,12 @@ const TermosRoute = TermosRouteImport.update({
   path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAiVideoGeneratorRoute =
+  AuthenticatedAiVideoGeneratorRouteImport.update({
+    id: '/ai-video-generator',
+    path: '/ai-video-generator',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAutoClipsRoute = AuthenticatedAutoClipsRouteImport.update({
   id: '/auto-clips',
   path: '/auto-clips',
@@ -153,6 +161,12 @@ const AuthenticatedVideoEditorRoute =
     path: '/video-editor',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedVoiceStudioRoute =
+  AuthenticatedVoiceStudioRouteImport.update({
+    id: '/voice-studio',
+    path: '/voice-studio',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectsIndexRoute =
   AuthenticatedProjectsIndexRouteImport.update({
     id: '/projects/',
@@ -187,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/ai-video-generator': typeof AuthenticatedAiVideoGeneratorRoute
   '/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/characters': typeof AuthenticatedCharactersRoute
@@ -204,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -215,6 +231,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/ai-video-generator': typeof AuthenticatedAiVideoGeneratorRoute
   '/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/avatars': typeof AuthenticatedAvatarsRoute
   '/characters': typeof AuthenticatedCharactersRoute
@@ -232,6 +249,7 @@ export interface FileRoutesByTo {
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -245,6 +263,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacidade': typeof PrivacidadeRoute
   '/termos': typeof TermosRoute
+  '/_authenticated/ai-video-generator': typeof AuthenticatedAiVideoGeneratorRoute
   '/_authenticated/auto-clips': typeof AuthenticatedAutoClipsRoute
   '/_authenticated/avatars': typeof AuthenticatedAvatarsRoute
   '/_authenticated/characters': typeof AuthenticatedCharactersRoute
@@ -262,6 +281,7 @@ export interface FileRoutesById {
   '/_authenticated/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
+  '/_authenticated/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -275,6 +295,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/ai-video-generator'
     | '/auto-clips'
     | '/avatars'
     | '/characters'
@@ -292,6 +313,7 @@ export interface FileRouteTypes {
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
+    | '/voice-studio'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -303,6 +325,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/ai-video-generator'
     | '/auto-clips'
     | '/avatars'
     | '/characters'
@@ -320,6 +343,7 @@ export interface FileRouteTypes {
     | '/tiktok-downloader'
     | '/video-combiner'
     | '/video-editor'
+    | '/voice-studio'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -332,6 +356,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacidade'
     | '/termos'
+    | '/_authenticated/ai-video-generator'
     | '/_authenticated/auto-clips'
     | '/_authenticated/avatars'
     | '/_authenticated/characters'
@@ -349,6 +374,7 @@ export interface FileRouteTypes {
     | '/_authenticated/tiktok-downloader'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
+    | '/_authenticated/voice-studio'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/new'
     | '/auth/tiktok/callback'
@@ -402,6 +428,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/termos'
       preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/ai-video-generator': {
+      id: '/_authenticated/ai-video-generator'
+      path: '/ai-video-generator'
+      fullPath: '/ai-video-generator'
+      preLoaderRoute: typeof AuthenticatedAiVideoGeneratorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/auto-clips': {
       id: '/_authenticated/auto-clips'
@@ -522,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVideoEditorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/voice-studio': {
+      id: '/_authenticated/voice-studio'
+      path: '/voice-studio'
+      fullPath: '/voice-studio'
+      preLoaderRoute: typeof AuthenticatedVoiceStudioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projects/': {
       id: '/_authenticated/projects/'
       path: '/projects'
@@ -561,6 +601,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAiVideoGeneratorRoute: typeof AuthenticatedAiVideoGeneratorRoute
   AuthenticatedAutoClipsRoute: typeof AuthenticatedAutoClipsRoute
   AuthenticatedAvatarsRoute: typeof AuthenticatedAvatarsRoute
   AuthenticatedCharactersRoute: typeof AuthenticatedCharactersRoute
@@ -578,12 +619,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedTiktokDownloaderRoute: typeof AuthenticatedTiktokDownloaderRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
+  AuthenticatedVoiceStudioRoute: typeof AuthenticatedVoiceStudioRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAiVideoGeneratorRoute: AuthenticatedAiVideoGeneratorRoute,
   AuthenticatedAutoClipsRoute: AuthenticatedAutoClipsRoute,
   AuthenticatedAvatarsRoute: AuthenticatedAvatarsRoute,
   AuthenticatedCharactersRoute: AuthenticatedCharactersRoute,
@@ -601,6 +644,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedTiktokDownloaderRoute: AuthenticatedTiktokDownloaderRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
+  AuthenticatedVoiceStudioRoute: AuthenticatedVoiceStudioRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
