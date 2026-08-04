@@ -44,9 +44,9 @@ type CleanupItem = {
   removedCount?: number;
 };
 
-// Expanded sensitive metadata detection pattern covering 30+ known private fields
+// Expanded sensitive metadata detection pattern covering 50+ known private fields & container atoms
 const sensitiveMetadataPattern =
-  /(title|artist|author|comment|creation|date|year|location|gps|device|make|model|software|encoder|encoded_by|copyright|description|synopsis|language|genre|album|track|disc|publisher|show|episode|season|network|rating|url|handler|vendor|quicktime|android|recording)/i;
+  /(title|artist|author|comment|creation|date|year|location|gps|device|make|model|software|encoder|encoded_by|copyright|description|synopsis|language|genre|album|track|disc|publisher|show|episode|season|network|rating|url|handler|vendor|quicktime|android|recording|brand|major|minor|compatible|matrix|scale|rate|volume|layer|depth|aspect|megapixels|bitrate|rotation|duration|offset|vendorid|handlertype|handlerdescription)/i;
 
 const acceptedVideoExtension = /\.(mp4|mov|m4v|webm|mkv|avi|ogv)$/i;
 
@@ -68,24 +68,41 @@ function tagFriendlyName(key: string): string {
   const labels: Record<string, string> = {
     creation_time: "Data/Hora de Criação",
     date: "Data de Gravação",
-    year: "Ano",
-    make: "Marca da Câmera",
-    model: "Modelo do Aparelho",
-    software: "Software / Sistema",
-    encoder: "Software Encoder",
-    encoded_by: "Codificado por",
+    year: "Ano de Lançamento",
+    make: "Marca da Câmera / Aparelho",
+    model: "Modelo do Aparelho / Celular",
+    software: "Software / Sistema Operacional",
+    encoder: "Software Encoder / Editor",
+    encoded_by: "Codificado por (Ferramenta)",
     location: "Coordenadas GPS",
     gps: "Localização GPS",
     title: "Título do Vídeo",
-    artist: "Artista",
-    author: "Autor",
-    comment: "Comentários",
-    description: "Descrição",
-    copyright: "Direitos Autorais",
+    artist: "Artista / Proprietário",
+    author: "Autor do Vídeo",
+    comment: "Comentários Privados",
+    description: "Descrição Interna",
+    copyright: "Direitos Autorais / Copyright",
     publisher: "Editora / Publicador",
-    language: "Idioma",
-    album: "Álbum",
+    language: "Idioma da Trilha",
+    album: "Álbum / Projeto",
     genre: "Gênero",
+    MajorBrand: "Marca do Contêiner MP4",
+    MinorVersion: "Versão do Contêiner MP4",
+    CompatibleBrands: "Compatibilidade de Mídia",
+    MovieHeaderVersion: "Versão de Cabeçalho",
+    CreateDate: "Data de Criação do Arquivo",
+    ModifyDate: "Data de Modificação",
+    TrackCreateDate: "Data de Criação da Trilha",
+    TrackModifyDate: "Data de Alteração da Trilha",
+    MediaCreateDate: "Data de Mídia do Aparelho",
+    MediaModifyDate: "Data de Mídia Modificada",
+    HandlerType: "Tipo de Trilha (Vídeo/Áudio)",
+    HandlerVendorID: "ID de Fornecedor (Apple/Hardware)",
+    HandlerDescription: "Identificador de Trilha",
+    Encoder: "Software de Edição / Encoder",
+    AvgBitrate: "Taxa de Bits Média",
+    MaxBitrate: "Taxa de Bits Máxima",
+    Rotation: "Orientação da Câmera",
   };
   return labels[key] ?? key;
 }
@@ -122,6 +139,9 @@ function MetadataCleanerPage() {
   const [processing, setProcessing] = useState(false);
   const [loadingEngine, setLoadingEngine] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [deepClean, setDeepClean] = useState(true);
+  const [randomizeFilename, setRandomizeFilename] = useState(true);
+  const [audioPitchShift, setAudioPitchShift] = useState(true);
   const [expandedDetails, setExpandedDetails] = useState<Record<string, boolean>>({});
   const inputRef = useRef<HTMLInputElement>(null);
   const cancelRef = useRef(false);
@@ -227,7 +247,11 @@ function MetadataCleanerPage() {
           ),
         );
         try {
-          const output = await cleanVideoMetadata(ffmpeg, item.file, item.id);
+          const output = await cleanVideoMetadata(ffmpeg, item.file, item.id, {
+            deepClean,
+            randomizeFilename,
+            audioPitchShift,
+          });
           const inspectedAfter = await inspectMediaMetadata(output.blob);
           const rawTagsAfter = stringifyTags(inspectedAfter);
           const metadataAfter = privateMetadataKeys(inspectedAfter);
@@ -401,6 +425,60 @@ function MetadataCleanerPage() {
 
       {/* ── Upload & controls ────────────────────────────────────────────────── */}
       <section className="surface-card space-y-5 p-5 md:p-6">
+        {/* Cleaning Mode Options */}
+        <div className="grid gap-3 rounded-2xl border border-emerald-500/20 bg-secondary/30 p-4 md:grid-cols-3">
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={deepClean}
+              onChange={(e) => setDeepClean(e.target.checked)}
+              className="mt-1 size-4 rounded border-emerald-500/40 accent-emerald-600"
+            />
+            <div>
+              <span className="text-xs font-semibold text-emerald-300 block">
+                🛡️ Limpeza Profunda & Re-encode (Uniquifier)
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed block mt-0.5">
+                Altera o hash binário (MD5/SHA256) para que o TikTok trate o vídeo como 100% inédito.
+              </span>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={randomizeFilename}
+              onChange={(e) => setRandomizeFilename(e.target.checked)}
+              className="mt-1 size-4 rounded border-emerald-500/40 accent-emerald-600"
+            />
+            <div>
+              <span className="text-xs font-semibold text-emerald-300 block">
+                🎲 Renomeação Aleatória (video_849201.mp4)
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed block mt-0.5">
+                Substitui o nome original por um ID limpo para evitar rastreamento de nome.
+              </span>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={audioPitchShift}
+              onChange={(e) => setAudioPitchShift(e.target.checked)}
+              className="mt-1 size-4 rounded border-emerald-500/40 accent-emerald-600"
+            />
+            <div>
+              <span className="text-xs font-semibold text-emerald-300 block">
+                🎵 Micro-Ajuste de Frequência de Áudio (+0.6%)
+              </span>
+              <span className="text-[11px] text-muted-foreground leading-relaxed block mt-0.5">
+                Quebra o rastreamento acústico (Audio Fingerprint) do TikTok Content ID e Direitos Autorais.
+              </span>
+            </div>
+          </label>
+        </div>
+
         <button
           type="button"
           id="metadata-upload-zone"

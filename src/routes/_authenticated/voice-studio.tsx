@@ -44,9 +44,15 @@ import {
   type VoicePreset,
 } from "@/features/voice-studio/voice-engine";
 import { saveEditorProject } from "@/features/video-editor/project-persistence";
+import { z } from "zod";
+
+const voiceSearchSchema = z.object({
+  text: z.string().optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/voice-studio")({
   component: VoiceStudioPage,
+  validateSearch: (search) => voiceSearchSchema.parse(search),
   head: () => ({ meta: [{ title: "Estúdio de Voz & Clonagem IA — Tik Supremo" }] }),
 });
 
@@ -59,6 +65,7 @@ const sampleTopics = [
 
 function VoiceStudioPage() {
   const navigate = useNavigate();
+  const searchParams = Route.useSearch();
   const [tab, setTab] = useState<"presets" | "cloning">("presets");
 
   // Estados Vozes Globais
@@ -66,6 +73,13 @@ function VoiceStudioPage() {
   const [text, setText] = useState(
     "Você sabia que os primeiros três segundos do seu vídeo definem se ele vai viralizar ou flopar? Aqui está o segredo que os maiores criadores usam para reter noventa por cento do público!",
   );
+
+  useEffect(() => {
+    if (searchParams.text && searchParams.text.trim()) {
+      setText(searchParams.text.trim());
+      toast.success("Texto do roteiro preenchido no Estúdio de Voz!");
+    }
+  }, [searchParams.text]);
   const [rate, setRate] = useState(1.15); // 1.15x padrão TikTok
   const [pitch, setPitch] = useState(1.0);
   const [isPlaying, setIsPlaying] = useState(false);

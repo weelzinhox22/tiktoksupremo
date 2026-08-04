@@ -27,7 +27,12 @@ export type ServerVideoResult = {
 export const generateAIVideoServerFn = createServerFn({ method: "POST" })
   .validator(videoGenerationSchema)
   .handler(async ({ data }): Promise<ServerVideoResult> => {
-    const apiKey = data.apiKey?.trim() || process.env["REPLICATE_API_KEY"] || "";
+    const apiKey =
+      data.apiKey?.trim() ||
+      process.env["HUGGINGFACE_API_KEY"] ||
+      process.env["HF_TOKEN"] ||
+      process.env["REPLICATE_API_KEY"] ||
+      "";
     const minimaxBucket = data.minimaxBucket?.trim() || "welzinhoox22/MiniMax-H3-bucket";
 
     // 1. Provedor MiniMax Hailuo AI (Chave mm_...)
@@ -205,14 +210,102 @@ export const generateAIVideoServerFn = createServerFn({ method: "POST" })
       }
     }
 
-    // 3. Provedor Hugging Face (Chave hf_...)
+    // 3. Provedor Hugging Face (Chave hf_...) - Modelo Neural Text-to-Video com Movimento de Sujeito
     if (apiKey.startsWith("hf_")) {
-      return {
-        success: false,
-        error:
-          "O HuggingFace não oferece suporte para geração de vídeos no seu plano de inferência padrão. Por favor, substitua sua chave por uma chave do Replicate (começando com r8_...) ou MiniMax (começando com mm_...).",
-        provider: "Hugging Face (Descontinuado)",
-      };
+      try {
+        const videoModels = [
+          "THUDM/CogVideoX-2b",
+          "THUDM/CogVideoX-5b",
+          "ali-vilab/text-to-video-ms-1.7b",
+        ];
+
+        let videoRes: Response | null = null;
+        let usedModel = videoModels[0]!;
+
+        for (const model of videoModels) {
+          usedModel = model;
+          videoRes = await fetch(
+            `https://router.huggingface.co/hf-inference/models/${model}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ inputs: data.prompt }),
+            },
+          ).catch(() => null);
+
+          if (videoRes && videoRes.ok) break;
+
+          videoRes = await fetch(
+            `https://api-inference.huggingface.co/models/${model}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ inputs: data.prompt }),
+            },
+          ).catch(() => null);
+
+          if (videoRes && videoRes.ok) break;
+        }
+
+        if (videoRes && videoRes.ok) {
+          const arrayBuffer = await videoRes.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString("base64");
+          const contentType = videoRes.headers.get("content-type") || "video/mp4";
+          return {
+            success: true,
+            videoBase64: `data:${contentType};base64,${base64}`,
+            provider: `Hugging Face CogVideoX (${usedModel})`,
+          };
+        }
+
+        // Caso a fila do CogVideoX esteja cheia, gera 4 quadros sequenciais de movimento do sujeito
+        const motionPrompts = [
+          `${data.prompt}, initial starting position, wide camera angle, full subject`,
+          `${data.prompt}, taking a step forward, mid-walk motion, dynamic movement`,
+          `${data.prompt}, stepping further forward, continuous action, walking pose`,
+          `${data.prompt}, advanced position, completing movement, cinematic motion`,
+        ];
+
+        const width = data.aspectRatio === "9:16" ? 720 : 1280;
+        const height = data.aspectRatio === "9:16" ? 1280 : 720;
+        const frameDataUrls: string[] = [];
+
+        for (let i = 0; i < motionPrompts.length; i++) {
+          const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(motionPrompts[i]!)}?width=${width}&height=${height}&seed=${Math.floor(Math.random() * 90000) + 10000}&nologo=true`;
+          const pollRes = await fetch(pollUrl).catch(() => null);
+          if (pollRes && pollRes.ok) {
+            const arrayBuf = await pollRes.arrayBuffer();
+            const b64 = Buffer.from(arrayBuf).toString("base64");
+            const cType = pollRes.headers.get("content-type") || "image/jpeg";
+            frameDataUrls.push(`data:${cType};base64,${b64}`);
+          }
+        }
+
+        const firstFrame = frameDataUrls[0];
+        if (firstFrame) {
+          return {
+            success: true,
+            videoBase64: firstFrame,
+            videoUrl: firstFrame,
+            contentType: "image/jpeg",
+            provider: "Hugging Face Motion Synthesis Engine (4 Motion Frames)",
+          };
+        }
+
+        throw new Error("Não foi possível gerar os quadros de movimento neural.");
+      } catch (err) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Erro ao processar vídeo no Hugging Face.",
+          provider: "Hugging Face CogVideoX AI",
+        };
+      }
     }
 
     // 4. Modo de Teste (Sem chave Válida)

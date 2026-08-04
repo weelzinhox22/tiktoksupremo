@@ -368,10 +368,10 @@ export class GeminiProvider implements AIProvider {
   }
 
   async transcribeMedia(media: Blob, filename: string): Promise<string> {
-    const maxInlineBytes = 20 * 1024 * 1024; // 20 MB
+    const maxInlineBytes = 50 * 1024 * 1024; // 50 MB
     if (media.size > maxInlineBytes) {
       throw new AIProviderError(
-        "O vídeo excede 20 MB para transcrição direta. Envie um vídeo menor.",
+        "O vídeo excede 50 MB para transcrição direta. Envie um vídeo menor ou insira a URL do vídeo.",
         "provider",
       );
     }

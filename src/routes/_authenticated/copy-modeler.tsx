@@ -198,10 +198,51 @@ function CopyModelerPage() {
 
   const handleSendToCreativeLab = () => {
     if (!currentVersion) return;
+
+    const copyTitle = currentVersion.name || newProduct || originalProduct || "Copy Modelada";
+    const prodName = newProduct || originalProduct || "Produto";
+
+    const hookText =
+      currentVersion.segments?.find((s) => s.type === "hook")?.text ||
+      currentVersion.content.slice(0, 100);
+    const bodyText =
+      currentVersion.segments
+        ?.filter((s) => s.type !== "hook" && s.type !== "cta")
+        .map((s) => s.text)
+        .join(" ") || "";
+    const ctaText = currentVersion.segments?.find((s) => s.type === "cta")?.text || "";
+
+    const savedItem = {
+      id: `copy-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`,
+      title: copyTitle,
+      productName: prodName,
+      hook: hookText,
+      body: bodyText,
+      cta: ctaText,
+      fullScript: currentVersion.content,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const existing: Array<typeof savedItem> = JSON.parse(
+        localStorage.getItem("tik_supremo_modeled_copies") || "[]",
+      );
+      const updated = [savedItem, ...existing.filter((item) => item.fullScript !== savedItem.fullScript)];
+      localStorage.setItem("tik_supremo_modeled_copies", JSON.stringify(updated));
+    } catch {
+      // Fallback
+    }
+
     navigate({
       to: "/creative-lab",
+      search: {
+        scriptText: currentVersion.content,
+        hookText,
+        angleName: copyTitle,
+        productName: prodName,
+      },
     });
-    toast.success("Variação enviada ao Laboratório de Criativos!");
+    toast.success("Copy salva e enviada ao Laboratório de Criativos!");
   };
 
   return (

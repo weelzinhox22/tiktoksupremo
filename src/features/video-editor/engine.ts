@@ -209,6 +209,10 @@ function privacyMetadataArgs(enabled: boolean | undefined) {
     "encoded_by",
     "software",
     "handler_name",
+    "vendor_id",
+    "major_brand",
+    "minor_version",
+    "compatible_brands",
     // ── Copyright & publishing ────────────────────────────────────────────────
     "copyright",
     "publisher",
@@ -258,6 +262,25 @@ function privacyMetadataArgs(enabled: boolean | undefined) {
         // Remove all chapter metadata.
         "-map_chapters",
         "-1",
+        // Zero-out creation dates on stream level
+        "-metadata:s:v",
+        "creation_time=1970-01-01T00:00:00Z",
+        "-metadata:s:a",
+        "creation_time=1970-01-01T00:00:00Z",
+        "-metadata",
+        "creation_time=1970-01-01T00:00:00Z",
+        "-metadata:s:v",
+        "handler_name=",
+        "-metadata:s:a",
+        "handler_name=",
+        "-metadata:s:v",
+        "vendor_id=",
+        "-metadata:s:a",
+        "vendor_id=",
+        "-metadata:s:v",
+        "encoder=",
+        "-metadata:s:a",
+        "encoder=",
         // Explicitly zero-out every known sensitive field so container muxers
         // cannot silently preserve them even after -map_metadata -1.
         ...clearFields.flatMap((key) => ["-metadata", `${key}=`]),
@@ -435,18 +458,49 @@ async function deleteIfPresent(ffmpeg: FFmpegType, path: string) {
   }
 }
 
-export async function cleanVideoMetadata(ffmpeg: FFmpegType, file: File, id: string) {
+export async function cleanVideoMetadata(
+  ffmpeg: FFmpegType,
+  file: File,
+  id: string,
+  options?: { deepClean?: boolean; randomizeFilename?: boolean; audioPitchShift?: boolean },
+) {
   const { fetchFile } = await import("@ffmpeg/util");
   const extension = fileExtension(file.name);
   const safeId = id.replace(/[^a-z0-9-]/gi, "").slice(0, 48) || crypto.randomUUID();
   const input = `metadata-input-${safeId}.${extension}`;
   const output = `metadata-output-${safeId}.${extension}`;
+
   const originalBaseName = file.name.replace(/\.[^.]+$/, "") || "video";
-  const filename = `${originalBaseName}-sem-metadados.${extension}`;
+  const cleanRandomName = `video_${Math.floor(100000 + Math.random() * 900000)}.${extension}`;
+  const filename = options?.randomizeFilename
+    ? cleanRandomName
+    : `${originalBaseName}-sem-metadados.${extension}`;
 
   await deleteIfPresent(ffmpeg, input);
   await deleteIfPresent(ffmpeg, output);
   await ffmpeg.writeFile(input, await fetchFile(file));
+
+  const isDeep = Boolean(options?.deepClean);
+  const isPitchShift = Boolean(options?.audioPitchShift);
+
+  let codecArgs: string[];
+  if (isDeep || isPitchShift) {
+    codecArgs = [
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-crf",
+      "23",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "128k",
+      ...(isPitchShift ? ["-af", "asetrate=48288,aresample=48000"] : []),
+    ];
+  } else {
+    codecArgs = ["-c", "copy"];
+  }
 
   try {
     const result = await ffmpeg.exec([
@@ -459,9 +513,10 @@ export async function cleanVideoMetadata(ffmpeg: FFmpegType, file: File, id: str
       "-map",
       "0:s?",
       "-dn",
-      "-c",
-      "copy",
+      ...codecArgs,
       "-fflags",
+      "+bitexact",
+      "-flags",
       "+bitexact",
       ...privacyMetadataArgs(true),
       ...(extension === "mp4" || extension === "mov" || extension === "m4v"
@@ -511,7 +566,7 @@ export async function normalizeSegment(
   const scaleFilter = `scale=${options.width}:${height}:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
   const padFilter = `pad=${options.width}:${height}:x='trunc((ow-iw)/2)':y='trunc((oh-ih)/2)':color=black`;
   const videoFilters = [
-    `trim=duration=${selectedDuration}`,
+    `trim=end=${selectedDuration}`,
     `setpts=(PTS-STARTPTS)/${segment.playbackRate}`,
     scaleFilter,
     padFilter,
@@ -638,11 +693,11 @@ export async function normalizeSegment(
     ]);
   } else {
     const audioFilters = [
-      `atrim=duration=${selectedDuration}`,
+      `atrim=end=${selectedDuration}`,
       "asetpts=PTS-STARTPTS",
       `atempo=${segment.playbackRate}`,
       `volume=${segment.volume / 100}`,
-      `atrim=duration=${playedDuration}`,
+      `atrim=end=${playedDuration}`,
     ];
     if (segment.fadeIn > 0) audioFilters.push(`afade=t=in:st=0:d=${segment.fadeIn}`);
     if (segment.fadeOut > 0)
@@ -972,7 +1027,7 @@ export async function renderCombination(
           `afade=t=out:st=${Math.max(0, localDuration - fadeDuration)}:d=${fadeDuration}`,
         );
       }
-      layerFilters.push(`apad=pad_dur=${assembledDuration}`, `atrim=duration=${assembledDuration}`);
+      layerFilters.push(`apad=pad_dur=${assembledDuration}`, `atrim=end=${assembledDuration}`);
       filters.push(`[${inputIndex}:a]${layerFilters.join(",")}[${layerLabel}]`);
       mixedAudioLabels.push(layerLabel);
     }
@@ -1150,4 +1205,140 @@ export function disposeVideoEngine() {
   if (ffmpegInstance) ffmpegInstance.terminate();
   ffmpegInstance = null;
   loaded = false;
+}
+
+export async function convertImageToMp4Video(
+  ffmpeg: FFmpegType,
+  imageFile: File | Blob,
+  durationSeconds: number = 5,
+  aspectRatio: "9:16" | "16:9" | "1:1" = "9:16",
+) {
+  const { fetchFile } = await import("@ffmpeg/util");
+  const safeId = crypto.randomUUID().slice(0, 8);
+  const input = `image-input-${safeId}.jpg`;
+  const output = `video-output-${safeId}.mp4`;
+
+  const width = aspectRatio === "9:16" ? 720 : aspectRatio === "16:9" ? 1280 : 720;
+  const height = aspectRatio === "9:16" ? 1280 : aspectRatio === "16:9" ? 720 : 720;
+  const totalFrames = Math.max(30, durationSeconds * 30);
+
+  await deleteIfPresent(ffmpeg, input);
+  await deleteIfPresent(ffmpeg, output);
+  await ffmpeg.writeFile(input, await fetchFile(imageFile));
+
+  try {
+    // Filtro Ken Burns de movimento fluido de câmera (Zoom In gradual 3D)
+    const vfFilter = `scale=${width * 2}:${height * 2},zoompan=z='min(zoom+0.0012,1.20)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=${width}x${height},format=yuv420p`;
+
+    const args = [
+      "-loop",
+      "1",
+      "-i",
+      input,
+      "-vf",
+      vfFilter,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-t",
+      String(durationSeconds),
+      "-r",
+      "30",
+      "-movflags",
+      "+faststart",
+      output,
+    ];
+
+    const result = await ffmpeg.exec(args);
+    if (result !== 0) {
+      throw new Error("Não foi possível converter a imagem em vídeo MP4.");
+    }
+
+    const data = await ffmpeg.readFile(output);
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+    const videoBlob = new Blob([bytes.slice().buffer], { type: "video/mp4" });
+    return {
+      blob: videoBlob,
+      url: URL.createObjectURL(videoBlob),
+      filename: `video_ai_${safeId}.mp4`,
+    };
+  } finally {
+    await deleteIfPresent(ffmpeg, input);
+    await deleteIfPresent(ffmpeg, output);
+  }
+}
+
+export async function convertMultiImageToMp4Video(
+  ffmpeg: FFmpegType,
+  imageFiles: (File | Blob)[],
+  durationSeconds: number = 5,
+  aspectRatio: "9:16" | "16:9" | "1:1" = "9:16",
+) {
+  const { fetchFile } = await import("@ffmpeg/util");
+  const safeId = crypto.randomUUID().slice(0, 8);
+  const width = aspectRatio === "9:16" ? 720 : aspectRatio === "16:9" ? 1280 : 720;
+  const height = aspectRatio === "9:16" ? 1280 : aspectRatio === "16:9" ? 720 : 720;
+  const output = `video-motion-${safeId}.mp4`;
+
+  const inputPaths: string[] = [];
+  for (let i = 0; i < imageFiles.length; i++) {
+    const path = `frame-${safeId}-${i}.jpg`;
+    await deleteIfPresent(ffmpeg, path);
+    await ffmpeg.writeFile(path, await fetchFile(imageFiles[i]!));
+    inputPaths.push(path);
+  }
+  await deleteIfPresent(ffmpeg, output);
+
+  try {
+    const frameDuration = (durationSeconds / imageFiles.length).toFixed(2);
+    const filterComplex =
+      inputPaths
+        .map(
+          (_, i) =>
+            `[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setpts=PTS-STARTPTS[v${i}];`,
+        )
+        .join("") +
+      inputPaths.map((_, i) => `[v${i}]`).join("") +
+      `concat=n=${inputPaths.length}:v=1:a=0[outv]`;
+
+    const args: string[] = [];
+    for (const path of inputPaths) {
+      args.push("-loop", "1", "-t", frameDuration, "-i", path);
+    }
+    args.push(
+      "-filter_complex",
+      filterComplex,
+      "-map",
+      "[outv]",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "ultrafast",
+      "-pix_fmt",
+      "yuv420p",
+      "-r",
+      "30",
+      "-movflags",
+      "+faststart",
+      output,
+    );
+
+    const result = await ffmpeg.exec(args);
+    if (result !== 0) {
+      throw new Error("Não foi possível compilar os quadros de movimento.");
+    }
+
+    const data = await ffmpeg.readFile(output);
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+    const videoBlob = new Blob([bytes.slice().buffer], { type: "video/mp4" });
+    return {
+      blob: videoBlob,
+      url: URL.createObjectURL(videoBlob),
+      filename: `video_motion_${safeId}.mp4`,
+    };
+  } finally {
+    for (const path of inputPaths) await deleteIfPresent(ffmpeg, path);
+    await deleteIfPresent(ffmpeg, output);
+  }
 }

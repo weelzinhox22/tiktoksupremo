@@ -5,6 +5,7 @@ import {
   Clapperboard,
   FolderKanban,
   Film,
+  Flame,
   Sparkles,
   LogOut,
   Menu,
@@ -43,6 +44,7 @@ const navGroups = [
     items: [
       { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
       { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
+      { label: "Auditoria Viral (Score IA)", icon: Flame, to: "/viral-audit" as const },
       { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
       { label: "Radar viral", icon: Radar, to: "/radar" as const },
     ],
@@ -67,6 +69,7 @@ const navGroups = [
   {
     title: "Edição & Mídia",
     items: [
+      { label: "Gerador de Vídeos IA", icon: Film, to: "/ai-video-generator" as const },
       { label: "Remover marca d'água", icon: Scissors, to: "/watermark-remover" as const },
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
       { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },

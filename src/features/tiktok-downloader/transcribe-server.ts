@@ -105,8 +105,8 @@ export const transcribeLocalFileServerFn = createServerFn({ method: "POST" })
     const { provider } = getAIProvider();
 
     const buffer = Buffer.from(data.base64, "base64");
-    if (buffer.length > 30 * 1024 * 1024) {
-      throw new Error("O vídeo/áudio excede 30 MB. Selecione um arquivo menor.");
+    if (buffer.length > 50 * 1024 * 1024) {
+      throw new Error("O vídeo/áudio excede 50 MB. Selecione um arquivo menor ou transcreva via link/URL.");
     }
 
     const blob = new Blob([buffer], { type: data.mimeType || "audio/mp3" });

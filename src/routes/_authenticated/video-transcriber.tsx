@@ -31,6 +31,19 @@ export const Route = createFileRoute("/_authenticated/video-transcriber")({
 
 type Mode = "link" | "upload";
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1] || "";
+      resolve(base64);
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 function VideoTranscriberPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Mode>("link");
@@ -102,8 +115,8 @@ function VideoTranscriberPage() {
       return;
     }
 
-    if (selectedFile.size > 30 * 1024 * 1024) {
-      toast.error("O arquivo excede o limite de 30MB para transcrição direta com IA.");
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      toast.error("O arquivo excede o limite de 50MB para transcrição direta com IA.");
       return;
     }
 
@@ -112,8 +125,7 @@ function VideoTranscriberPage() {
     const toastId = toast.loading(`Lendo "${selectedFile.name}" e enviando para transcrição com IA...`);
 
     try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const base64 = await fileToBase64(selectedFile);
 
       const res = await transcribeLocalFileServerFn({
         data: {

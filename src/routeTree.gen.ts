@@ -33,6 +33,7 @@ import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_aut
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
 import { Route as AuthenticatedVideoTranscriberRouteImport } from './routes/_authenticated/video-transcriber'
+import { Route as AuthenticatedViralAuditRouteImport } from './routes/_authenticated/viral-audit'
 import { Route as AuthenticatedVoiceStudioRouteImport } from './routes/_authenticated/voice-studio'
 import { Route as AuthenticatedWatermarkRemoverRouteImport } from './routes/_authenticated/watermark-remover'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
@@ -169,6 +170,11 @@ const AuthenticatedVideoTranscriberRoute =
     path: '/video-transcriber',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedViralAuditRoute = AuthenticatedViralAuditRouteImport.update({
+  id: '/viral-audit',
+  path: '/viral-audit',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVoiceStudioRoute =
   AuthenticatedVoiceStudioRouteImport.update({
     id: '/voice-studio',
@@ -234,6 +240,7 @@ export interface FileRoutesByFullPath {
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
+  '/viral-audit': typeof AuthenticatedViralAuditRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -266,6 +273,7 @@ export interface FileRoutesByTo {
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
+  '/viral-audit': typeof AuthenticatedViralAuditRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -300,6 +308,7 @@ export interface FileRoutesById {
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
   '/_authenticated/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
+  '/_authenticated/viral-audit': typeof AuthenticatedViralAuditRoute
   '/_authenticated/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/_authenticated/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
@@ -334,6 +343,7 @@ export interface FileRouteTypes {
     | '/video-combiner'
     | '/video-editor'
     | '/video-transcriber'
+    | '/viral-audit'
     | '/voice-studio'
     | '/watermark-remover'
     | '/projects/$projectId'
@@ -366,6 +376,7 @@ export interface FileRouteTypes {
     | '/video-combiner'
     | '/video-editor'
     | '/video-transcriber'
+    | '/viral-audit'
     | '/voice-studio'
     | '/watermark-remover'
     | '/projects/$projectId'
@@ -399,6 +410,7 @@ export interface FileRouteTypes {
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
     | '/_authenticated/video-transcriber'
+    | '/_authenticated/viral-audit'
     | '/_authenticated/voice-studio'
     | '/_authenticated/watermark-remover'
     | '/_authenticated/projects/$projectId'
@@ -588,6 +600,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedVideoTranscriberRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/viral-audit': {
+      id: '/_authenticated/viral-audit'
+      path: '/viral-audit'
+      fullPath: '/viral-audit'
+      preLoaderRoute: typeof AuthenticatedViralAuditRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/voice-studio': {
       id: '/_authenticated/voice-studio'
       path: '/voice-studio'
@@ -660,6 +679,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
   AuthenticatedVideoTranscriberRoute: typeof AuthenticatedVideoTranscriberRoute
+  AuthenticatedViralAuditRoute: typeof AuthenticatedViralAuditRoute
   AuthenticatedVoiceStudioRoute: typeof AuthenticatedVoiceStudioRoute
   AuthenticatedWatermarkRemoverRoute: typeof AuthenticatedWatermarkRemoverRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
@@ -687,6 +707,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
   AuthenticatedVideoTranscriberRoute: AuthenticatedVideoTranscriberRoute,
+  AuthenticatedViralAuditRoute: AuthenticatedViralAuditRoute,
   AuthenticatedVoiceStudioRoute: AuthenticatedVoiceStudioRoute,
   AuthenticatedWatermarkRemoverRoute: AuthenticatedWatermarkRemoverRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,

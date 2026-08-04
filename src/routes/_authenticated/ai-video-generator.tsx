@@ -42,9 +42,17 @@ import {
 } from "@/features/ai-video/video-generator-service";
 import { saveEditorProject } from "@/features/video-editor/project-persistence";
 
+import { z } from "zod";
+
+const aiVideoSearchSchema = z.object({
+  prompt: z.string().optional(),
+  productName: z.string().optional(),
+});
+
 export const Route = createFileRoute("/_authenticated/ai-video-generator")({
   component: AIVideoGeneratorPage,
-  head: () => ({ meta: [{ title: "Gerador de Vídeos por IA — Tik Supremo" }] }),
+  validateSearch: (search) => aiVideoSearchSchema.parse(search),
+  head: () => ({ meta: [{ title: "Gerador de Vídeos por IA (Veo / MiniMax) — Tik Supremo" }] }),
 });
 
 const examplePrompts = [
@@ -56,13 +64,7 @@ const examplePrompts = [
 
 function AIVideoGeneratorPage() {
   const navigate = useNavigate();
-  const [isUnlocked, setIsUnlocked] = useState(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("ai_video_unlocked") === "true";
-    }
-    return false;
-  });
-  const [passwordInput, setPasswordInput] = useState("");
+  const searchParams = Route.useSearch();
 
   const [mode, setMode] = useState<"text-to-video" | "image-to-video">("text-to-video");
   const [prompt, setPrompt] = useState(examplePrompts[0]!);
@@ -80,16 +82,12 @@ function AIVideoGeneratorPage() {
   const [history, setHistory] = useState<GeneratedVideoResult[]>([]);
   const [currentVideo, setCurrentVideo] = useState<GeneratedVideoResult | null>(null);
 
-  const handleUnlockSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (passwordInput.trim() === "S@ntos1805999") {
-      sessionStorage.setItem("ai_video_unlocked", "true");
-      setIsUnlocked(true);
-      toast.success("Acesso liberado com sucesso!");
-    } else {
-      toast.error("Senha incorreta. Acesso negado.");
+  useEffect(() => {
+    if (searchParams.prompt && searchParams.prompt.trim()) {
+      setPrompt(searchParams.prompt.trim());
+      toast.success("Prompt do vídeo preenchido automaticamente com a sua copy!");
     }
-  };
+  }, [searchParams.prompt]);
 
   useEffect(() => {
     return () => {
@@ -97,44 +95,6 @@ function AIVideoGeneratorPage() {
       history.forEach((v) => URL.revokeObjectURL(v.url));
     };
   }, [history, imagePreview]);
-
-  if (!isUnlocked) {
-    return (
-      <div className="-mx-4 -my-7 flex min-h-[calc(100vh-4rem)] items-center justify-center bg-[#07080c] px-4 py-12 text-slate-100 md:-mx-8 md:-my-10">
-        <div className="w-full max-w-md space-y-6 rounded-3xl border border-white/10 bg-[#0c0e14]/90 p-8 shadow-2xl backdrop-blur-xl">
-          <div className="flex flex-col items-center text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400 ring-1 ring-rose-500/20">
-              <Lock className="size-7" />
-            </div>
-            <h2 className="mt-4 text-xl font-bold tracking-tight text-white">Acesso Protegido por Senha</h2>
-            <p className="mt-1.5 text-xs leading-5 text-slate-400">
-              Esta área de geração de vídeos é restrita. Digite a senha master para desbloquear o acesso.
-            </p>
-          </div>
-
-          <form onSubmit={handleUnlockSubmit} className="space-y-4">
-            <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-300">Senha Master de Acesso</label>
-              <input
-                type="password"
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="Digite a senha master..."
-                className="w-full rounded-xl border border-white/10 bg-[#07080c] p-3 text-sm text-white placeholder:text-slate-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-                autoFocus
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 font-semibold text-white shadow-lg hover:from-violet-500 hover:to-indigo-500"
-            >
-              <Lock className="mr-2 size-4" /> Desbloquear Acesso
-            </Button>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -196,9 +156,32 @@ function AIVideoGeneratorPage() {
         (percent, label) => setProgress({ percent, label }),
       );
 
-      setCurrentVideo(result);
-      setHistory((prev) => [result, ...prev]);
-      toast.success("Vídeo gerado com sucesso pela IA!");
+      let finalResult = result;
+      if (
+        result.url.startsWith("data:image/") ||
+        result.file.type.startsWith("image/") ||
+        result.file.name.endsWith(".jpg")
+      ) {
+        setProgress({ percent: 85, label: "Sintetizando vídeo MP4 reproduzível de 5 segundos..." });
+        try {
+          const { loadVideoEngine, convertImageToMp4Video } = await import("@/features/video-editor/engine");
+          const ffmpeg = await loadVideoEngine();
+          const converted = await convertImageToMp4Video(ffmpeg, result.file, duration, aspectRatio);
+          const convertedFile = new File([converted.blob], converted.filename, { type: "video/mp4" });
+          finalResult = {
+            ...result,
+            url: converted.url,
+            file: convertedFile,
+            provider: `${result.provider} → Vídeo MP4 (5s HD)`,
+          };
+        } catch {
+          // fallback caso o ffmpeg não inicialize
+        }
+      }
+
+      setCurrentVideo(finalResult);
+      setHistory((prev) => [finalResult, ...prev]);
+      toast.success("Vídeo MP4 gerado com sucesso pela IA!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Não foi possível gerar o vídeo.";
       toast.error(msg);
@@ -550,7 +533,11 @@ function AIVideoGeneratorPage() {
                 ) : currentVideo ? (
                   <div className="space-y-4">
                     <div className="relative mx-auto aspect-[9/16] max-h-[500px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
-                      <video src={currentVideo.url} controls autoPlay loop className="h-full w-full object-contain" />
+                      {currentVideo.url.startsWith("data:image/") || currentVideo.file.type.startsWith("image/") ? (
+                        <img src={currentVideo.url} alt={currentVideo.prompt} className="h-full w-full object-contain" />
+                      ) : (
+                        <video src={currentVideo.url} controls autoPlay loop className="h-full w-full object-contain" />
+                      )}
                     </div>
 
                     <div className="space-y-2">

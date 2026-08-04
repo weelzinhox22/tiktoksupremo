@@ -1772,6 +1772,7 @@ function SyncedPreviewVideo({
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    video.muted = muted;
     video.playbackRate = segment.playbackRate;
     video.volume = clamp((segment.volume / 100) * Math.min(entryProgress, exitProgress), 0, 1);
     if (Math.abs(video.currentTime - sourceTime) > (playing ? 0.22 : 0.035)) {
@@ -1782,6 +1783,7 @@ function SyncedPreviewVideo({
   }, [
     entryProgress,
     exitProgress,
+    muted,
     playing,
     segment.duration,
     segment.playbackRate,
