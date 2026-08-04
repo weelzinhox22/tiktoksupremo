@@ -425,6 +425,14 @@ export async function loadVideoEngine(
       } catch (err) {
         console.warn("Tentativa de carregar motor FFmpeg falhou:", err);
         lastError = err;
+        if (ffmpegInstance) {
+          try {
+            ffmpegInstance.terminate();
+          } catch {
+            // Ignorar erros na limpeza
+          }
+          ffmpegInstance = null;
+        }
       }
     }
 
