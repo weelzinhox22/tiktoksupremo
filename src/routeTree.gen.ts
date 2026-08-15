@@ -21,11 +21,13 @@ import { Route as AuthenticatedCharactersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated/copies'
 import { Route as AuthenticatedCopyModelerRouteImport } from './routes/_authenticated/copy-modeler'
 import { Route as AuthenticatedCreativeLabRouteImport } from './routes/_authenticated/creative-lab'
+import { Route as AuthenticatedDailyStudioRouteImport } from './routes/_authenticated/daily-studio'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedHookStudioRouteImport } from './routes/_authenticated/hook-studio'
 import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
+import { Route as AuthenticatedProductionAgentRouteImport } from './routes/_authenticated/production-agent'
 import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticated/products'
 import { Route as AuthenticatedRadarRouteImport } from './routes/_authenticated/radar'
 import { Route as AuthenticatedScenariosRouteImport } from './routes/_authenticated/scenarios'
@@ -36,6 +38,7 @@ import { Route as AuthenticatedVideoTranscriberRouteImport } from './routes/_aut
 import { Route as AuthenticatedViralAuditRouteImport } from './routes/_authenticated/viral-audit'
 import { Route as AuthenticatedVoiceStudioRouteImport } from './routes/_authenticated/voice-studio'
 import { Route as AuthenticatedWatermarkRemoverRouteImport } from './routes/_authenticated/watermark-remover'
+import { Route as AuthenticatedAdminVideoProvidersRouteImport } from './routes/_authenticated/admin/video-providers'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects/index'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects/$projectId'
 import { Route as AuthenticatedProjectsNewRouteImport } from './routes/_authenticated/projects/new'
@@ -104,6 +107,12 @@ const AuthenticatedCreativeLabRoute =
     path: '/creative-lab',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDailyStudioRoute =
+  AuthenticatedDailyStudioRouteImport.update({
+    id: '/daily-studio',
+    path: '/daily-studio',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -129,6 +138,12 @@ const AuthenticatedPerformanceRoute =
   AuthenticatedPerformanceRouteImport.update({
     id: '/performance',
     path: '/performance',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProductionAgentRoute =
+  AuthenticatedProductionAgentRouteImport.update({
+    id: '/production-agent',
+    path: '/production-agent',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProductsRoute = AuthenticatedProductsRouteImport.update({
@@ -187,6 +202,12 @@ const AuthenticatedWatermarkRemoverRoute =
     path: '/watermark-remover',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminVideoProvidersRoute =
+  AuthenticatedAdminVideoProvidersRouteImport.update({
+    id: '/admin/video-providers',
+    path: '/admin/video-providers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectsIndexRoute =
   AuthenticatedProjectsIndexRouteImport.update({
     id: '/projects/',
@@ -228,11 +249,13 @@ export interface FileRoutesByFullPath {
   '/copies': typeof AuthenticatedCopiesRoute
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/production-agent': typeof AuthenticatedProductionAgentRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
   '/scenarios': typeof AuthenticatedScenariosRoute
@@ -243,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/viral-audit': typeof AuthenticatedViralAuditRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
+  '/admin/video-providers': typeof AuthenticatedAdminVideoProvidersRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -261,11 +285,13 @@ export interface FileRoutesByTo {
   '/copies': typeof AuthenticatedCopiesRoute
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
+  '/production-agent': typeof AuthenticatedProductionAgentRoute
   '/products': typeof AuthenticatedProductsRoute
   '/radar': typeof AuthenticatedRadarRoute
   '/scenarios': typeof AuthenticatedScenariosRoute
@@ -276,6 +302,7 @@ export interface FileRoutesByTo {
   '/viral-audit': typeof AuthenticatedViralAuditRoute
   '/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
+  '/admin/video-providers': typeof AuthenticatedAdminVideoProvidersRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -296,11 +323,13 @@ export interface FileRoutesById {
   '/_authenticated/copies': typeof AuthenticatedCopiesRoute
   '/_authenticated/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/_authenticated/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/_authenticated/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/hook-studio': typeof AuthenticatedHookStudioRoute
   '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
+  '/_authenticated/production-agent': typeof AuthenticatedProductionAgentRoute
   '/_authenticated/products': typeof AuthenticatedProductsRoute
   '/_authenticated/radar': typeof AuthenticatedRadarRoute
   '/_authenticated/scenarios': typeof AuthenticatedScenariosRoute
@@ -311,6 +340,7 @@ export interface FileRoutesById {
   '/_authenticated/viral-audit': typeof AuthenticatedViralAuditRoute
   '/_authenticated/voice-studio': typeof AuthenticatedVoiceStudioRoute
   '/_authenticated/watermark-remover': typeof AuthenticatedWatermarkRemoverRoute
+  '/_authenticated/admin/video-providers': typeof AuthenticatedAdminVideoProvidersRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/projects/new': typeof AuthenticatedProjectsNewRoute
   '/auth/tiktok/callback': typeof AuthTiktokCallbackRoute
@@ -331,11 +361,13 @@ export interface FileRouteTypes {
     | '/copies'
     | '/copy-modeler'
     | '/creative-lab'
+    | '/daily-studio'
     | '/dashboard'
     | '/hook-studio'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
+    | '/production-agent'
     | '/products'
     | '/radar'
     | '/scenarios'
@@ -346,6 +378,7 @@ export interface FileRouteTypes {
     | '/viral-audit'
     | '/voice-studio'
     | '/watermark-remover'
+    | '/admin/video-providers'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -364,11 +397,13 @@ export interface FileRouteTypes {
     | '/copies'
     | '/copy-modeler'
     | '/creative-lab'
+    | '/daily-studio'
     | '/dashboard'
     | '/hook-studio'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
+    | '/production-agent'
     | '/products'
     | '/radar'
     | '/scenarios'
@@ -379,6 +414,7 @@ export interface FileRouteTypes {
     | '/viral-audit'
     | '/voice-studio'
     | '/watermark-remover'
+    | '/admin/video-providers'
     | '/projects/$projectId'
     | '/projects/new'
     | '/auth/tiktok/callback'
@@ -398,11 +434,13 @@ export interface FileRouteTypes {
     | '/_authenticated/copies'
     | '/_authenticated/copy-modeler'
     | '/_authenticated/creative-lab'
+    | '/_authenticated/daily-studio'
     | '/_authenticated/dashboard'
     | '/_authenticated/hook-studio'
     | '/_authenticated/metadata-cleaner'
     | '/_authenticated/movements'
     | '/_authenticated/performance'
+    | '/_authenticated/production-agent'
     | '/_authenticated/products'
     | '/_authenticated/radar'
     | '/_authenticated/scenarios'
@@ -413,6 +451,7 @@ export interface FileRouteTypes {
     | '/_authenticated/viral-audit'
     | '/_authenticated/voice-studio'
     | '/_authenticated/watermark-remover'
+    | '/_authenticated/admin/video-providers'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/projects/new'
     | '/auth/tiktok/callback'
@@ -516,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreativeLabRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/daily-studio': {
+      id: '/_authenticated/daily-studio'
+      path: '/daily-studio'
+      fullPath: '/daily-studio'
+      preLoaderRoute: typeof AuthenticatedDailyStudioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -549,6 +595,13 @@ declare module '@tanstack/react-router' {
       path: '/performance'
       fullPath: '/performance'
       preLoaderRoute: typeof AuthenticatedPerformanceRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/production-agent': {
+      id: '/_authenticated/production-agent'
+      path: '/production-agent'
+      fullPath: '/production-agent'
+      preLoaderRoute: typeof AuthenticatedProductionAgentRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/products': {
@@ -621,6 +674,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWatermarkRemoverRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/video-providers': {
+      id: '/_authenticated/admin/video-providers'
+      path: '/admin/video-providers'
+      fullPath: '/admin/video-providers'
+      preLoaderRoute: typeof AuthenticatedAdminVideoProvidersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projects/': {
       id: '/_authenticated/projects/'
       path: '/projects'
@@ -667,11 +727,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCopiesRoute: typeof AuthenticatedCopiesRoute
   AuthenticatedCopyModelerRoute: typeof AuthenticatedCopyModelerRoute
   AuthenticatedCreativeLabRoute: typeof AuthenticatedCreativeLabRoute
+  AuthenticatedDailyStudioRoute: typeof AuthenticatedDailyStudioRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHookStudioRoute: typeof AuthenticatedHookStudioRoute
   AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
+  AuthenticatedProductionAgentRoute: typeof AuthenticatedProductionAgentRoute
   AuthenticatedProductsRoute: typeof AuthenticatedProductsRoute
   AuthenticatedRadarRoute: typeof AuthenticatedRadarRoute
   AuthenticatedScenariosRoute: typeof AuthenticatedScenariosRoute
@@ -682,6 +744,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedViralAuditRoute: typeof AuthenticatedViralAuditRoute
   AuthenticatedVoiceStudioRoute: typeof AuthenticatedVoiceStudioRoute
   AuthenticatedWatermarkRemoverRoute: typeof AuthenticatedWatermarkRemoverRoute
+  AuthenticatedAdminVideoProvidersRoute: typeof AuthenticatedAdminVideoProvidersRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedProjectsNewRoute: typeof AuthenticatedProjectsNewRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
@@ -695,11 +758,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCopiesRoute: AuthenticatedCopiesRoute,
   AuthenticatedCopyModelerRoute: AuthenticatedCopyModelerRoute,
   AuthenticatedCreativeLabRoute: AuthenticatedCreativeLabRoute,
+  AuthenticatedDailyStudioRoute: AuthenticatedDailyStudioRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHookStudioRoute: AuthenticatedHookStudioRoute,
   AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,
+  AuthenticatedProductionAgentRoute: AuthenticatedProductionAgentRoute,
   AuthenticatedProductsRoute: AuthenticatedProductsRoute,
   AuthenticatedRadarRoute: AuthenticatedRadarRoute,
   AuthenticatedScenariosRoute: AuthenticatedScenariosRoute,
@@ -710,6 +775,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedViralAuditRoute: AuthenticatedViralAuditRoute,
   AuthenticatedVoiceStudioRoute: AuthenticatedVoiceStudioRoute,
   AuthenticatedWatermarkRemoverRoute: AuthenticatedWatermarkRemoverRoute,
+  AuthenticatedAdminVideoProvidersRoute: AuthenticatedAdminVideoProvidersRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedProjectsNewRoute: AuthenticatedProjectsNewRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,

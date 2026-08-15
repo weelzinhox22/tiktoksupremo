@@ -172,7 +172,7 @@ export const importTikTokPerformance = createServerFn({ method: "POST" })
       import("@/features/tiktok/server"),
     ]);
     const requestedUrl = assertTikTokUrl(data.url);
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
 
@@ -389,7 +389,7 @@ export const updateContentPerformanceMetrics = createServerFn({ method: "POST" }
   .validator(updateMetricsSchema)
   .handler(async ({ data }) => {
     const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
 

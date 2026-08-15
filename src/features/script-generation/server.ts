@@ -76,7 +76,7 @@ export const generateProjectScript = createServerFn({ method: "POST" })
       import("@/lib/supabase/server"),
       import("@/lib/ai/factory"),
     ]);
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
     const userId = auth.user.id;

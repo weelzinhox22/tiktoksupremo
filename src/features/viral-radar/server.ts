@@ -25,7 +25,7 @@ let cachedResearchToken: CachedToken | null = null;
 
 async function requireUser() {
   const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Sessão expirada. Entre novamente.");
   return data.user;
@@ -180,6 +180,9 @@ export const searchViralVideos = createServerFn({ method: "POST" })
       "hashtag_names",
       "video_duration",
       "video_tag",
+      "music_id",
+      "effect_ids",
+      "voice_to_text",
     ].join(",");
     const response = await fetch(
       `https://open.tiktokapis.com/v2/research/video/query/?fields=${encodeURIComponent(fields)}`,
@@ -236,14 +239,45 @@ export const searchViralVideos = createServerFn({ method: "POST" })
           viralScore,
           hashtags: Array.isArray(video["hashtag_names"]) ? video["hashtag_names"].map(String) : [],
           duration: numberValue(video["video_duration"]),
+          musicId: String(video["music_id"] ?? ""),
+          effects: Array.isArray(video["effect_ids"]) ? video["effect_ids"].map(String) : [],
+          transcript: String(video["voice_to_text"] ?? ""),
           shopEvidence: shopMatch.reason,
           url: username && id ? `https://www.tiktok.com/@${username}/video/${id}` : null,
         };
       })
       .sort((a, b) => b.viralScore - a.viralScore || b.views - a.views)
       .slice(0, 24);
+    const hashtagCounts = new Map<string, number>();
+    const musicCounts = new Map<string, number>();
+    const durationBuckets = new Map<string, number>();
+    videos.forEach((video) => {
+      video.hashtags.forEach((hashtag) =>
+        hashtagCounts.set(hashtag, (hashtagCounts.get(hashtag) ?? 0) + 1),
+      );
+      if (video.musicId) musicCounts.set(video.musicId, (musicCounts.get(video.musicId) ?? 0) + 1);
+      const bucket =
+        video.duration <= 15 ? "Até 15s" : video.duration <= 30 ? "16–30s" : "Acima de 30s";
+      durationBuckets.set(bucket, (durationBuckets.get(bucket) ?? 0) + 1);
+    });
+    const top = (map: Map<string, number>, count = 8) =>
+      [...map.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, count)
+        .map(([value, occurrences]) => ({ value, occurrences }));
     return {
       videos,
+      insights: {
+        hashtags: top(hashtagCounts),
+        musicIds: top(musicCounts, 5),
+        durations: top(durationBuckets, 3),
+        hooks: videos
+          .map((video) => video.transcript || video.description)
+          .filter(Boolean)
+          .map((text) => text.split(/[.!?]/)[0]!.trim())
+          .filter((text) => text.length >= 8)
+          .slice(0, 8),
+      },
       source: "tiktok_research_api" as const,
       archivedMetrics: true,
       shopOnly: true,

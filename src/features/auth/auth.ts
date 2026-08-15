@@ -5,6 +5,7 @@ export function mapUser(user: {
   id: string;
   email?: string;
   user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
 }): AppUser {
   const email = user.email ?? "";
   const name = user.user_metadata?.["display_name"];
@@ -12,6 +13,11 @@ export function mapUser(user: {
     id: user.id,
     email,
     displayName: typeof name === "string" && name.trim() ? name : email.split("@")[0] || "Creator",
+    isAdmin:
+      user.app_metadata?.["role"] === "admin" ||
+      user.app_metadata?.["is_admin"] === true ||
+      user.user_metadata?.["role"] === "admin" ||
+      user.user_metadata?.["is_admin"] === true,
   };
 }
 

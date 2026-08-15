@@ -53,10 +53,12 @@ export default {
       return withCrossOriginIsolation(normalized);
     } catch (error) {
       console.error(error);
-      return new Response(renderErrorPage(), {
-        status: 500,
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
+      return withCrossOriginIsolation(
+        new Response(renderErrorPage(), {
+          status: 500,
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      );
     }
   },
 };
@@ -72,6 +74,7 @@ function withCrossOriginIsolation(response: Response): Response {
   const headers = new Headers(response.headers);
   headers.set("Cross-Origin-Opener-Policy", "same-origin");
   headers.set("Cross-Origin-Embedder-Policy", "credentialless");
+  headers.set("Cross-Origin-Resource-Policy", "cross-origin");
 
   return new Response(response.body, {
     status: response.status,
@@ -79,4 +82,3 @@ function withCrossOriginIsolation(response: Response): Response {
     headers,
   });
 }
-

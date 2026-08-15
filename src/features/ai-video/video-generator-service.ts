@@ -1,7 +1,14 @@
 import { generateAIVideoServerFn } from "./server";
+import type { JsonValue, VideoProviderId } from "@/features/video-providers/types";
 
 export type VideoStylePreset = {
-  id: "cinematic" | "hyper-realistic" | "3d-animation" | "cyberpunk" | "product-commercial" | "retro-vintage";
+  id:
+    | "cinematic"
+    | "hyper-realistic"
+    | "3d-animation"
+    | "cyberpunk"
+    | "product-commercial"
+    | "retro-vintage";
   name: string;
   description: string;
   promptSuffix: string;
@@ -15,7 +22,8 @@ export const stylePresets: VideoStylePreset[] = [
     id: "cinematic",
     name: "Cinemático Épico",
     description: "Visual de filme, profundidade de campo rasa, iluminação dramática 8K.",
-    promptSuffix: ", cinematic movie shot, 8k, shallow depth of field, dramatic lighting, masterpiece",
+    promptSuffix:
+      ", cinematic movie shot, 8k, shallow depth of field, dramatic lighting, masterpiece",
     badgeColor: "border-purple-400/30 bg-purple-400/10 text-purple-300",
     previewBg: "from-purple-500/20 to-indigo-600/20",
     badgeText: "🎬 Cinemático 8K",
@@ -23,8 +31,10 @@ export const stylePresets: VideoStylePreset[] = [
   {
     id: "hyper-realistic",
     name: "Hiper-realista",
-    description: "Texturas realistas de alta precisão, reflexos de luz naturais e detalhes de câmera física.",
-    promptSuffix: ", hyperrealistic, photorealistic, 35mm lens, natural daylight, ultra detailed skin and textures",
+    description:
+      "Texturas realistas de alta precisão, reflexos de luz naturais e detalhes de câmera física.",
+    promptSuffix:
+      ", hyperrealistic, photorealistic, 35mm lens, natural daylight, ultra detailed skin and textures",
     badgeColor: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
     previewBg: "from-emerald-500/20 to-teal-600/20",
     badgeText: "📸 Hiper-realista",
@@ -32,8 +42,10 @@ export const stylePresets: VideoStylePreset[] = [
   {
     id: "3d-animation",
     name: "Animação 3D / Pixar",
-    description: "Estilo animação 3D moderna com cores vibrantes e renderização de personagens rica.",
-    promptSuffix: ", 3d animation style, pixar render, vibrant colors, expressive character motion, octane render",
+    description:
+      "Estilo animação 3D moderna com cores vibrantes e renderização de personagens rica.",
+    promptSuffix:
+      ", 3d animation style, pixar render, vibrant colors, expressive character motion, octane render",
     badgeColor: "border-amber-400/30 bg-amber-400/10 text-amber-300",
     previewBg: "from-amber-500/20 to-orange-600/20",
     badgeText: "🎨 Animação 3D",
@@ -41,8 +53,10 @@ export const stylePresets: VideoStylePreset[] = [
   {
     id: "cyberpunk",
     name: "Cyberpunk Neon",
-    description: "Estética de ficção científica com luzes neon, névoa e ambiente futurista noturno.",
-    promptSuffix: ", cyberpunk style, neon lights, night scene, futuristic city, sci-fi aesthetic, glowing reflections",
+    description:
+      "Estética de ficção científica com luzes neon, névoa e ambiente futurista noturno.",
+    promptSuffix:
+      ", cyberpunk style, neon lights, night scene, futuristic city, sci-fi aesthetic, glowing reflections",
     badgeColor: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300",
     previewBg: "from-cyan-500/20 to-blue-600/20",
     badgeText: "🌆 Cyberpunk Neon",
@@ -50,8 +64,10 @@ export const stylePresets: VideoStylePreset[] = [
   {
     id: "product-commercial",
     name: "Comercial de Produto",
-    description: "Composição de estúdio com fundo limpo, rotação de câmera suave e destaque técnico.",
-    promptSuffix: ", high end commercial ad, studio lighting, elegant camera movement, crisp 4k product detail",
+    description:
+      "Composição de estúdio com fundo limpo, rotação de câmera suave e destaque técnico.",
+    promptSuffix:
+      ", high end commercial ad, studio lighting, elegant camera movement, crisp 4k product detail",
     badgeColor: "border-pink-400/30 bg-pink-400/10 text-pink-300",
     previewBg: "from-pink-500/20 to-rose-600/20",
     badgeText: "💎 Comercial Estúdio",
@@ -59,8 +75,10 @@ export const stylePresets: VideoStylePreset[] = [
   {
     id: "retro-vintage",
     name: "Retro Vintage 90s",
-    description: "Estilo fita VHS retro com grão de filme, cores quentes nostálgicas e textura analógica.",
-    promptSuffix: ", 90s retro vhs video style, film grain, warm nostalgic tones, vintage aesthetic",
+    description:
+      "Estilo fita VHS retro com grão de filme, cores quentes nostálgicas e textura analógica.",
+    promptSuffix:
+      ", 90s retro vhs video style, film grain, warm nostalgic tones, vintage aesthetic",
     badgeColor: "border-rose-400/30 bg-rose-400/10 text-rose-300",
     previewBg: "from-rose-500/20 to-red-600/20",
     badgeText: "📼 Retro 90s",
@@ -70,12 +88,32 @@ export const stylePresets: VideoStylePreset[] = [
 export type CameraMovement = "zoom-in" | "zoom-out" | "pan-right" | "pan-left" | "orbit" | "static";
 
 export const cameraMovements: Array<{ id: CameraMovement; label: string; description: string }> = [
-  { id: "zoom-in", label: "Zoom In Destaque", description: "Câmera se aproxima suavemente do sujeito." },
-  { id: "zoom-out", label: "Zoom Out Revelação", description: "Câmera se afasta revelando o ambiente." },
-  { id: "pan-right", label: "Varredura Direita", description: "Movimento panorâmico para a direita." },
-  { id: "pan-left", label: "Varredura Esquerda", description: "Movimento panorâmico para a esquerda." },
+  {
+    id: "zoom-in",
+    label: "Zoom In Destaque",
+    description: "Câmera se aproxima suavemente do sujeito.",
+  },
+  {
+    id: "zoom-out",
+    label: "Zoom Out Revelação",
+    description: "Câmera se afasta revelando o ambiente.",
+  },
+  {
+    id: "pan-right",
+    label: "Varredura Direita",
+    description: "Movimento panorâmico para a direita.",
+  },
+  {
+    id: "pan-left",
+    label: "Varredura Esquerda",
+    description: "Movimento panorâmico para a esquerda.",
+  },
   { id: "orbit", label: "Órbita 360", description: "Giro circular ao redor do sujeito." },
-  { id: "static", label: "Câmera Fixa", description: "Enquadramento estático focado no movimento do sujeito." },
+  {
+    id: "static",
+    label: "Câmera Fixa",
+    description: "Enquadramento estático focado no movimento do sujeito.",
+  },
 ];
 
 export type VideoGenerationParams = {
@@ -86,8 +124,8 @@ export type VideoGenerationParams = {
   style: VideoStylePreset["id"];
   camera: CameraMovement;
   durationSeconds: 5 | 10;
-  apiKey?: string;
-  minimaxBucket?: string;
+  preferredProvider?: "auto" | VideoProviderId;
+  localComfySettings?: Record<string, JsonValue>;
 };
 
 export type GeneratedVideoResult = {
@@ -102,29 +140,11 @@ export type GeneratedVideoResult = {
   provider?: string;
 };
 
-const DEFAULT_MINIMAX_BUCKET = "welzinhoox22/MiniMax-H3-bucket";
-
-export function getStoredAIVideoKey(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem("tik_supremo_replicate_key") || "";
-}
-
-export function setStoredAIVideoKey(key: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("tik_supremo_replicate_key", key.trim());
-}
-
-export function getStoredMiniMaxBucket(): string {
-  if (typeof window === "undefined") return DEFAULT_MINIMAX_BUCKET;
-  return localStorage.getItem("tik_supremo_minimax_bucket") || DEFAULT_MINIMAX_BUCKET;
-}
-
-export function setStoredMiniMaxBucket(bucket: string): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("tik_supremo_minimax_bucket", bucket.trim());
-}
-
-export function enhanceVideoPrompt(basePrompt: string, styleId: VideoStylePreset["id"], camera: CameraMovement): string {
+export function enhanceVideoPrompt(
+  basePrompt: string,
+  styleId: VideoStylePreset["id"],
+  camera: CameraMovement,
+): string {
   const style = stylePresets.find((s) => s.id === styleId) ?? stylePresets[0]!;
   const cameraDesc = cameraMovements.find((c) => c.id === camera)?.description || "";
   const cleaned = basePrompt.trim().replace(/\.$/, "");
@@ -155,6 +175,120 @@ async function loadImageElement(url: string): Promise<HTMLImageElement> {
   });
 }
 
+function replaceComfyTokens(value: unknown, tokens: Record<string, string | number>): unknown {
+  if (typeof value === "string") {
+    let output = value;
+    for (const [key, token] of Object.entries(tokens)) {
+      output = output.replaceAll(`{{${key}}}`, String(token));
+    }
+    return output;
+  }
+  if (Array.isArray(value)) return value.map((item) => replaceComfyTokens(item, tokens));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, replaceComfyTokens(item, tokens)]),
+    );
+  }
+  return value;
+}
+
+function findComfyVideo(
+  value: unknown,
+): { filename: string; subfolder: string; type: string } | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findComfyVideo(item);
+      if (found) return found;
+    }
+  } else if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record["filename"] === "string" &&
+      /\.(mp4|webm|mov|gif)$/i.test(record["filename"])
+    ) {
+      return {
+        filename: record["filename"],
+        subfolder: String(record["subfolder"] || ""),
+        type: String(record["type"] || "output"),
+      };
+    }
+    for (const item of Object.values(record)) {
+      const found = findComfyVideo(item);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+async function generateWithLocalComfy(
+  params: VideoGenerationParams,
+  fullPrompt: string,
+  onProgress?: (percent: number, stepLabel: string) => void,
+): Promise<GeneratedVideoResult> {
+  const settings = params.localComfySettings!;
+  const baseUrl = String(settings["baseUrl"] || "http://127.0.0.1:8188").replace(/\/$/, "");
+  const workflow = settings["workflow"];
+  if (!workflow || typeof workflow !== "object") {
+    throw new Error("O workflow API do ComfyUI ainda não foi colado na Central Administrativa.");
+  }
+  const width = params.aspectRatio === "9:16" ? 1080 : params.aspectRatio === "1:1" ? 1080 : 1920;
+  const height = params.aspectRatio === "9:16" ? 1920 : params.aspectRatio === "1:1" ? 1080 : 1080;
+  const prompt = replaceComfyTokens(workflow, {
+    PROMPT: fullPrompt,
+    NEGATIVE_PROMPT: "low quality, blurry, distorted, watermark, text artifacts",
+    WIDTH: width,
+    HEIGHT: height,
+    FRAMES: params.durationSeconds * 24,
+    SEED: Math.floor(Math.random() * 2_147_483_647),
+  });
+  onProgress?.(30, "Enviando workflow para o ComfyUI deste computador...");
+  const submit = await fetch(`${baseUrl}/prompt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt, client_id: crypto.randomUUID() }),
+  });
+  if (!submit.ok)
+    throw new Error(
+      `ComfyUI respondeu HTTP ${submit.status}: ${(await submit.text()).slice(0, 180)}`,
+    );
+  const promptId = String(((await submit.json()) as { prompt_id?: string }).prompt_id || "");
+  if (!promptId) throw new Error("O ComfyUI não retornou o identificador da geração.");
+  for (let attempt = 0; attempt < 240; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    onProgress?.(
+      Math.min(92, 35 + Math.round(attempt / 4)),
+      "ComfyUI processando o vídeo na GPU local...",
+    );
+    const history = await fetch(`${baseUrl}/history/${promptId}`);
+    if (!history.ok) continue;
+    const json = (await history.json()) as Record<string, unknown>;
+    const output = findComfyVideo(json[promptId] || json);
+    if (!output) continue;
+    const query = new URLSearchParams(output);
+    const videoResponse = await fetch(`${baseUrl}/view?${query}`);
+    if (!videoResponse.ok)
+      throw new Error("O ComfyUI terminou, mas o arquivo de vídeo não pôde ser baixado.");
+    const blob = await videoResponse.blob();
+    const mimeType = blob.type || (output.filename.endsWith(".webm") ? "video/webm" : "video/mp4");
+    const extension = mimeType.includes("webm") ? "webm" : "mp4";
+    const id = `ai-video-${crypto.randomUUID()}`;
+    const file = new File([blob], `${id}.${extension}`, { type: mimeType });
+    onProgress?.(100, "Vídeo gerado na GPU local com ComfyUI!");
+    return {
+      id,
+      url: URL.createObjectURL(blob),
+      prompt: fullPrompt,
+      style: params.style,
+      aspectRatio: params.aspectRatio,
+      durationSeconds: params.durationSeconds,
+      createdAt: Date.now(),
+      file,
+      provider: "ComfyUI local",
+    };
+  }
+  throw new Error("O ComfyUI demorou mais de 8 minutos. Verifique a fila e o workflow.");
+}
+
 export async function generateAIVideo(
   params: VideoGenerationParams,
   onProgress?: (percent: number, stepLabel: string) => void,
@@ -169,24 +303,17 @@ export async function generateAIVideo(
     sourceImageBase64 = params.sourceImage;
   }
 
-  const apiKey = params.apiKey || getStoredAIVideoKey();
-  const bucket = params.minimaxBucket || getStoredMiniMaxBucket();
-
-  if (
-    !apiKey ||
-    (!apiKey.startsWith("r8_") &&
-      !apiKey.startsWith("mm_") &&
-      !apiKey.startsWith("minimax_") &&
-      !apiKey.startsWith("hf_"))
-  ) {
-    throw new Error(
-      "É necessária uma API Key válida da Replicate (r8_...), MiniMax (mm_...) ou Hugging Face (hf_...). Insira a sua chave no painel do gerador.",
-    );
-  }
-
-  onProgress?.(25, "Processando requisição em servidor neural de alto desempenho (GPUs Luma/Veo)...");
+  onProgress?.(25, "Escolhendo o melhor motor disponível e iniciando a geração...");
 
   try {
+    if (params.localComfySettings) {
+      try {
+        return await generateWithLocalComfy(params, fullPrompt, onProgress);
+      } catch (error) {
+        if (params.preferredProvider === "comfyui") throw error;
+        onProgress?.(28, "ComfyUI local indisponível; tentando o próximo motor ativo...");
+      }
+    }
     const result = await generateAIVideoServerFn({
       data: {
         prompt: fullPrompt,
@@ -196,8 +323,7 @@ export async function generateAIVideo(
         style: params.style,
         camera: params.camera,
         durationSeconds: params.durationSeconds,
-        apiKey,
-        minimaxBucket: bucket,
+        preferredProvider: params.preferredProvider || "auto",
       },
     });
 
@@ -210,7 +336,11 @@ export async function generateAIVideo(
         const parts = result.videoBase64.split(",");
         const match = parts[0]?.match(/:(.*?);/);
         mimeType = match ? match[1]! : "video/mp4";
-        extension = mimeType.includes("webm") ? "webm" : mimeType.includes("image") || mimeType.includes("jpeg") || mimeType.includes("png") ? "jpg" : "mp4";
+        extension = mimeType.includes("webm")
+          ? "webm"
+          : mimeType.includes("image") || mimeType.includes("jpeg") || mimeType.includes("png")
+            ? "jpg"
+            : "mp4";
         const byteCharacters = atob(parts[1] || "");
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -223,7 +353,11 @@ export async function generateAIVideo(
           const parts = result.videoUrl.split(",");
           const match = parts[0]?.match(/:(.*?);/);
           mimeType = match ? match[1]! : "video/mp4";
-          extension = mimeType.includes("webm") ? "webm" : mimeType.includes("image") || mimeType.includes("jpeg") || mimeType.includes("png") ? "jpg" : "mp4";
+          extension = mimeType.includes("webm")
+            ? "webm"
+            : mimeType.includes("image") || mimeType.includes("jpeg") || mimeType.includes("png")
+              ? "jpg"
+              : "mp4";
           const byteCharacters = atob(parts[1] || "");
           const byteNumbers = new Array(byteCharacters.length);
           for (let i = 0; i < byteCharacters.length; i++) {
@@ -266,7 +400,7 @@ export async function generateAIVideo(
     throw new Error(
       err instanceof Error
         ? err.message
-        : "Falha na geração do vídeo por IA. Verifique se a sua chave de API Replicate/MiniMax está ativa.",
+        : "Falha na geração do vídeo por IA. Verifique os provedores ativos na central administrativa.",
     );
   }
 }

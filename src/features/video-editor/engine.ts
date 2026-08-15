@@ -4,6 +4,19 @@ import type {
   TextLoopAnimationPresetId,
 } from "@/features/video-editor/presets";
 
+export type ExportFormat = "9x16-720" | "9x16-1080" | "16x9-1080";
+
+/** Returns { w, h } for the given export format. */
+function formatDimensions(
+  fmt: ExportFormat | undefined,
+  legacyWidth: 720 | 1080 = 720,
+): { w: number; h: number } {
+  if (fmt === "16x9-1080") return { w: 1920, h: 1080 };
+  if (fmt === "9x16-1080") return { w: 1080, h: 1920 };
+  if (fmt === "9x16-720") return { w: 720, h: 1280 };
+  return legacyWidth === 1080 ? { w: 1080, h: 1920 } : { w: 720, h: 1280 };
+}
+
 export type EditorSegment = {
   id: string;
   label: string;
@@ -79,6 +92,11 @@ export type EditorTextOverlay = {
   letterSpacing?: number;
   textTransform?: "none" | "uppercase" | "lowercase";
   borderRadius?: number;
+  captionWords?: string[];
+  activeWordIndex?: number;
+  highlightColor?: string;
+  captionPreset?: "tiktok" | "capcut" | "karaoke" | "minimal" | "impact";
+  important?: boolean;
   decorations?: Array<{
     type: "sparkle" | "star" | "dot" | "bolt";
     color: string;
@@ -110,6 +128,14 @@ export type EditorCombination = {
   body: number;
   cta: number;
   label: string;
+  purpose?:
+    | "aggressive"
+    | "emotional"
+    | "demonstrative"
+    | "price"
+    | "social-proof"
+    | "short-retention"
+    | "long-explanation";
 };
 
 let ffmpegInstance: FFmpegType | null = null;
@@ -134,6 +160,34 @@ export function createCombinations(hookCount: number, bodyCount: number, ctaCoun
     }
   }
   return result;
+}
+
+export function createPurposefulCombinations(
+  hookCount: number,
+  bodyCount: number,
+  ctaCount: number,
+) {
+  const purposes: Array<{
+    purpose: NonNullable<EditorCombination["purpose"]>;
+    label: string;
+    indexes: [number, number, number];
+  }> = [
+    { purpose: "aggressive", label: "Agressiva · urgência e cortes rápidos", indexes: [0, 0, 0] },
+    { purpose: "emotional", label: "Emocional · história e transformação", indexes: [1, 1, 1] },
+    { purpose: "demonstrative", label: "Demonstrativa · produto em ação", indexes: [2, 2, 0] },
+    { purpose: "price", label: "Preço · valor e objeção", indexes: [3, 1, 1] },
+    { purpose: "social-proof", label: "Prova social · validação", indexes: [1, 3, 2] },
+    { purpose: "short-retention", label: "Curta · máxima retenção", indexes: [2, 0, 0] },
+    { purpose: "long-explanation", label: "Longa · explicação completa", indexes: [0, 3, 2] },
+  ];
+  return purposes.map(({ purpose, label, indexes }, index): EditorCombination => ({
+    number: index + 1,
+    hook: indexes[0] % Math.max(1, hookCount),
+    body: indexes[1] % Math.max(1, bodyCount),
+    cta: indexes[2] % Math.max(1, ctaCount),
+    label,
+    purpose,
+  }));
 }
 
 async function getMediaDuration(file: File, element: "video" | "audio") {
@@ -320,6 +374,20 @@ function timeoutPromise<T>(promise: Promise<T>, ms: number, msg: string): Promis
   });
 }
 
+async function runFFmpeg(ffmpeg: FFmpegType, args: string[], context: string) {
+  const exitCode = await ffmpeg.exec(["-y", "-hide_banner", ...args]);
+  if (exitCode !== 0) {
+    throw new Error(`${context} (código ${exitCode}). Verifique os arquivos e tente novamente.`);
+  }
+}
+
+async function readOutputFile(ffmpeg: FFmpegType, path: string, context: string) {
+  const data = await ffmpeg.readFile(path);
+  const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+  if (bytes.byteLength < 1024) throw new Error(`${context}: o arquivo gerado ficou incompleto.`);
+  return bytes;
+}
+
 export async function loadVideoEngine(
   options?:
     | ((message: string) => void)
@@ -371,11 +439,13 @@ export async function loadVideoEngine(
 
     const fetchToBlobURL = async (url: string, mimeType: string): Promise<string> => {
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { cache: "force-cache", credentials: "same-origin" });
         if (!response.ok) {
           throw new Error(`Erro ao baixar ${url}: status ${response.status}`);
         }
         const blob = await response.blob();
+        if (blob.size < 1024)
+          throw new Error(`O servidor retornou um arquivo inválido para ${url}.`);
         return URL.createObjectURL(new Blob([blob], { type: mimeType }));
       } catch (err) {
         // Fallback para toBlobURL se fetch falhar por alguma política de CORS
@@ -386,8 +456,10 @@ export async function loadVideoEngine(
     const loadConfigs = [
       async () => {
         onProgress?.("Carregando motor de vídeo local do servidor...");
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-        const baseURL = `${origin}/ffmpeg`;
+        const baseURL = new URL(
+          `${import.meta.env.BASE_URL}ffmpeg/`,
+          window.location.origin,
+        ).href.replace(/\/$/, "");
         const coreURL = await fetchToBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript");
         const wasmURL = await fetchToBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm");
         onProgress?.("Inicializando motor de vídeo WebAssembly (servidor local)...");
@@ -584,7 +656,14 @@ export async function cleanVideoMetadata(
 export async function normalizeSegment(
   ffmpeg: FFmpegType,
   segment: EditorSegment,
-  options: { removeAudio: boolean; width: 720 | 1080; stripMetadata?: boolean },
+  options: {
+    removeAudio: boolean;
+    width: 720 | 1080;
+    stripMetadata?: boolean;
+    exportFormat?: ExportFormat;
+    fitMode?: "contain" | "cover";
+    normalizeAudio?: boolean;
+  },
 ) {
   if (!segment.file) throw new Error(`Envie o arquivo de ${segment.label}.`);
   const { fetchFile } = await import("@ffmpeg/util");
@@ -600,22 +679,28 @@ export async function normalizeSegment(
 
   const selectedDuration = Math.max(0.1, segment.end - segment.start);
   const playedDuration = selectedDuration / segment.playbackRate;
-  const height = options.width === 1080 ? 1920 : 1280;
-  const scaleFilter = `scale=${options.width}:${height}:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
-  const padFilter = `pad=${options.width}:${height}:x='trunc((ow-iw)/2)':y='trunc((oh-ih)/2)':color=black`;
+  const { w: outputWidth, h: height } = formatDimensions(options.exportFormat, options.width);
+  const scaleFilter =
+    options.fitMode === "cover"
+      ? `scale=${outputWidth}:${height}:force_original_aspect_ratio=increase,crop=${outputWidth}:${height}`
+      : `scale=${outputWidth}:${height}:force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2`;
+  const padFilter =
+    options.fitMode === "cover"
+      ? null
+      : `pad=${outputWidth}:${height}:x='trunc((ow-iw)/2)':y='trunc((oh-ih)/2)':color=black`;
   const videoFilters = [
     `trim=end=${selectedDuration}`,
     `setpts=(PTS-STARTPTS)/${segment.playbackRate}`,
     scaleFilter,
-    padFilter,
+    ...(padFilter ? [padFilter] : []),
     ...(segment.mirror ? ["hflip"] : []),
     `eq=brightness=${segment.brightness}:contrast=${segment.contrast}:saturation=${segment.saturation}`,
     "fps=30",
   ];
   if (segment.hideOverlay) {
-    const boxWidth = Math.max(16, Math.round((options.width * segment.overlayWidth) / 100));
+    const boxWidth = Math.max(16, Math.round((outputWidth * segment.overlayWidth) / 100));
     const boxHeight = Math.max(16, Math.round((height * segment.overlayHeight) / 100));
-    const x = segment.overlayPosition.endsWith("right") ? options.width - boxWidth - 4 : 4;
+    const x = segment.overlayPosition.endsWith("right") ? outputWidth - boxWidth - 4 : 4;
     const y = segment.overlayPosition.startsWith("bottom") ? height - boxHeight - 4 : 4;
     videoFilters.push(`delogo=x=${x}:y=${y}:w=${boxWidth}:h=${boxHeight}:show=0`);
   }
@@ -643,7 +728,7 @@ export async function normalizeSegment(
         ? `if(gt(on,${Math.max(0, frameCount - animationFrames)}),1+(0.16*(on-${Math.max(0, frameCount - animationFrames)})/${animationFrames}),${zoomIn})`
         : zoomIn;
     videoFilters.push(
-      `zoompan=z='${zoomOut}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${options.width}x${height}:fps=30`,
+      `zoompan=z='${zoomOut}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${outputWidth}x${height}:fps=30`,
     );
   }
   if (segment.animationIn === "blur") {
@@ -665,7 +750,7 @@ export async function normalizeSegment(
         : "0";
     videoFilters.push(
       `crop=iw-24:ih-24:x='12+${shakeIn}+${shakeOut}':y='12+(${shakeIn})*0.6+(${shakeOut})*0.6'`,
-      `scale=${options.width}:${height}`,
+      `scale=${outputWidth}:${height}`,
     );
   }
   if (fadeInDuration > 0) {
@@ -696,17 +781,21 @@ export async function normalizeSegment(
   const privacyArgs = privacyMetadataArgs(options.stripMetadata);
 
   if (options.removeAudio) {
-    await ffmpeg.exec([
-      ...base,
-      ...encodeVideo,
-      "-t",
-      String(playedDuration),
-      "-an",
-      ...privacyArgs,
-      "-movflags",
-      "+faststart",
-      output,
-    ]);
+    await runFFmpeg(
+      ffmpeg,
+      [
+        ...base,
+        ...encodeVideo,
+        "-t",
+        String(playedDuration),
+        "-an",
+        ...privacyArgs,
+        "-movflags",
+        "+faststart",
+        output,
+      ],
+      `Falha ao preparar ${segment.label}`,
+    );
   } else if (segment.mute) {
     await ffmpeg.exec([
       ...base,
@@ -736,6 +825,7 @@ export async function normalizeSegment(
       `atempo=${segment.playbackRate}`,
       `volume=${segment.volume / 100}`,
       `atrim=end=${playedDuration}`,
+      ...(options.normalizeAudio ? ["loudnorm=I=-16:TP=-1.5:LRA=11"] : []),
     ];
     if (segment.fadeIn > 0) audioFilters.push(`afade=t=in:st=0:d=${segment.fadeIn}`);
     if (segment.fadeOut > 0)
@@ -785,6 +875,7 @@ export async function normalizeSegment(
     }
   }
   await deleteIfPresent(ffmpeg, input);
+  await readOutputFile(ffmpeg, output, `Falha ao preparar ${segment.label}`);
   return output;
 }
 
@@ -819,7 +910,6 @@ export function segmentIdsForCombination(combination: EditorCombination) {
     `cta-${combination.cta + 1}`,
   ];
 }
-
 export async function renderCombination(
   ffmpeg: FFmpegType,
   combination: EditorCombination,
@@ -830,6 +920,7 @@ export async function renderCombination(
     audioLayers?: EditorAudioLayer[];
     segmentIds?: string[];
     width?: 720 | 1080;
+    exportFormat?: ExportFormat;
     removeAudio?: boolean;
     stripMetadata?: boolean;
   },
@@ -852,19 +943,23 @@ export async function renderCombination(
     const listFile = `concat-${combination.number}.txt`;
     const list = filenames.map((filename) => `file '${filename}'`).join("\n");
     await ffmpeg.writeFile(listFile, new TextEncoder().encode(list));
-    await ffmpeg.exec([
-      "-f",
-      "concat",
-      "-safe",
-      "0",
-      "-i",
-      listFile,
-      ...(options?.removeAudio ? ["-an", "-c:v", "copy"] : ["-c", "copy"]),
-      ...privacyMetadataArgs(options?.stripMetadata),
-      "-movflags",
-      "+faststart",
-      output,
-    ]);
+    await runFFmpeg(
+      ffmpeg,
+      [
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        listFile,
+        ...(options?.removeAudio ? ["-an", "-c:v", "copy"] : ["-c", "copy"]),
+        ...privacyMetadataArgs(options?.stripMetadata),
+        "-movflags",
+        "+faststart",
+        output,
+      ],
+      "Falha ao unir os clipes",
+    );
     await deleteIfPresent(ffmpeg, listFile);
   } else {
     const clips = selectedSegments.filter((segment): segment is EditorSegment => Boolean(segment));
@@ -876,8 +971,7 @@ export async function renderCombination(
     const overlays = (options?.textOverlays ?? []).filter(
       (overlay) => overlay.text.trim() && overlay.end > overlay.start,
     );
-    const width = options?.width ?? 720;
-    const height = width === 1080 ? 1920 : 1280;
+    const { w: width, h: height } = formatDimensions(options?.exportFormat, options?.width);
     for (const [index, overlay] of overlays.entries()) {
       const filename = `text-${combination.number}-${index}.png`;
       await ffmpeg.writeFile(filename, await createTextOverlayPng(overlay, width, height));
@@ -1091,14 +1185,13 @@ export async function renderCombination(
       "+faststart",
       output,
     );
-    await ffmpeg.exec(args);
+    await runFFmpeg(ffmpeg, args, "Falha ao renderizar a timeline");
     for (const index of overlays.keys()) {
       await deleteIfPresent(ffmpeg, `text-${combination.number}-${index}.png`);
     }
     for (const filename of audioInputFiles) await deleteIfPresent(ffmpeg, filename);
   }
-  const data = await ffmpeg.readFile(output);
-  const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(data);
+  const bytes = await readOutputFile(ffmpeg, output, "Falha ao finalizar a exportação");
   const blob = new Blob([bytes.slice().buffer], { type: "video/mp4" });
   await deleteIfPresent(ffmpeg, output);
   return { blob, filename: output };
@@ -1188,10 +1281,36 @@ async function createTextOverlayPng(overlay: EditorTextOverlay, width: number, h
         : 2;
   context.shadowOffsetX = ((overlay.shadowOffsetX ?? 0) / 720) * width;
   context.shadowOffsetY = ((overlay.shadowOffsetY ?? 2) / 720) * width;
+  let renderedWordOffset = 0;
   lines.forEach((value, index) => {
     const lineY = -blockHeight / 2 + lineHeight * (index + 0.5);
-    if (context.lineWidth > 0) context.strokeText(value, 0, lineY, maxWidth);
-    context.fillText(value, 0, lineY, maxWidth);
+    const lineWords = value.split(/\s+/);
+    const hasWordHighlight = overlay.activeWordIndex !== undefined && overlay.captionWords?.length;
+    if (!hasWordHighlight) {
+      if (context.lineWidth > 0) context.strokeText(value, 0, lineY, maxWidth);
+      context.fillText(value, 0, lineY, maxWidth);
+    } else {
+      const spaceWidth = context.measureText(" ").width;
+      const widths = lineWords.map((word) => context.measureText(word).width);
+      const totalWidth =
+        widths.reduce((sum, wordWidth) => sum + wordWidth, 0) +
+        spaceWidth * Math.max(0, lineWords.length - 1);
+      let wordX = -totalWidth / 2;
+      lineWords.forEach((word, wordIndex) => {
+        const wordWidth = widths[wordIndex]!;
+        context.textAlign = "left";
+        if (context.lineWidth > 0) context.strokeText(word, wordX, lineY);
+        context.fillStyle =
+          renderedWordOffset + wordIndex === overlay.activeWordIndex
+            ? (overlay.highlightColor ?? "#facc15")
+            : overlay.color;
+        context.fillText(word, wordX, lineY);
+        wordX += wordWidth + spaceWidth;
+      });
+      context.textAlign = "center";
+      context.fillStyle = overlay.color;
+      renderedWordOffset += lineWords.length;
+    }
   });
   context.shadowColor = "transparent";
   for (const decoration of overlay.decorations ?? []) {
@@ -1243,6 +1362,10 @@ export function disposeVideoEngine() {
   if (ffmpegInstance) ffmpegInstance.terminate();
   ffmpegInstance = null;
   loaded = false;
+  if (cachedCoreBlobUrl) URL.revokeObjectURL(cachedCoreBlobUrl);
+  if (cachedWasmBlobUrl) URL.revokeObjectURL(cachedWasmBlobUrl);
+  cachedCoreBlobUrl = null;
+  cachedWasmBlobUrl = null;
 }
 
 export async function convertImageToMp4Video(

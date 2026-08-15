@@ -21,7 +21,7 @@ export const generateAvatarImage = createServerFn({ method: "POST" })
   .validator(cloudflareAvatarSchema)
   .handler(async ({ data }) => {
     const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
 
@@ -138,7 +138,7 @@ export const createAvatarBrief = createServerFn({ method: "POST" })
   .validator(avatarBriefSchema)
   .handler(async ({ data }) => {
     const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) throw new Error("Sessão expirada. Entre novamente.");
     const key = process.env["GEMINI_API_KEY"];

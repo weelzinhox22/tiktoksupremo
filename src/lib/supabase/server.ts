@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { getCookies, setCookie } from "@tanstack/react-start/server";
+import { createServerOnlyFn } from "@tanstack/react-start";
 
 function getServerConfig() {
   const env = import.meta.env as Record<string, string | undefined>;
@@ -18,7 +18,8 @@ function getServerConfig() {
   return { url, anonKey, procEnv };
 }
 
-export function getSupabaseServerClient() {
+export const getSupabaseServerClient = createServerOnlyFn(async () => {
+  const { getCookies, setCookie } = await import("@tanstack/react-start/server");
   const { url, anonKey } = getServerConfig();
 
   return createServerClient(url, anonKey, {
@@ -36,13 +37,13 @@ export function getSupabaseServerClient() {
       },
     },
   });
-}
+});
 
-export function getSupabaseAdminClient() {
+export const getSupabaseAdminClient = createServerOnlyFn(() => {
   const { url, procEnv } = getServerConfig();
   const serviceRoleKey = procEnv["SUPABASE_SERVICE_ROLE_KEY"];
   if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada no servidor.");
   return createClient(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
-}
+});

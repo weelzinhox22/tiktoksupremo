@@ -30,6 +30,7 @@ create table if not exists public.scenarios (
 );
 
 alter table public.scenarios enable row level security;
+drop policy if exists "Usuário gerencia próprios cenários" on public.scenarios;
 create policy "Usuário gerencia próprios cenários" on public.scenarios
   for all using (auth.uid() = user_id or user_id is null);
 
@@ -56,6 +57,7 @@ create table if not exists public.copy_projects (
 );
 
 alter table public.copy_projects enable row level security;
+drop policy if exists "Usuário gerencia próprios projetos de copy" on public.copy_projects;
 create policy "Usuário gerencia próprios projetos de copy" on public.copy_projects
   for all using (auth.uid() = user_id);
 
@@ -80,6 +82,7 @@ create table if not exists public.creative_experiments (
 );
 
 alter table public.creative_experiments enable row level security;
+drop policy if exists "Usuário gerencia próprios experimentos" on public.creative_experiments;
 create policy "Usuário gerencia próprios experimentos" on public.creative_experiments
   for all using (auth.uid() = user_id);
 

@@ -31,6 +31,9 @@ import {
   ChevronsRight,
   Minimize2,
   Maximize2,
+  Factory,
+  Bot,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -43,6 +46,8 @@ const navGroups = [
     title: "Geral",
     items: [
       { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
+      { label: "Fábrica diária", icon: Factory, to: "/daily-studio" as const },
+      { label: "Agente de produção", icon: Bot, to: "/production-agent" as const },
       { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
       { label: "Auditoria Viral (Score IA)", icon: Flame, to: "/viral-audit" as const },
       { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
@@ -71,6 +76,7 @@ const navGroups = [
     items: [
       { label: "Remover marca d'água", icon: Scissors, to: "/watermark-remover" as const },
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
+      { label: "Gerador de vídeo IA", icon: Sparkles, to: "/ai-video-generator" as const },
       { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },
       { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
       { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
@@ -89,7 +95,15 @@ const navGroups = [
   },
 ];
 
-function NavList({ isCollapsed, onNavigate }: { isCollapsed?: boolean; onNavigate?: () => void }) {
+function NavList({
+  isCollapsed,
+  onNavigate,
+  isAdmin,
+}: {
+  isCollapsed?: boolean;
+  onNavigate?: () => void;
+  isAdmin?: boolean;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
@@ -160,6 +174,27 @@ function NavList({ isCollapsed, onNavigate }: { isCollapsed?: boolean; onNavigat
           </nav>
         </div>
       ))}
+      {isAdmin && (
+        <div className="space-y-1">
+          {!isCollapsed ? (
+            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+              Administração
+            </div>
+          ) : (
+            <div className="mx-2 my-1.5 border-t border-sidebar-border/40" />
+          )}
+          <Link
+            to="/admin/video-providers"
+            onClick={onNavigate}
+            className={`group flex items-center rounded-lg py-2 text-xs font-medium text-muted-foreground transition hover:bg-sidebar-accent/60 hover:text-foreground ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
+          >
+            <span className="flex size-6 items-center justify-center rounded-md bg-violet-500/10 text-violet-300">
+              <Settings className="size-3.5" />
+            </span>
+            {!isCollapsed && <span>Provedores de vídeo</span>}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -246,7 +281,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
           </div>
 
           <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-5">
-            <NavList isCollapsed={isCollapsed} />
+            <NavList isCollapsed={isCollapsed} isAdmin={user.isAdmin} />
           </div>
 
           <div className="shrink-0 border-t border-sidebar-border p-3 bg-sidebar/50">
@@ -295,7 +330,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
                   <Brand />
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-                  <NavList onNavigate={() => setMobileOpen(false)} />
+                  <NavList onNavigate={() => setMobileOpen(false)} isAdmin={user.isAdmin} />
                 </div>
                 <div className="shrink-0 border-t border-sidebar-border p-4 bg-sidebar/50">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">

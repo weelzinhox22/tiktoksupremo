@@ -839,6 +839,7 @@ export function VideoStudio({
                     animationY={animationY}
                     animationScale={animationScale}
                     animationRotate={animationRotate}
+                    timelineTime={currentTime}
                     onSelect={() => {
                       setSelectedTextId(overlay.id);
                       setSelectedAudioId(null);
@@ -1129,6 +1130,11 @@ export function VideoStudio({
                     setSelectedAudioId(null);
                     seek(overlay.start + 0.01);
                   }}
+                  onDoubleClick={(event) => {
+                    event.stopPropagation();
+                    setEditingTextId(overlay.id);
+                  }}
+                  title="Arraste para sincronizar · duplo clique para corrigir a legenda"
                 >
                   <span
                     className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize border-r border-amber-100/70 bg-black/25"
@@ -1533,6 +1539,7 @@ function TextCanvasElement({
   animationY,
   animationScale,
   animationRotate,
+  timelineTime,
   onSelect,
   onEdit,
   onFinishEditing,
@@ -1549,6 +1556,7 @@ function TextCanvasElement({
   animationY: number;
   animationScale: number;
   animationRotate: number;
+  timelineTime: number;
   onSelect: () => void;
   onEdit: () => void;
   onFinishEditing: () => void;
@@ -1653,7 +1661,31 @@ function TextCanvasElement({
                     : "●"}
             </span>
           ))}
-          {overlay.text}
+          {overlay.captionWords?.length ? (
+            <span>
+              {overlay.captionWords.map((word, index) => (
+                <span
+                  key={`${word}-${index}`}
+                  style={{
+                    color:
+                      index === overlay.activeWordIndex
+                        ? (overlay.highlightColor ?? "#facc15")
+                        : overlay.color,
+                    transform:
+                      index === overlay.activeWordIndex && timelineTime >= overlay.start
+                        ? "scale(1.08)"
+                        : undefined,
+                    display: "inline-block",
+                  }}
+                >
+                  {index ? " " : ""}
+                  {word}
+                </span>
+              ))}
+            </span>
+          ) : (
+            overlay.text
+          )}
         </button>
       )}
     </>
@@ -2305,6 +2337,31 @@ function TextInspector({
             </select>
           </label>
         </div>
+        {overlay.captionWords?.length ? (
+          <div className="grid grid-cols-2 gap-2">
+            <ColorControl
+              label="Palavra falada"
+              value={overlay.highlightColor ?? "#facc15"}
+              onChange={(highlightColor) => onChange({ highlightColor })}
+            />
+            <DarkSelect
+              label="Preset"
+              value={overlay.captionPreset ?? "tiktok"}
+              disabled={disabled}
+              onChange={(captionPreset) =>
+                onChange({
+                  captionPreset: captionPreset as NonNullable<EditorTextOverlay["captionPreset"]>,
+                })
+              }
+            >
+              <option value="tiktok">TikTok</option>
+              <option value="capcut">CapCut</option>
+              <option value="karaoke">Karaokê</option>
+              <option value="impact">Impacto</option>
+              <option value="minimal">Minimalista</option>
+            </DarkSelect>
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <ColorControl
             label="Contorno"

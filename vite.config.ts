@@ -6,6 +6,23 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 const nitroOptions: Record<string, unknown> = {};
+nitroOptions["routeRules"] = {
+  "/**": {
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+      "Cross-Origin-Resource-Policy": "cross-origin",
+    },
+  },
+  "/ffmpeg/**": {
+    headers: {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "credentialless",
+      "Cross-Origin-Resource-Policy": "same-origin",
+    },
+  },
+};
 const procEnv = (typeof process !== "undefined" ? process.env : {}) as Record<
   string,
   string | undefined

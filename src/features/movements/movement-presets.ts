@@ -8,6 +8,7 @@ import { POV_REVEALING_PRESET, povRevealingVideo } from "@/features/movements/pr
 import { POV_FOLDING_PRESET, povFoldingVideo } from "@/features/movements/prompts/pov-folding-preset";
 import { POV_SOFTNESS_PRESET, povSoftnessVideo } from "@/features/movements/prompts/pov-softness-preset";
 import { POV_SELFIE_TRYON_PRESET, povSelfieTryOnVideo } from "@/features/movements/prompts/pov-selfie-tryon-preset";
+import { POV_WAISTBAND_ELASTIC_PRESET } from "@/features/movements/prompts/pov-waistband-elastic-preset";
 
 export {
   passandoAMaoVideo,
@@ -27,6 +28,7 @@ export {
   povRevealingVideo,
   POV_FOLDING_PRESET,
   povFoldingVideo,
+  POV_WAISTBAND_ELASTIC_PRESET,
 };
 
 export const PASSANDO_A_MAO_PRESET: MovementPreset = {
@@ -581,6 +583,7 @@ export const TURN_45_PRESET: MovementPreset = {
 };
 
 export const BUILTIN_MOVEMENT_PRESETS: MovementPreset[] = [
+  POV_WAISTBAND_ELASTIC_PRESET,
   POV_SELFIE_TRYON_PRESET,
   POV_SOFTNESS_PRESET,
   TWO_CLOTHES_ON_RUG_PRESET,

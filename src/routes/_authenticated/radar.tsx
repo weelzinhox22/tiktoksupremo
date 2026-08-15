@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   CircleAlert,
   ClipboardList,
@@ -22,6 +23,9 @@ import {
   Star,
   Trash2,
   TrendingUp,
+  Loader2,
+  Search,
+  Bot,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +33,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { listPerformance, listProductLibrary } from "@/features/libraries/queries";
+import {
+  getViralRadarStatus,
+  searchShopProducts,
+  searchViralVideos,
+} from "@/features/viral-radar/server";
 
 export const Route = createFileRoute("/_authenticated/radar")({
   component: ViralRadarPage,
@@ -75,10 +84,22 @@ function ViralRadarPage() {
   const [showGuide, setShowGuide] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [sortBy, setSortBy] = useState<"addedAt" | "priority" | "rating">("addedAt");
+  const [keyword, setKeyword] = useState("");
+  const [region, setRegion] = useState("BR");
+  const [days, setDays] = useState(7);
+  const [shopId, setShopId] = useState("");
 
   // Existing data from user's own base
   const performanceQuery = useQuery({ queryKey: ["performance"], queryFn: listPerformance });
   const productsQuery = useQuery({ queryKey: ["product-library"], queryFn: listProductLibrary });
+  const radarStatus = useQuery({
+    queryKey: ["viral-radar-status"],
+    queryFn: () => getViralRadarStatus({ data: {} }),
+  });
+  const videoSearch = useMutation({
+    mutationFn: () => searchViralVideos({ data: { keyword, region, days } }),
+  });
+  const shopSearch = useMutation({ mutationFn: () => searchShopProducts({ data: { shopId } }) });
 
   const ownWinners = [...(performanceQuery.data ?? [])]
     .filter((item) => item.views > 0)
@@ -143,6 +164,235 @@ function ViralRadarPage() {
           </Button>
         </div>
       </header>
+
+      <section className="bento-card overflow-hidden border-cyan/20">
+        <header className="flex flex-wrap items-center gap-3 border-b border-border p-5 md:p-6">
+          <span className="flex size-10 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
+            <Search className="size-5" />
+          </span>
+          <div>
+            <h2 className="font-semibold">Busca real de oportunidades</h2>
+            <p className="text-xs text-muted-foreground">
+              Consulta vídeos públicos e sinais de TikTok Shop quando uma fonte oficial autorizada
+              estiver disponível.
+            </p>
+          </div>
+          <Badge
+            className={`ml-auto ${radarStatus.data?.researchConfigured ? "bg-emerald-500/10 text-emerald-300" : "bg-amber-500/10 text-amber-300"}`}
+          >
+            {radarStatus.data?.researchConfigured ? "API oficial conectada" : "Modo assistido"}
+          </Badge>
+        </header>
+        <div className="grid gap-5 p-5 xl:grid-cols-[1fr_360px] md:p-6">
+          <div>
+            <div className="grid gap-3 md:grid-cols-[1fr_100px_110px_auto]">
+              <Input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder="Produto ou palavra-chave: cinta modeladora"
+              />
+              <select
+                className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={region}
+                onChange={(event) => setRegion(event.target.value)}
+              >
+                <option value="BR">Brasil</option>
+                <option value="US">EUA</option>
+                <option value="GB">Reino Unido</option>
+                <option value="ES">Espanha</option>
+                <option value="FR">França</option>
+              </select>
+              <select
+                className="flex h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+              >
+                <option value={7}>7 dias</option>
+                <option value={14}>14 dias</option>
+                <option value={30}>30 dias</option>
+              </select>
+              <Button
+                disabled={
+                  !keyword.trim() || videoSearch.isPending || !radarStatus.data?.researchConfigured
+                }
+                onClick={() => videoSearch.mutate()}
+              >
+                {videoSearch.isPending ? <Loader2 className="animate-spin" /> : <Search />} Buscar
+              </Button>
+            </div>
+
+            {!radarStatus.data?.researchConfigured && (
+              <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
+                <p className="text-sm font-semibold text-amber-200">
+                  Pesquisa automática oficial indisponível para esta conta
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  O TikTok restringe a Research API a projetos aprovados e não a libera normalmente
+                  para uso comercial. Use os atalhos abaixo: eles já abrem cada fonte com sua
+                  palavra-chave; depois registre somente os campos mostrados no formulário.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <ResearchLink
+                    href={`https://ads.tiktok.com/business/creativecenter/top-products/mobile/en?keyword=${encodeURIComponent(keyword)}`}
+                    label="Top Products"
+                  />
+                  <ResearchLink
+                    href={`https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/en?keyword=${encodeURIComponent(keyword)}`}
+                    label="Top Ads"
+                  />
+                  <ResearchLink
+                    href={`https://ads.tiktok.com/business/creativecenter/inspiration/popular/hashtag/pc/en?keyword=${encodeURIComponent(keyword)}`}
+                    label="Hashtags"
+                  />
+                  <ResearchLink
+                    href={`https://www.tiktok.com/search?q=${encodeURIComponent(keyword)}`}
+                    label="Buscar no TikTok"
+                  />
+                  <ResearchLink
+                    href={`https://trends.google.com/trends/explore?geo=${region}&q=${encodeURIComponent(keyword)}`}
+                    label="Google Trends"
+                  />
+                </div>
+                <div className="mt-4 border-t border-amber-400/10 pt-3 text-[11px] leading-5 text-muted-foreground">
+                  <strong className="text-amber-100">Para ativar a fonte oficial:</strong> confirme
+                  a elegibilidade no TikTok Research Tools, obtenha um projeto aprovado, configure
+                  <code className="mx-1">TIKTOK_RESEARCH_CLIENT_KEY</code> e
+                  <code className="mx-1">TIKTOK_RESEARCH_CLIENT_SECRET</code> somente no backend e
+                  faça um novo deploy. Contas comerciais comuns normalmente devem permanecer no
+                  fluxo assistido.
+                </div>
+              </div>
+            )}
+
+            {videoSearch.data && (
+              <div className="mt-5 space-y-5">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <Insight
+                    title="Hashtags"
+                    values={videoSearch.data.insights.hashtags.map(
+                      (item) => `#${item.value} · ${item.occurrences}x`,
+                    )}
+                  />
+                  <Insight
+                    title="Ganchos recorrentes"
+                    values={videoSearch.data.insights.hooks.slice(0, 5)}
+                  />
+                  <Insight
+                    title="Durações"
+                    values={videoSearch.data.insights.durations.map(
+                      (item) => `${item.value} · ${item.occurrences}`,
+                    )}
+                  />
+                  <Insight
+                    title="Sons aproveitáveis"
+                    values={videoSearch.data.insights.musicIds.map(
+                      (item) => `Music ID ${item.value} · ${item.occurrences}x`,
+                    )}
+                  />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {videoSearch.data.videos.slice(0, 10).map((video) => (
+                    <a
+                      key={video.id}
+                      href={video.url ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border border-border bg-secondary/15 p-4 transition hover:border-cyan/40"
+                    >
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-cyan/10 text-cyan">Score {video.viralScore}</Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {video.views.toLocaleString("pt-BR")} views
+                        </span>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-sm">
+                        {video.description || video.transcript}
+                      </p>
+                      <p className="mt-2 text-[11px] text-muted-foreground">
+                        {video.duration}s · engajamento {video.engagementRate.toFixed(2)}%
+                      </p>
+                    </a>
+                  ))}
+                </div>
+                <Button
+                  asChild
+                  onClick={() => {
+                    const signals = [
+                      ...videoSearch.data.insights.hashtags.map(
+                        (item) => `Hashtag #${item.value} apareceu ${item.occurrences}x`,
+                      ),
+                      ...videoSearch.data.insights.hooks.map((item) => `Gancho: ${item}`),
+                      ...videoSearch.data.insights.durations.map(
+                        (item) => `Duração: ${item.value} apareceu ${item.occurrences}x`,
+                      ),
+                    ].join("\n");
+                    localStorage.setItem("production-agent-signals", signals);
+                  }}
+                >
+                  <Link to="/production-agent">
+                    <Bot /> Usar sinais no Agente <ChevronRight />
+                  </Link>
+                </Button>
+              </div>
+            )}
+            {videoSearch.error && (
+              <p className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/5 p-4 text-xs text-rose-200">
+                {videoSearch.error.message}
+              </p>
+            )}
+          </div>
+
+          <aside className="rounded-xl border border-border bg-secondary/15 p-4">
+            <h3 className="font-semibold">Produtos reais por loja</h3>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Com Research API aprovada, informe o Shop ID para consultar nome, vendas, avaliações e
+              preço de produtos da loja. O endpoint oficial retorna produtos da UE.
+            </p>
+            <Input
+              className="mt-4"
+              value={shopId}
+              onChange={(event) => setShopId(event.target.value.replace(/\D/g, ""))}
+              placeholder="Shop ID numérico"
+            />
+            <Button
+              className="mt-2 w-full"
+              variant="outline"
+              disabled={!shopId || shopSearch.isPending || !radarStatus.data?.researchConfigured}
+              onClick={() => shopSearch.mutate()}
+            >
+              {shopSearch.isPending ? <Loader2 className="animate-spin" /> : <PackageSearch />}{" "}
+              Consultar loja
+            </Button>
+            {shopSearch.data?.products.map((product) => (
+              <button
+                key={product.id}
+                type="button"
+                className="mt-3 w-full rounded-lg border border-border bg-background/60 p-3 text-left"
+                onClick={() =>
+                  addProduct({
+                    id: crypto.randomUUID(),
+                    name: product.name,
+                    shopUrl: "",
+                    price: product.price.join(" / "),
+                    estimatedSales: String(product.soldCount),
+                    reviewCount: String(product.reviewCount),
+                    rating: product.rating.toFixed(1),
+                    notes: `${product.shopName} · importado da fonte oficial`,
+                    priority: product.soldCount > 1_000 ? "alta" : "média",
+                    addedAt: new Date().toISOString(),
+                  })
+                }
+              >
+                <p className="text-xs font-semibold">{product.name}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {product.soldCount.toLocaleString("pt-BR")} vendas · ⭐{" "}
+                  {product.rating.toFixed(1)}
+                </p>
+              </button>
+            ))}
+          </aside>
+        </div>
+      </section>
 
       {/* Status Cards */}
       <section className="grid gap-4 md:grid-cols-3">
@@ -282,12 +532,7 @@ function ViralRadarPage() {
           </div>
 
           {/* Add product form */}
-          {showForm && (
-            <AddProductForm
-              onAdd={addProduct}
-              onCancel={() => setShowForm(false)}
-            />
-          )}
+          {showForm && <AddProductForm onAdd={addProduct} onCancel={() => setShowForm(false)} />}
 
           {/* Product list */}
           <div className="p-5 md:p-6">
@@ -363,26 +608,56 @@ function ViralRadarPage() {
               Links úteis para pesquisa
             </p>
             <div className="mt-3 space-y-2">
-              <QuickLink
-                href="https://shop.tiktok.com"
-                label="TikTok Shop — produtos em alta"
-              />
+              <QuickLink href="https://shop.tiktok.com" label="TikTok Shop — produtos em alta" />
               <QuickLink
                 href="https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/pt"
                 label="Creative Center — top ads"
               />
               <QuickLink
                 href="https://www.tiktok.com/search?q=%23TikTokShop"
-                label='Busca TikTok: #TikTokShop'
+                label="Busca TikTok: #TikTokShop"
               />
               <QuickLink
                 href="https://www.tiktok.com/search?q=%23ProductReview"
-                label='Busca TikTok: #ProductReview'
+                label="Busca TikTok: #ProductReview"
               />
             </div>
           </div>
         </aside>
       </section>
+    </div>
+  );
+}
+
+function ResearchLink({ href, label }: { href: string; label: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs font-medium hover:border-cyan/40"
+    >
+      {label}
+      <ExternalLink className="size-3" />
+    </a>
+  );
+}
+
+function Insight({ title, values }: { title: string; values: string[] }) {
+  return (
+    <div className="rounded-xl border border-border bg-background/50 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan">{title}</p>
+      <div className="mt-2 space-y-1.5">
+        {values.length ? (
+          values.map((value) => (
+            <p key={value} className="line-clamp-2 text-[10px] leading-4 text-muted-foreground">
+              • {value}
+            </p>
+          ))
+        ) : (
+          <p className="text-[10px] text-muted-foreground">Sem sinal suficiente.</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -521,13 +796,7 @@ function AddProductForm({
 }
 
 /* ─── Product Card ───────────────────────────────────────────── */
-function ProductCard({
-  product,
-  onRemove,
-}: {
-  product: ManualProduct;
-  onRemove: () => void;
-}) {
+function ProductCard({ product, onRemove }: { product: ManualProduct; onRemove: () => void }) {
   const date = new Date(product.addedAt).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "short",

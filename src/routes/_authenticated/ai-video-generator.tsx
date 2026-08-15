@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Camera,
   Check,
@@ -30,16 +30,14 @@ import {
   cameraMovements,
   enhanceVideoPrompt,
   generateAIVideo,
-  getStoredAIVideoKey,
-  getStoredMiniMaxBucket,
-  setStoredAIVideoKey,
-  setStoredMiniMaxBucket,
   stylePresets,
   type CameraMovement,
   type GeneratedVideoResult,
   type VideoGenerationParams,
   type VideoStylePreset,
 } from "@/features/ai-video/video-generator-service";
+import { listVideoProviderStatus } from "@/features/video-providers/server";
+import type { VideoProviderId, VideoProviderPublicConfig } from "@/features/video-providers/types";
 import { saveEditorProject } from "@/features/video-editor/project-persistence";
 
 import { z } from "zod";
@@ -65,6 +63,7 @@ const examplePrompts = [
 function AIVideoGeneratorPage() {
   const navigate = useNavigate();
   const searchParams = Route.useSearch();
+  const { user } = Route.useRouteContext();
 
   const [mode, setMode] = useState<"text-to-video" | "image-to-video">("text-to-video");
   const [prompt, setPrompt] = useState(examplePrompts[0]!);
@@ -72,12 +71,14 @@ function AIVideoGeneratorPage() {
   const [aspectRatio, setAspectRatio] = useState<"9:16" | "16:9" | "1:1">("9:16");
   const [camera, setCamera] = useState<CameraMovement>("zoom-in");
   const [duration, setDuration] = useState<5 | 10>(5);
-  const [engineModel, setEngineModel] = useState<"qwen-wan" | "dola-hunyuan" | "minimax" | "cogvideox">("qwen-wan");
+  const [engineModel, setEngineModel] = useState<
+    "qwen-wan" | "dola-hunyuan" | "minimax" | "cogvideox"
+  >("qwen-wan");
   const [sourceImage, setSourceImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const [apiKey, setApiKey] = useState(getStoredAIVideoKey());
-  const [bucket, setBucket] = useState(getStoredMiniMaxBucket());
+  const [preferredProvider, setPreferredProvider] = useState<"auto" | VideoProviderId>("auto");
+  const [providerStatus, setProviderStatus] = useState<VideoProviderPublicConfig[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState({ percent: 0, label: "" });
   const [history, setHistory] = useState<GeneratedVideoResult[]>([]);
@@ -89,6 +90,12 @@ function AIVideoGeneratorPage() {
       toast.success("Prompt do vídeo preenchido automaticamente com a sua copy!");
     }
   }, [searchParams.prompt]);
+
+  useEffect(() => {
+    void listVideoProviderStatus()
+      .then(setProviderStatus)
+      .catch(() => setProviderStatus([]));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -116,18 +123,6 @@ function AIVideoGeneratorPage() {
     toast.success("Prompt aprimorado com detalhes visuais de IA!");
   };
 
-  const handleSaveApiKey = (val: string) => {
-    setApiKey(val);
-    setStoredAIVideoKey(val);
-    toast.success(val ? "Chave de API do Motor Neural salva!" : "Chave removida.");
-  };
-
-  const handleSaveBucket = (val: string) => {
-    setBucket(val);
-    setStoredMiniMaxBucket(val);
-    toast.success("Bucket MiniMax atualizado!");
-  };
-
   const handleGenerate = async () => {
     if (mode === "text-to-video" && !prompt.trim()) {
       toast.error("Digite uma descrição para o vídeo.");
@@ -142,6 +137,13 @@ function AIVideoGeneratorPage() {
     setProgress({ percent: 5, label: "Iniciando inteligência artificial..." });
 
     try {
+      const comfyProvider = providerStatus.find(
+        (item) => item.provider === "comfyui" && item.enabled,
+      );
+      const shouldUseLocalComfy =
+        !!comfyProvider &&
+        (preferredProvider === "comfyui" ||
+          (preferredProvider === "auto" && comfyProvider.isDefault));
       const result = await generateAIVideo(
         {
           prompt: prompt.trim(),
@@ -151,8 +153,8 @@ function AIVideoGeneratorPage() {
           style: selectedStyle,
           camera,
           durationSeconds: duration,
-          apiKey,
-          minimaxBucket: bucket,
+          preferredProvider,
+          ...(shouldUseLocalComfy ? { localComfySettings: comfyProvider.settings } : {}),
         },
         (percent, label) => setProgress({ percent, label }),
       );
@@ -179,7 +181,10 @@ function AIVideoGeneratorPage() {
         const keyframeBlobs: Blob[] = [result.file];
 
         for (let i = 1; i < motionPrompts.length; i++) {
-          setProgress({ percent: 70 + i * 5, label: `Sintetizando quadros de caminhada (${i + 1}/4)...` });
+          setProgress({
+            percent: 70 + i * 5,
+            label: `Sintetizando quadros de caminhada (${i + 1}/4)...`,
+          });
           const seed = Math.floor(Math.random() * 90000) + 10000;
           const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(motionPrompts[i]!)}?width=${width}&height=${height}&seed=${seed}&nologo=true`;
           try {
@@ -195,10 +200,18 @@ function AIVideoGeneratorPage() {
 
         setProgress({ percent: 90, label: "Compilando vídeo MP4 de movimento real com FFmpeg..." });
         try {
-          const { loadVideoEngine, convertMultiImageToMp4Video } = await import("@/features/video-editor/engine");
+          const { loadVideoEngine, convertMultiImageToMp4Video } =
+            await import("@/features/video-editor/engine");
           const ffmpeg = await loadVideoEngine();
-          const converted = await convertMultiImageToMp4Video(ffmpeg, keyframeBlobs, duration, aspectRatio);
-          const convertedFile = new File([converted.blob], converted.filename, { type: "video/mp4" });
+          const converted = await convertMultiImageToMp4Video(
+            ffmpeg,
+            keyframeBlobs,
+            duration,
+            aspectRatio,
+          );
+          const convertedFile = new File([converted.blob], converted.filename, {
+            type: "video/mp4",
+          });
           finalResult = {
             ...result,
             url: converted.url,
@@ -294,7 +307,10 @@ function AIVideoGeneratorPage() {
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-400">
                 Geração Multimodal por IA
               </p>
-              <Badge variant="outline" className="border-violet-400/20 bg-violet-400/10 text-[9px] text-violet-300">
+              <Badge
+                variant="outline"
+                className="border-violet-400/20 bg-violet-400/10 text-[9px] text-violet-300"
+              >
                 Text & Image-to-Video
               </Badge>
             </div>
@@ -361,7 +377,11 @@ function AIVideoGeneratorPage() {
                 <div className="mb-5 rounded-2xl border border-dashed border-white/15 bg-black/30 p-4 text-center">
                   {imagePreview ? (
                     <div className="relative mx-auto aspect-video max-h-48 overflow-hidden rounded-xl border border-white/10">
-                      <img src={imagePreview} alt="Upload prévia" className="h-full w-full object-cover" />
+                      <img
+                        src={imagePreview}
+                        alt="Upload prévia"
+                        className="h-full w-full object-cover"
+                      />
                       <button
                         type="button"
                         onClick={() => {
@@ -376,9 +396,18 @@ function AIVideoGeneratorPage() {
                   ) : (
                     <label className="flex cursor-pointer flex-col items-center justify-center py-4">
                       <ImageIcon className="size-8 text-violet-400 opacity-80" />
-                      <span className="mt-2 text-xs font-semibold text-white">Carregar foto/imagem para animar</span>
-                      <span className="mt-1 text-[10px] text-slate-500">PNG, JPG ou WEBP até 10MB</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      <span className="mt-2 text-xs font-semibold text-white">
+                        Carregar foto/imagem para animar
+                      </span>
+                      <span className="mt-1 text-[10px] text-slate-500">
+                        PNG, JPG ou WEBP até 10MB
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                      />
                     </label>
                   )}
                 </div>
@@ -386,7 +415,9 @@ function AIVideoGeneratorPage() {
 
               <div className="mb-2 flex items-center justify-between">
                 <label className="text-xs font-semibold text-slate-300">
-                  {mode === "text-to-video" ? "Descrição da Cena (Prompt)" : "Direção de Animação (Opcional)"}
+                  {mode === "text-to-video"
+                    ? "Descrição da Cena (Prompt)"
+                    : "Direção de Animação (Opcional)"}
                 </label>
                 <Button
                   variant="ghost"
@@ -421,13 +452,35 @@ function AIVideoGeneratorPage() {
               </div>
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-black/40 p-4">
-                <label className="text-xs font-semibold text-slate-200">Motor de Inteligência Neural (Arquitetura)</label>
+                <label className="text-xs font-semibold text-slate-200">
+                  Motor de Inteligência Neural (Arquitetura)
+                </label>
                 <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {[
-                    { id: "qwen-wan", name: "Qwen WAN 2.1", badge: "Alibaba AI", desc: "Movimento físico e fluido 4K" },
-                    { id: "dola-hunyuan", name: "Dola / Hunyuan", badge: "Tencent AI", desc: "Física realista de objetos" },
-                    { id: "minimax", name: "MiniMax Hailuo", badge: "Hailuo AI", desc: "Personagens e cinemático" },
-                    { id: "cogvideox", name: "CogVideoX 3D", badge: "THUDM", desc: "Open-source 3D" },
+                    {
+                      id: "qwen-wan",
+                      name: "Qwen WAN 2.1",
+                      badge: "Alibaba AI",
+                      desc: "Movimento físico e fluido 4K",
+                    },
+                    {
+                      id: "dola-hunyuan",
+                      name: "Dola / Hunyuan",
+                      badge: "Tencent AI",
+                      desc: "Física realista de objetos",
+                    },
+                    {
+                      id: "minimax",
+                      name: "MiniMax Hailuo",
+                      badge: "Hailuo AI",
+                      desc: "Personagens e cinemático",
+                    },
+                    {
+                      id: "cogvideox",
+                      name: "CogVideoX 3D",
+                      badge: "THUDM",
+                      desc: "Open-source 3D",
+                    },
                   ].map((eng) => (
                     <button
                       key={eng.id}
@@ -453,7 +506,9 @@ function AIVideoGeneratorPage() {
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
-              <h2 className="mb-4 text-sm font-semibold text-white">2. Estilos Visuais & presets</h2>
+              <h2 className="mb-4 text-sm font-semibold text-white">
+                2. Estilos Visuais & presets
+              </h2>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {stylePresets.map((st) => {
                   const isSelected = selectedStyle === st.id;
@@ -470,7 +525,9 @@ function AIVideoGeneratorPage() {
                     >
                       <div>
                         <div className="flex items-center justify-between gap-1">
-                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${st.badgeColor}`}>
+                          <span
+                            className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${st.badgeColor}`}
+                          >
                             {st.name}
                           </span>
                           {isSelected && <Check className="size-4 text-pink-400" />}
@@ -489,10 +546,14 @@ function AIVideoGeneratorPage() {
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
-              <h2 className="mb-4 text-sm font-semibold text-white">3. Configurações de Câmera & Formato</h2>
+              <h2 className="mb-4 text-sm font-semibold text-white">
+                3. Configurações de Câmera & Formato
+              </h2>
               <div className="grid gap-6 sm:grid-cols-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300">Proporção (Aspect Ratio)</label>
+                  <label className="text-xs font-semibold text-slate-300">
+                    Proporção (Aspect Ratio)
+                  </label>
                   <div className="mt-2.5 grid grid-cols-3 gap-1.5">
                     {[
                       { id: "9:16", label: "9:16", icon: Smartphone, desc: "TikTok / Shorts" },
@@ -537,7 +598,9 @@ function AIVideoGeneratorPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-300">Movimento de Câmera</label>
+                  <label className="text-xs font-semibold text-slate-300">
+                    Movimento de Câmera
+                  </label>
                   <select
                     value={camera}
                     onChange={(e) => setCamera(e.target.value as CameraMovement)}
@@ -590,15 +653,28 @@ function AIVideoGeneratorPage() {
                         style={{ width: `${progress.percent}%` }}
                       />
                     </div>
-                    <span className="mt-2 font-mono text-xs text-slate-400">{progress.percent}% concluído</span>
+                    <span className="mt-2 font-mono text-xs text-slate-400">
+                      {progress.percent}% concluído
+                    </span>
                   </div>
                 ) : currentVideo ? (
                   <div className="space-y-4">
                     <div className="relative mx-auto aspect-[9/16] max-h-[500px] overflow-hidden rounded-2xl bg-black shadow-2xl ring-1 ring-white/10">
-                      {currentVideo.url.startsWith("data:image/") || currentVideo.file.type.startsWith("image/") ? (
-                        <img src={currentVideo.url} alt={currentVideo.prompt} className="h-full w-full object-contain" />
+                      {currentVideo.url.startsWith("data:image/") ||
+                      currentVideo.file.type.startsWith("image/") ? (
+                        <img
+                          src={currentVideo.url}
+                          alt={currentVideo.prompt}
+                          className="h-full w-full object-contain"
+                        />
                       ) : (
-                        <video src={currentVideo.url} controls autoPlay loop className="h-full w-full object-contain" />
+                        <video
+                          src={currentVideo.url}
+                          controls
+                          autoPlay
+                          loop
+                          className="h-full w-full object-contain"
+                        />
                       )}
                     </div>
 
@@ -633,55 +709,80 @@ function AIVideoGeneratorPage() {
             <section className="rounded-3xl border border-white/10 bg-white/[0.025] p-5">
               <div className="flex items-center gap-2">
                 <Zap className="size-4 text-amber-400" />
-                <h2 className="text-sm font-semibold text-white">Chave de API Neural (MiniMax / Replicate / Hugging Face)</h2>
+                <h2 className="text-sm font-semibold text-white">Motores de geração conectados</h2>
               </div>
               <p className="mt-1.5 text-xs leading-5 text-slate-400">
-                Insira seu token do <strong>MiniMax (mm_...)</strong>, <strong>Replicate (r8_...)</strong> ou <strong>Hugging Face (hf_...)</strong>.
+                As credenciais ficam protegidas no servidor. Se um motor falhar, o modo automático
+                tenta o próximo.
               </p>
-              <div className="mt-2.5 space-y-2">
-                <div className="rounded-xl border border-purple-500/20 bg-purple-500/10 p-3 text-[11px] leading-4 text-purple-300">
-                  🔥 <strong>Bucket MiniMax Ativo:</strong> <code>{bucket || "welzinhoox22/MiniMax-H3-bucket"}</code> (MiniMax-H3 / Hailuo 01 Video Generation).
-                </div>
-                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-[11px] leading-4 text-emerald-300">
-                  ⚡ <strong>Replicate (r8_...):</strong> Suporte 100% nativo a CORS no navegador sem bloqueios de rede.
-                </div>
-              </div>
-
               <div className="mt-4 space-y-3">
                 <div>
-                  <label className="mb-1 block text-[10px] font-medium text-slate-400">Chave de API (MiniMax / Replicate / HuggingFace)</label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => handleSaveApiKey(e.target.value)}
-                    placeholder="mm_... (MiniMax API) ou r8_... (Replicate API) ou hf_..."
+                  <label className="mb-1 block text-[10px] font-medium text-slate-400">
+                    Preferência desta geração
+                  </label>
+                  <select
+                    value={preferredProvider}
+                    onChange={(e) =>
+                      setPreferredProvider(e.target.value as "auto" | VideoProviderId)
+                    }
                     className="w-full rounded-xl border border-white/10 bg-[#0b0d13] p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-400/50 focus:ring-amber-400/20"
-                  />
+                  >
+                    <option value="auto">Automático (padrão + fallback)</option>
+                    {providerStatus
+                      .filter((item) => item.enabled)
+                      .map((item) => (
+                        <option key={item.provider} value={item.provider}>
+                          {item.displayName}
+                        </option>
+                      ))}
+                  </select>
                 </div>
-
-                <div>
-                  <label className="mb-1 block text-[10px] font-medium text-slate-400">Bucket do MiniMax (Seu repositório MiniMax-H3)</label>
-                  <input
-                    type="text"
-                    value={bucket}
-                    onChange={(e) => handleSaveBucket(e.target.value)}
-                    placeholder="welzinhoox22/MiniMax-H3-bucket"
-                    className="w-full rounded-xl border border-white/10 bg-[#0b0d13] p-3 text-xs text-slate-200 placeholder:text-slate-600 focus:border-purple-400/50 focus:ring-purple-400/20"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between text-[10px] text-slate-500">
-                  <span>{apiKey ? (apiKey.startsWith("mm_") ? "✓ MiniMax API Conectado" : apiKey.startsWith("r8_") ? "✓ Replicate API Conectado" : "✓ Token Salvo") : "Modo Gratuito (Pollinations AI)"}</span>
-                  {apiKey && (
-                    <button
-                      type="button"
-                      onClick={() => handleSaveApiKey("")}
-                      className="text-rose-400 hover:underline"
-                    >
-                      Remover chave
-                    </button>
+                <div className="space-y-1.5">
+                  {providerStatus.length ? (
+                    providerStatus.map((item) => (
+                      <div
+                        key={item.provider}
+                        className="flex items-center justify-between rounded-lg bg-white/[.03] px-3 py-2 text-[10px]"
+                      >
+                        <span className="text-slate-300">
+                          {item.displayName}
+                          {item.isDefault ? " · padrão" : ""}
+                        </span>
+                        <span
+                          className={
+                            item.enabled && item.configured ? "text-emerald-400" : "text-slate-600"
+                          }
+                        >
+                          {item.enabled && item.configured
+                            ? "● pronto"
+                            : item.enabled
+                              ? "● falta configurar"
+                              : "○ inativo"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-200">
+                      Nenhum motor cadastrado ainda. A geração também reconhece chaves configuradas
+                      por variável de ambiente.
+                    </div>
                   )}
                 </div>
+                {user.isAdmin ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full border-violet-400/20 bg-violet-500/10 text-violet-200"
+                  >
+                    <Link to="/admin/video-providers">
+                      <Lock className="mr-2 size-4" /> Abrir central administrativa
+                    </Link>
+                  </Button>
+                ) : (
+                  <p className="rounded-xl border border-white/10 bg-white/[.03] p-3 text-[10px] leading-4 text-slate-500">
+                    Somente o administrador pode alterar credenciais e motores.
+                  </p>
+                )}
               </div>
             </section>
 
@@ -696,9 +797,14 @@ function AIVideoGeneratorPage() {
                       onClick={() => setCurrentVideo(vid)}
                       className="group relative aspect-video overflow-hidden rounded-xl border border-white/10 bg-black text-left transition hover:border-violet-400"
                     >
-                      <video src={vid.url} className="h-full w-full object-cover opacity-70 group-hover:opacity-100" />
+                      <video
+                        src={vid.url}
+                        className="h-full w-full object-cover opacity-70 group-hover:opacity-100"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent p-2 flex flex-col justify-end">
-                        <span className="truncate text-[10px] font-medium text-white">{vid.style.toUpperCase()}</span>
+                        <span className="truncate text-[10px] font-medium text-white">
+                          {vid.style.toUpperCase()}
+                        </span>
                       </div>
                     </button>
                   ))}

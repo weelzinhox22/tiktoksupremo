@@ -92,7 +92,7 @@ function createAuthorizationUrl(
 
 async function authenticatedUser() {
   const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const { data } = await supabase.auth.getUser();
   if (!data.user) throw new Error("Sessão expirada. Entre novamente.");
   return { supabase, user: data.user };
@@ -174,7 +174,7 @@ async function activeAccessToken(connection: ConnectionRecord) {
     Date.now() + (payload.refresh_expires_in ?? 31_536_000) * 1_000,
   );
   const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const update = await supabase
     .from("tiktok_connections")
     .update({
@@ -283,7 +283,7 @@ export const completeTikTokLogin = createServerFn({ method: "POST" })
 
     const { getSupabaseAdminClient, getSupabaseServerClient } =
       await import("@/lib/supabase/server");
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const currentUser = await supabase.auth.getUser();
     const admin = getSupabaseAdminClient();
     const existingConnection = await admin
@@ -442,7 +442,7 @@ export const disconnectTikTok = createServerFn({ method: "POST" })
 
 export async function getAuthorizedTikTokVideo(userId: string, videoId: string) {
   const { getSupabaseServerClient } = await import("@/lib/supabase/server");
-  const supabase = getSupabaseServerClient();
+  const supabase = await getSupabaseServerClient();
   const connection = await supabase
     .from("tiktok_connections")
     .select("*")

@@ -4,15 +4,20 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  Captions,
+  AudioLines,
+  LayoutTemplate,
   Download,
   Film,
   HelpCircle,
   Loader2,
+  Monitor,
   Plus,
   Redo2,
   Save,
   ShieldCheck,
   Shuffle,
+  Smartphone,
   Undo2,
   Upload,
 } from "lucide-react";
@@ -34,12 +39,27 @@ import {
 } from "@/features/video-editor/engine";
 import {
   clearEditorProject,
+  applyEditorTemplate,
+  createTemplateFromProject,
+  listEditorTemplates,
   loadEditorProject,
+  saveEditorTemplate,
   saveEditorProject,
+  type ExportFormat,
   type VideoEditorProject,
+  type VideoEditorTemplate,
 } from "@/features/video-editor/project-persistence";
 import { VideoStudio } from "@/features/video-editor/studio";
 import { useEditorHistory } from "@/features/video-editor/use-editor-history";
+import {
+  auditEditorProject,
+  analyzeSpeech,
+  createSmartCaptions,
+  detectSpeechBounds,
+  enrichCreativeAudit,
+  type CaptionPreset,
+} from "@/features/video-editor/automation";
+import { transcribeLocalFileServerFn } from "@/features/tiktok-downloader/transcribe-server";
 
 export const Route = createFileRoute("/_authenticated/video-editor")({
   component: ProfessionalVideoEditorPage,
@@ -56,6 +76,7 @@ function emptyProject(): VideoEditorProject {
     removeAudio: false,
     stripMetadata: true,
     width: 720,
+    exportFormat: "9x16-720",
     updatedAt: Date.now(),
   };
 }
@@ -91,6 +112,15 @@ function createSegment(file: File, duration: number, index: number): EditorSegme
   };
 }
 
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 function ProfessionalVideoEditorPage() {
   const editor = useEditorHistory(emptyProject());
   const project = editor.state;
@@ -100,7 +130,13 @@ function ProfessionalVideoEditorPage() {
   );
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState("");
+  const [exportPercent, setExportPercent] = useState(0);
   const [shortcutsOpenRequest, setShortcutsOpenRequest] = useState(0);
+  const [automationBusy, setAutomationBusy] = useState<"captions" | "silence" | null>(null);
+  const [captionPreset, setCaptionPreset] = useState<CaptionPreset>("capcut");
+  const [captionEmojis, setCaptionEmojis] = useState(true);
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [editorTemplates, setEditorTemplates] = useState<VideoEditorTemplate[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
   const replaceProject = editor.replace;
@@ -122,6 +158,12 @@ function ProfessionalVideoEditorPage() {
       });
     return () => disposeVideoEngine();
   }, [replaceProject]);
+
+  useEffect(() => {
+    void listEditorTemplates()
+      .then(setEditorTemplates)
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!loadedRef.current) return;
@@ -282,6 +324,7 @@ function ProfessionalVideoEditorPage() {
   const exportVideo = async () => {
     if (!project.timelineIds.length) return;
     setExporting(true);
+    setExportPercent(2);
     const outputFiles = new Map<string, string>();
     try {
       setExportProgress("Carregando o motor de exportação...");
@@ -292,14 +335,30 @@ function ProfessionalVideoEditorPage() {
         const segment = project.segments.find((item) => item.id === id);
         if (!segment?.file) throw new Error("Um dos clipes não possui arquivo de origem.");
         setExportProgress(`Preparando clipe ${index + 1} de ${project.timelineIds.length}...`);
-        const filename = await normalizeSegment(ffmpeg, segment, {
-          removeAudio: project.removeAudio,
-          width: project.width,
-          stripMetadata: project.stripMetadata,
-        });
+        const onClipProgress = ({ progress }: { progress: number }) => {
+          setExportPercent(
+            Math.min(
+              88,
+              Math.round(((index + Math.max(0, progress)) / project.timelineIds.length) * 88),
+            ),
+          );
+        };
+        ffmpeg.on("progress", onClipProgress);
+        let filename: string;
+        try {
+          filename = await normalizeSegment(ffmpeg, segment, {
+            removeAudio: project.removeAudio,
+            width: project.width,
+            stripMetadata: project.stripMetadata,
+            exportFormat: project.exportFormat ?? "9x16-720",
+          });
+        } finally {
+          ffmpeg.off("progress", onClipProgress);
+        }
         outputFiles.set(segment.id, filename);
       }
       setExportProgress("Renderizando textos, áudio e transições...");
+      setExportPercent(90);
       const output = await renderCombination(
         ffmpeg,
         { number: 1, hook: 0, body: 0, cta: 0, label: project.name },
@@ -310,19 +369,208 @@ function ProfessionalVideoEditorPage() {
           textOverlays: project.textOverlays,
           audioLayers: project.audioLayers,
           width: project.width,
+          exportFormat: project.exportFormat ?? "9x16-720",
           removeAudio: project.removeAudio,
           stripMetadata: project.stripMetadata,
         },
       );
       const safeName = project.name.trim().replace(/[^a-z0-9-_]+/gi, "-") || "video-editado";
       downloadVideo(output.blob, `${safeName}.mp4`);
+      setExportPercent(100);
       toast.success("Vídeo exportado com sucesso.");
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível exportar o vídeo.");
     } finally {
       setExporting(false);
       setExportProgress("");
+      setExportPercent(0);
     }
+  };
+
+  const selectedSegment =
+    project.segments.find((segment) => segment.id === selectedSegmentId) ?? null;
+  const creativeAudit = auditEditorProject(project);
+
+  const createAutomaticCaptions = async () => {
+    if (!selectedSegment?.file) {
+      toast.error("Selecione um clipe com áudio na timeline.");
+      return;
+    }
+    if (selectedSegment.file.size > 50 * 1024 * 1024) {
+      toast.error("Para legendas automáticas, use um clipe de até 50 MB.");
+      return;
+    }
+    setAutomationBusy("captions");
+    const toastId = toast.loading("Transcrevendo e criando legendas...");
+    try {
+      const result = await transcribeLocalFileServerFn({
+        data: {
+          base64: await fileToBase64(selectedSegment.file),
+          filename: selectedSegment.file.name,
+          mimeType: selectedSegment.file.type,
+        },
+      });
+      const duration = Math.max(0.1, selectedSegment.end - selectedSegment.start);
+      const timeline = getTimelineLayout(
+        project.timelineIds
+          .map((id) => project.segments.find((segment) => segment.id === id))
+          .filter((segment): segment is EditorSegment => Boolean(segment)),
+      );
+      const offset =
+        timeline.entries.find((entry) => entry.segment.id === selectedSegment.id)?.start ?? 0;
+      const smart = await createSmartCaptions(result.transcript, selectedSegment.file, {
+        preset: captionPreset,
+        emojis: captionEmojis,
+        wordsPerCard: 4,
+      });
+      const captions = smart.captions
+        .filter((caption) => caption.start < duration)
+        .map((caption) => ({
+          ...caption,
+          start: caption.start + offset,
+          end: Math.min(duration, caption.end) + offset,
+        }));
+      updateProject(
+        (current) => ({ ...current, textOverlays: [...current.textOverlays, ...captions] }),
+        "automatic-captions",
+        true,
+      );
+      toast.success(
+        `${smart.words.length} palavras sincronizadas · ${smart.importantPhrases.length} frase(s) importante(s).`,
+        { id: toastId },
+      );
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível criar legendas.", {
+        id: toastId,
+      });
+    } finally {
+      setAutomationBusy(null);
+    }
+  };
+
+  const removeInternalSilences = async () => {
+    if (!selectedSegment?.file) {
+      toast.error("Selecione um clipe na timeline.");
+      return;
+    }
+    setAutomationBusy("silence");
+    try {
+      const analysis = await analyzeSpeech(selectedSegment.file);
+      const regions = analysis.speech
+        .map((region) => ({
+          start: Math.max(selectedSegment.start, region.start - 0.06),
+          end: Math.min(selectedSegment.end, region.end + 0.06),
+        }))
+        .filter((region) => region.end - region.start >= 0.16);
+      if (regions.length <= 1) {
+        await removeEdgeSilence();
+        return;
+      }
+      const replacements = regions.map((region, index): EditorSegment => ({
+        ...selectedSegment,
+        id: `${selectedSegment.id}-speech-${crypto.randomUUID()}`,
+        label: `${selectedSegment.label} · fala ${index + 1}`,
+        start: region.start,
+        end: region.end,
+        transition: "none",
+      }));
+      updateProject(
+        (current) => ({
+          ...current,
+          segments: [
+            ...current.segments.filter((segment) => segment.id !== selectedSegment.id),
+            ...replacements,
+          ],
+          timelineIds: current.timelineIds.flatMap((id) =>
+            id === selectedSegment.id ? replacements.map((segment) => segment.id) : [id],
+          ),
+        }),
+        "remove-internal-silences",
+        true,
+      );
+      setSelectedSegmentId(replacements[0]?.id ?? null);
+      const removed = analysis.silences
+        .filter((silence) => silence.duration >= 0.28)
+        .reduce((sum, silence) => sum + silence.duration, 0);
+      toast.success(`${removed.toFixed(1)}s de pausas removidos em ${replacements.length} cortes.`);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível remover as pausas.");
+    } finally {
+      setAutomationBusy(null);
+    }
+  };
+
+  const runCreativeAudit = async () => {
+    setAuditBusy(true);
+    const toastId = toast.loading("Analisando áudio, pausas, ritmo e segurança...");
+    try {
+      const clips = project.timelineIds
+        .map((id) => project.segments.find((segment) => segment.id === id))
+        .filter((segment): segment is EditorSegment => Boolean(segment));
+      const audit = await enrichCreativeAudit(creativeAudit, clips);
+      const failed = audit.checks.filter((check) => !check.passed);
+      if (failed.length) {
+        toast.info(
+          `Creative Score ${audit.score}/100 · ${failed.map((item) => item.label).join(" · ")}`,
+          { id: toastId, duration: 9000 },
+        );
+      } else
+        toast.success(`Creative Score ${audit.score}/100 — pronto para exportar.`, { id: toastId });
+    } catch (cause) {
+      toast.error(
+        cause instanceof Error ? cause.message : "Não foi possível concluir a auditoria.",
+        { id: toastId },
+      );
+    } finally {
+      setAuditBusy(false);
+    }
+  };
+
+  const removeEdgeSilence = async () => {
+    if (!selectedSegment?.file) {
+      toast.error("Selecione um clipe na timeline.");
+      return;
+    }
+    setAutomationBusy("silence");
+    try {
+      const bounds = await detectSpeechBounds(selectedSegment.file);
+      updateProject(
+        (current) => ({
+          ...current,
+          segments: current.segments.map((segment) =>
+            segment.id === selectedSegment.id
+              ? { ...segment, start: bounds.start, end: bounds.end }
+              : segment,
+          ),
+        }),
+        "remove-edge-silence",
+        true,
+      );
+      toast.success(
+        bounds.removed > 0.08
+          ? `${bounds.removed.toFixed(1)}s de silêncio removido das bordas.`
+          : "Não encontrei silêncio relevante nas bordas.",
+      );
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível analisar o áudio.");
+    } finally {
+      setAutomationBusy(null);
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    if (!project.timelineIds.length) return;
+    const template = createTemplateFromProject(project, `${project.name} · Template`);
+    await saveEditorTemplate(template);
+    setEditorTemplates(await listEditorTemplates());
+    toast.success("Template visual salvo neste dispositivo.");
+  };
+
+  const applyTemplateById = (templateId: string) => {
+    const template = editorTemplates.find((item) => item.id === templateId);
+    if (!template) return;
+    editor.replace(applyEditorTemplate(project, template));
+    toast.success(`Template “${template.name}” aplicado.`);
   };
 
   const clearProject = async () => {
@@ -435,7 +683,112 @@ function ProfessionalVideoEditorPage() {
           >
             <Plus /> Mídia
           </Button>
-          <Button size="sm" disabled={!hasMedia || exporting} onClick={() => void exportVideo()}>
+          <div className="hidden items-center gap-1.5 xl:flex">
+            <select
+              aria-label="Aplicar template visual"
+              className="h-8 max-w-40 rounded-md border border-white/10 bg-[#0b0d13] px-2 text-[10px] text-slate-300"
+              defaultValue=""
+              disabled={!hasMedia || exporting}
+              onChange={(event) => {
+                if (event.target.value) applyTemplateById(event.target.value);
+                event.target.value = "";
+              }}
+            >
+              <option value="">Aplicar template</option>
+              {editorTemplates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 text-slate-300 hover:bg-white/10"
+              disabled={!hasMedia || exporting}
+              onClick={() => void saveAsTemplate()}
+              title="Salvar o projeto atual como template visual"
+            >
+              <LayoutTemplate />
+            </Button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10"
+            disabled={!selectedSegment || Boolean(automationBusy)}
+            onClick={() => void createAutomaticCaptions()}
+            title="Transcrever o clipe selecionado e criar legendas"
+          >
+            {automationBusy === "captions" ? <Loader2 className="animate-spin" /> : <Captions />}
+            <span className="hidden xl:inline">Legendas IA</span>
+          </Button>
+          <select
+            aria-label="Preset das legendas automáticas"
+            className="hidden h-8 rounded-md border border-white/10 bg-[#0b0d13] px-2 text-[10px] text-slate-300 2xl:block"
+            value={captionPreset}
+            disabled={Boolean(automationBusy)}
+            onChange={(event) => setCaptionPreset(event.target.value as CaptionPreset)}
+          >
+            <option value="capcut">CapCut bold</option>
+            <option value="tiktok">TikTok creator</option>
+            <option value="karaoke">Karaokê</option>
+            <option value="impact">Oferta impacto</option>
+            <option value="minimal">Minimalista</option>
+          </select>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={captionEmojis ? "text-amber-300" : "text-slate-500"}
+            aria-pressed={captionEmojis}
+            onClick={() => setCaptionEmojis((value) => !value)}
+            title="Adicionar emojis contextuais nas legendas"
+          >
+            {captionEmojis ? "✨ Emoji" : "Emoji off"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10"
+            disabled={!selectedSegment || Boolean(automationBusy)}
+            onClick={() => void removeInternalSilences()}
+            title="Detectar e remover pausas e silêncios internos"
+          >
+            {automationBusy === "silence" ? <Loader2 className="animate-spin" /> : <AudioLines />}
+            <span className="hidden 2xl:inline">Remover pausas</span>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className={`border-white/10 bg-white/[0.04] ${creativeAudit.score >= 80 ? "text-emerald-300" : creativeAudit.score >= 65 ? "text-amber-300" : "text-rose-300"}`}
+            disabled={auditBusy || !hasMedia}
+            onClick={() => void runCreativeAudit()}
+            title="Auditoria automática do projeto"
+          >
+            {auditBusy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}{" "}
+            {creativeAudit.score}
+          </Button>
+          <FormatSelector
+            value={project.exportFormat ?? "9x16-720"}
+            onChange={(fmt) =>
+              updateProject(
+                (current) => ({
+                  ...current,
+                  exportFormat: fmt,
+                  width: fmt === "9x16-1080" ? 1080 : 720,
+                }),
+                "export-format",
+                true,
+              )
+            }
+            disabled={exporting}
+          />
+          <Button
+            size="sm"
+            className="bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-lg shadow-violet-950/40 hover:from-violet-500 hover:to-cyan-400"
+            disabled={!hasMedia || exporting}
+            onClick={() => void exportVideo()}
+          >
             {exporting ? <Loader2 className="animate-spin" /> : <Download />}
             Exportar
           </Button>
@@ -445,6 +798,33 @@ function ProfessionalVideoEditorPage() {
       <div className="hidden border-b border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs text-amber-100 max-lg:block">
         O editor funciona melhor em computador. Nesta tela você ainda pode visualizar o projeto.
       </div>
+
+      {exporting && (
+        <div className="sticky top-32 z-20 mx-4 mt-3 overflow-hidden rounded-xl border border-violet-400/25 bg-[#111420]/95 px-4 py-3 shadow-2xl shadow-black/50 backdrop-blur-xl md:mx-5">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/15 text-violet-300">
+              <Loader2 className="size-4 animate-spin" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="truncate font-semibold text-white">
+                  {exportProgress || "Preparando exportação..."}
+                </span>
+                <span className="font-mono text-violet-300">{exportPercent}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-[width] duration-300"
+                  style={{ width: `${Math.max(2, exportPercent)}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="mt-2 pl-12 text-[10px] text-slate-500">
+            Mantenha esta aba aberta. A exportação é processada localmente e nenhum vídeo é enviado.
+          </p>
+        </div>
+      )}
 
       {!hasMedia ? (
         <EditorEmptyState
@@ -612,4 +992,116 @@ function formatDuration(value: number) {
   const minutes = Math.floor(value / 60);
   const seconds = Math.floor(value % 60);
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+const FORMAT_OPTIONS: {
+  value: ExportFormat;
+  label: string;
+  sub: string;
+  icon: "portrait" | "landscape";
+}[] = [
+  { value: "9x16-720", label: "9:16 · 720p", sub: "720×1280 · TikTok/Reels", icon: "portrait" },
+  {
+    value: "9x16-1080",
+    label: "9:16 · 1080p",
+    sub: "1080×1920 · Alta qualidade",
+    icon: "portrait",
+  },
+  { value: "16x9-1080", label: "16:9 · 1080p", sub: "1920×1080 · YouTube/PC", icon: "landscape" },
+];
+
+function FormatSelector({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ExportFormat;
+  onChange: (fmt: ExportFormat) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = FORMAT_OPTIONS.find((opt) => opt.value === value) ?? FORMAT_OPTIONS[0]!;
+
+  return (
+    <div className="relative">
+      <button
+        id="format-selector-trigger"
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex h-8 items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 text-xs font-medium text-slate-200 transition hover:bg-white/10 disabled:pointer-events-none disabled:opacity-50"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Selecionar formato de exportação"
+      >
+        {selected.icon === "landscape" ? (
+          <Monitor className="size-3.5 shrink-0 text-cyan-400" />
+        ) : (
+          <Smartphone className="size-3.5 shrink-0 text-primary" />
+        )}
+        <span>{selected.label}</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          className={`size-3 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path
+            fillRule="evenodd"
+            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
+      {open && (
+        <>
+          {/* backdrop */}
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} aria-hidden />
+          <ul
+            role="listbox"
+            aria-label="Formatos de exportação"
+            className="absolute right-0 top-full z-40 mt-1.5 w-52 overflow-hidden rounded-xl border border-white/10 bg-[#131620] shadow-2xl shadow-black/50"
+          >
+            {FORMAT_OPTIONS.map((opt) => (
+              <li key={opt.value} role="option" aria-selected={opt.value === value}>
+                <button
+                  id={`format-option-${opt.value}`}
+                  type="button"
+                  className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-white/[0.07] ${
+                    opt.value === value ? "bg-white/[0.05]" : ""
+                  }`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                >
+                  <span
+                    className={`flex shrink-0 items-center justify-center rounded-md p-1 ${
+                      opt.icon === "landscape"
+                        ? "bg-cyan-400/10 text-cyan-400"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {opt.icon === "landscape" ? (
+                      <Monitor className="size-4" />
+                    ) : (
+                      <Smartphone className="size-4" />
+                    )}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-white">{opt.label}</span>
+                    <span className="block truncate text-[10px] text-slate-500">{opt.sub}</span>
+                  </span>
+                  {opt.value === value && (
+                    <Check className="ml-auto size-3.5 shrink-0 text-primary" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
 }

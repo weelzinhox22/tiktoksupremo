@@ -2,6 +2,7 @@ export type AppUser = {
   id: string;
   email: string;
   displayName: string;
+  isAdmin: boolean;
 };
 
 export type Project = {
@@ -104,6 +105,15 @@ export type ContentPerformance = {
   video_id: string | null;
   metrics_source: "manual" | "public_page" | "tiktok_display_api";
   analysis: Record<string, unknown>;
+  retention_curve?: Array<{ second: number; retention: number }> | null;
+  average_watch_seconds?: number | null;
+  creative_dimensions?: {
+    duration?: number;
+    cta?: string;
+    avatar?: string;
+    voice?: string;
+    format?: string;
+  } | null;
   created_at: string;
   updated_at: string;
 };
