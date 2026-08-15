@@ -111,6 +111,23 @@ function VideoProviderAdminPage() {
       toast.error("O JSON de configurações é inválido.");
       return;
     }
+    if (provider === "comfyui" && draft.enabled) {
+      const baseUrl = String(settings["baseUrl"] || "");
+      if (
+        !baseUrl ||
+        baseUrl.includes("/admin/video-providers") ||
+        /localhost:3000/i.test(baseUrl)
+      ) {
+        toast.error(
+          "Use a API do ComfyUI, normalmente http://127.0.0.1:8188 — não a URL desta página.",
+        );
+        return;
+      }
+      if (!settings["workflow"] || typeof settings["workflow"] !== "object") {
+        toast.error("workflow está vazio. Cole o JSON exportado por Save (API Format) no ComfyUI.");
+        return;
+      }
+    }
     setBusy(provider);
     try {
       await saveVideoProviderConfig({
@@ -138,6 +155,12 @@ function VideoProviderAdminPage() {
       if (provider === "comfyui") {
         const settings = JSON.parse(drafts[provider]!.settingsText) as Record<string, unknown>;
         const baseUrl = String(settings["baseUrl"] || "http://127.0.0.1:8188").replace(/\/$/, "");
+        if (baseUrl.includes("/admin/video-providers") || /localhost:3000/i.test(baseUrl)) {
+          throw new Error("A URL informada é do Tik Supremo, não do ComfyUI.");
+        }
+        if (!settings["workflow"] || typeof settings["workflow"] !== "object") {
+          throw new Error("O workflow API ainda não foi informado.");
+        }
         const response = await fetch(`${baseUrl}/system_stats`, {
           signal: AbortSignal.timeout(8_000),
         });
@@ -151,10 +174,10 @@ function VideoProviderAdminPage() {
       await load();
     } catch (error) {
       toast.error(
-        provider === "comfyui"
-          ? "ComfyUI local não respondeu. Inicie-o na porta 8188 com CORS habilitado ou use uma URL HTTPS acessível."
-          : error instanceof Error
-            ? error.message
+        error instanceof Error
+          ? error.message
+          : provider === "comfyui"
+            ? "ComfyUI local não respondeu. Inicie-o na porta 8188 com CORS habilitado."
             : "Falha no teste.",
       );
     } finally {

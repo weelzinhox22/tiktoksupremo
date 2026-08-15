@@ -150,6 +150,24 @@ export const saveVideoProviderConfig = createServerFn({ method: "POST" })
   .validator(saveSchema)
   .handler(async ({ data }) => {
     const user = await requireAdmin();
+    if (data.provider === "comfyui" && data.enabled) {
+      const baseUrl = String(data.settings["baseUrl"] || "");
+      const workflow = data.settings["workflow"];
+      if (
+        !baseUrl ||
+        baseUrl.includes("/admin/video-providers") ||
+        /localhost:3000/i.test(baseUrl)
+      ) {
+        throw new Error(
+          "A URL do ComfyUI deve apontar para a API dele (ex.: http://127.0.0.1:8188), não para a página do Tik Supremo.",
+        );
+      }
+      if (!workflow || typeof workflow !== "object") {
+        throw new Error(
+          "Exporte o workflow no ComfyUI com Save (API Format) e cole o objeto JSON em workflow antes de ativar.",
+        );
+      }
+    }
     const admin = getSupabaseAdminClient();
     if (data.isDefault) {
       const { error } = await admin
