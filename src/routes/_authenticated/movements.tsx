@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -122,6 +122,42 @@ function MovementsPage() {
       return [];
     }
   });
+
+  // Security protection: block right-click, saving, dragging and inspection hotkeys
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      toast.info("Downloads e cópias diretas de mídia estão bloqueados para proteção de direitos autorais.", {
+        duration: 2500,
+      });
+    };
+
+    const handleDragStart = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block Ctrl+S, Ctrl+U, F12, Ctrl+Shift+I, Ctrl+Shift+C, Ctrl+Shift+J
+      if (
+        (e.ctrlKey && (e.key === "s" || e.key === "S" || e.key === "u" || e.key === "U")) ||
+        e.key === "F12" ||
+        (e.ctrlKey && e.shiftKey && ["I", "i", "C", "c", "J", "j"].includes(e.key))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    window.addEventListener("contextmenu", handleContextMenu);
+    window.addEventListener("dragstart", handleDragStart);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("contextmenu", handleContextMenu);
+      window.removeEventListener("dragstart", handleDragStart);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const toggleFavorite = (id: string) => {
     setFavorites((prev) => {
@@ -645,16 +681,37 @@ function MovementsPage() {
                   />
                 ) : imageUrl ? (
                   <div
-                    className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-black/90 shadow-inner group cursor-pointer border border-emerald-500/20 hover:border-emerald-500/50 transition-all"
+                    className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-black/90 shadow-inner group cursor-pointer border border-emerald-500/20 hover:border-emerald-500/50 transition-all select-none"
                     onClick={() => setSelectedMovement(movement)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      return false;
+                    }}
+                    onDragStart={(e) => {
+                      e.preventDefault();
+                      return false;
+                    }}
                   >
                     <img
                       src={imageUrl}
                       alt={movement.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 pointer-events-none select-none"
                       loading="lazy"
+                      draggable={false}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity" />
+
+                    {/* Invisible anti-download protective glass shield */}
+                    <div
+                      className="absolute inset-0 z-0 bg-transparent select-none"
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      draggable={false}
+                    />
+
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 group-hover:opacity-40 transition-opacity pointer-events-none" />
 
                     <Button
                       type="button"
@@ -670,7 +727,7 @@ function MovementsPage() {
                       <Star className={`size-4 ${isFav ? "fill-amber-400 text-amber-400" : "text-white/80"}`} />
                     </Button>
 
-                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-semibold text-white bg-black/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 shadow-lg">
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[11px] font-semibold text-white bg-black/70 backdrop-blur-md px-2.5 py-1.5 rounded-lg border border-white/10 shadow-lg pointer-events-none">
                       <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold">
                         <ImageIcon className="size-3.5" />
                         Prompt de Imagem
@@ -679,7 +736,7 @@ function MovementsPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-secondary/40 to-slate-900 border border-border/40 p-4 flex flex-col justify-between group">
+                  <div className="relative aspect-[9/16] w-full overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-secondary/40 to-slate-900 border border-border/40 p-4 flex flex-col justify-between group select-none">
                     <div className="flex items-center justify-between">
                       <span className="flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Layers className="size-4" />
@@ -852,11 +909,25 @@ function MovementsPage() {
                     />
                   </div>
                 ) : PRESET_IMAGE_MAP[selectedMovement.id] ? (
-                  <div className="max-w-xs mx-auto rounded-xl overflow-hidden border border-emerald-500/30 shadow-lg bg-black">
+                  <div
+                    className="relative max-w-xs mx-auto rounded-xl overflow-hidden border border-emerald-500/30 shadow-lg bg-black select-none"
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
                     <img
                       src={PRESET_IMAGE_MAP[selectedMovement.id]}
                       alt={selectedMovement.name}
-                      className="w-full object-cover max-h-[380px]"
+                      className="w-full object-cover max-h-[380px] pointer-events-none select-none"
+                      draggable={false}
+                    />
+                    <div
+                      className="absolute inset-0 bg-transparent select-none"
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
                     />
                   </div>
                 ) : null}
