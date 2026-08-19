@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 
 interface MovementVideoCardProps {
   videoUrl: string;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => void;
+  isFavorite?: boolean | undefined;
+  onToggleFavorite?: (() => void) | undefined;
+  duration?: string | undefined;
 }
 
 export function MovementVideoCard({
   videoUrl,
   isFavorite,
   onToggleFavorite,
+  duration,
 }: MovementVideoCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -85,7 +87,7 @@ export function MovementVideoCard({
           />
           {isPlaying ? "Reproduzindo prévia" : "Passe o mouse ou toque para ver"}
         </span>
-        <span className="text-[10px] text-muted-foreground font-mono">15.17s</span>
+        <span className="text-[10px] text-muted-foreground font-mono">{duration || "Vídeo"}</span>
       </div>
     </div>
   );

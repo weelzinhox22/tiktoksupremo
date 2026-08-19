@@ -34,6 +34,7 @@ import {
   Factory,
   Bot,
   Settings,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -43,54 +44,45 @@ import type { AppUser } from "@/lib/supabase/types";
 
 const navGroups = [
   {
-    title: "Geral",
+    title: "Principal",
     items: [
       { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
       { label: "Fábrica diária", icon: Factory, to: "/daily-studio" as const },
       { label: "Agente de produção", icon: Bot, to: "/production-agent" as const },
-      { label: "Projetos", icon: FolderKanban, to: "/projects" as const },
-      { label: "Auditoria Viral (Score IA)", icon: Flame, to: "/viral-audit" as const },
-      { label: "Desempenho", icon: BarChart3, to: "/performance" as const },
-      { label: "Radar viral", icon: Radar, to: "/radar" as const },
+      { label: "Meus Projetos", icon: FolderKanban, to: "/projects" as const },
     ],
   },
   {
-    title: "Criação & Copy",
+    title: "Criação & Roteiro",
     items: [
       { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
       { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
       { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
-      { label: "Laboratório de Criativos", icon: FlaskConical, to: "/creative-lab" as const },
     ],
   },
   {
-    title: "Transcrição & Download",
+    title: "Download & Transcrição",
     items: [
-      { label: "Transcrever por Link", icon: FileText, to: "/video-transcriber" as const },
-      { label: "Transcrever arquivo", icon: FileCheck2, to: "/copies" as const },
       { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
+      { label: "Transcrever por Link", icon: FileText, to: "/video-transcriber" as const },
+      { label: "Transcrever Arquivo", icon: FileCheck2, to: "/copies" as const },
     ],
   },
   {
-    title: "Edição & Mídia",
+    title: "Ativos & Prompts",
     items: [
-      { label: "Remover marca d'água", icon: Scissors, to: "/watermark-remover" as const },
-      { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
-      { label: "Gerador de vídeo IA", icon: Sparkles, to: "/ai-video-generator" as const },
-      { label: "Clipes automáticos", icon: Scissors, to: "/auto-clips" as const },
-      { label: "Editor de vídeo", icon: Video, to: "/video-editor" as const },
-      { label: "Juntar vídeos", icon: Shuffle, to: "/video-combiner" as const },
-      { label: "Limpar metadados", icon: ShieldCheck, to: "/metadata-cleaner" as const },
-    ],
-  },
-  {
-    title: "Personagens & Ativos",
-    items: [
-      { label: "Estúdio de Personagens", icon: UserRound, to: "/characters" as const },
-      { label: "Avatares", icon: UserRound, to: "/avatars" as const },
+      { label: "Biblioteca de Prompts", icon: PersonStanding, to: "/movements" as const },
+      { label: "Personagens & Avatares", icon: UserRound, to: "/characters" as const },
       { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
-      { label: "Poses e movimentos", icon: PersonStanding, to: "/movements" as const },
       { label: "Produtos", icon: Package, to: "/products" as const },
+    ],
+  },
+  {
+    title: "Estúdio IA & Ferramentas",
+    items: [
+      { label: "Gerador de Vídeo IA", icon: Sparkles, to: "/ai-video-generator" as const },
+      { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
+      { label: "Outras Ferramentas", icon: Wrench, to: "/tools" as const },
     ],
   },
 ];
@@ -123,7 +115,23 @@ function NavList({
                 pathname === item.to ||
                 (item.to === "/projects" &&
                   pathname.startsWith("/projects/") &&
-                  pathname !== "/projects/new");
+                  pathname !== "/projects/new") ||
+                (item.to === "/tools" &&
+                  [
+                    "/tools",
+                    "/tiktok-downloader",
+                    "/video-transcriber",
+                    "/copies",
+                    "/watermark-remover",
+                    "/metadata-cleaner",
+                    "/video-combiner",
+                    "/video-editor",
+                    "/auto-clips",
+                    "/radar",
+                    "/viral-audit",
+                    "/creative-lab",
+                    "/performance",
+                  ].includes(pathname));
 
               const linkContent = (
                 <Link

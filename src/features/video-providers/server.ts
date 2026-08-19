@@ -150,7 +150,9 @@ export const saveVideoProviderConfig = createServerFn({ method: "POST" })
   .validator(saveSchema)
   .handler(async ({ data }) => {
     const user = await requireAdmin();
-    if (data.provider === "comfyui" && data.enabled) {
+    const enabled =
+      data.provider !== "comfyui" && Boolean(data.secret?.trim()) ? true : data.enabled;
+    if (data.provider === "comfyui" && enabled) {
       const baseUrl = String(data.settings["baseUrl"] || "");
       const workflow = data.settings["workflow"];
       if (
@@ -178,7 +180,7 @@ export const saveVideoProviderConfig = createServerFn({ method: "POST" })
     }
     const update: Record<string, unknown> = {
       display_name: data.displayName,
-      enabled: data.enabled,
+      enabled,
       is_default: data.isDefault,
       settings: data.settings,
       updated_by: user.id,
@@ -236,6 +238,21 @@ async function testProvider(
     response = await fetch(
       `${baseUrl || "https://generativelanguage.googleapis.com/v1beta"}/models?key=${encodeURIComponent(secret || "")}`,
     );
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        models?: Array<{ name?: string; supportedGenerationMethods?: string[] }>;
+      };
+      const configuredModel = String(settings["model"] || "veo-3.1-fast-generate-preview");
+      const model = payload.models?.find(
+        (item) => item.name === `models/${configuredModel}` || item.name === configuredModel,
+      );
+      if (!model || !model.supportedGenerationMethods?.includes("predictLongRunning")) {
+        throw new Error(
+          `A chave é válida, mas o modelo ${configuredModel} não está liberado neste projeto. O Veo exige faturamento ativo no Google AI Studio; confira o projeto e o Paid Tier.`,
+        );
+      }
+      return `Chave válida e acesso ao ${configuredModel} confirmado.`;
+    }
   } else if (provider === "replicate") {
     response = await fetch(`${baseUrl || "https://api.replicate.com/v1"}/account`, {
       headers: { Authorization: `Bearer ${secret}` },

@@ -32,6 +32,7 @@ import { Route as AuthenticatedProductsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedRadarRouteImport } from './routes/_authenticated/radar'
 import { Route as AuthenticatedScenariosRouteImport } from './routes/_authenticated/scenarios'
 import { Route as AuthenticatedTiktokDownloaderRouteImport } from './routes/_authenticated/tiktok-downloader'
+import { Route as AuthenticatedToolsRouteImport } from './routes/_authenticated/tools'
 import { Route as AuthenticatedVideoCombinerRouteImport } from './routes/_authenticated/video-combiner'
 import { Route as AuthenticatedVideoEditorRouteImport } from './routes/_authenticated/video-editor'
 import { Route as AuthenticatedVideoTranscriberRouteImport } from './routes/_authenticated/video-transcriber'
@@ -167,6 +168,11 @@ const AuthenticatedTiktokDownloaderRoute =
     path: '/tiktok-downloader',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedToolsRoute = AuthenticatedToolsRouteImport.update({
+  id: '/tools',
+  path: '/tools',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVideoCombinerRoute =
   AuthenticatedVideoCombinerRouteImport.update({
     id: '/video-combiner',
@@ -260,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/radar': typeof AuthenticatedRadarRoute
   '/scenarios': typeof AuthenticatedScenariosRoute
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
+  '/tools': typeof AuthenticatedToolsRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
@@ -296,6 +303,7 @@ export interface FileRoutesByTo {
   '/radar': typeof AuthenticatedRadarRoute
   '/scenarios': typeof AuthenticatedScenariosRoute
   '/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
+  '/tools': typeof AuthenticatedToolsRoute
   '/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/video-editor': typeof AuthenticatedVideoEditorRoute
   '/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
@@ -334,6 +342,7 @@ export interface FileRoutesById {
   '/_authenticated/radar': typeof AuthenticatedRadarRoute
   '/_authenticated/scenarios': typeof AuthenticatedScenariosRoute
   '/_authenticated/tiktok-downloader': typeof AuthenticatedTiktokDownloaderRoute
+  '/_authenticated/tools': typeof AuthenticatedToolsRoute
   '/_authenticated/video-combiner': typeof AuthenticatedVideoCombinerRoute
   '/_authenticated/video-editor': typeof AuthenticatedVideoEditorRoute
   '/_authenticated/video-transcriber': typeof AuthenticatedVideoTranscriberRoute
@@ -372,6 +381,7 @@ export interface FileRouteTypes {
     | '/radar'
     | '/scenarios'
     | '/tiktok-downloader'
+    | '/tools'
     | '/video-combiner'
     | '/video-editor'
     | '/video-transcriber'
@@ -408,6 +418,7 @@ export interface FileRouteTypes {
     | '/radar'
     | '/scenarios'
     | '/tiktok-downloader'
+    | '/tools'
     | '/video-combiner'
     | '/video-editor'
     | '/video-transcriber'
@@ -445,6 +456,7 @@ export interface FileRouteTypes {
     | '/_authenticated/radar'
     | '/_authenticated/scenarios'
     | '/_authenticated/tiktok-downloader'
+    | '/_authenticated/tools'
     | '/_authenticated/video-combiner'
     | '/_authenticated/video-editor'
     | '/_authenticated/video-transcriber'
@@ -632,6 +644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedTiktokDownloaderRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/tools': {
+      id: '/_authenticated/tools'
+      path: '/tools'
+      fullPath: '/tools'
+      preLoaderRoute: typeof AuthenticatedToolsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/video-combiner': {
       id: '/_authenticated/video-combiner'
       path: '/video-combiner'
@@ -738,6 +757,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRadarRoute: typeof AuthenticatedRadarRoute
   AuthenticatedScenariosRoute: typeof AuthenticatedScenariosRoute
   AuthenticatedTiktokDownloaderRoute: typeof AuthenticatedTiktokDownloaderRoute
+  AuthenticatedToolsRoute: typeof AuthenticatedToolsRoute
   AuthenticatedVideoCombinerRoute: typeof AuthenticatedVideoCombinerRoute
   AuthenticatedVideoEditorRoute: typeof AuthenticatedVideoEditorRoute
   AuthenticatedVideoTranscriberRoute: typeof AuthenticatedVideoTranscriberRoute
@@ -769,6 +789,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRadarRoute: AuthenticatedRadarRoute,
   AuthenticatedScenariosRoute: AuthenticatedScenariosRoute,
   AuthenticatedTiktokDownloaderRoute: AuthenticatedTiktokDownloaderRoute,
+  AuthenticatedToolsRoute: AuthenticatedToolsRoute,
   AuthenticatedVideoCombinerRoute: AuthenticatedVideoCombinerRoute,
   AuthenticatedVideoEditorRoute: AuthenticatedVideoEditorRoute,
   AuthenticatedVideoTranscriberRoute: AuthenticatedVideoTranscriberRoute,

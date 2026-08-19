@@ -5,6 +5,7 @@ import {
   Check,
   Clapperboard,
   Clock,
+  CircleAlert,
   Download,
   Film,
   FolderOpen,
@@ -81,6 +82,7 @@ function AIVideoGeneratorPage() {
   const [providerStatus, setProviderStatus] = useState<VideoProviderPublicConfig[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState({ percent: 0, label: "" });
+  const [generationError, setGenerationError] = useState<string | null>(null);
   const [history, setHistory] = useState<GeneratedVideoResult[]>([]);
   const [currentVideo, setCurrentVideo] = useState<GeneratedVideoResult | null>(null);
 
@@ -134,7 +136,24 @@ function AIVideoGeneratorPage() {
     }
 
     setIsGenerating(true);
+    setGenerationError(null);
     setProgress({ percent: 5, label: "Iniciando inteligência artificial..." });
+
+    const progressTimer = window.setInterval(() => {
+      setProgress((current) => {
+        if (current.percent < 25 || current.percent >= 88) return current;
+        const next = Math.min(88, current.percent + 1);
+        return {
+          percent: next,
+          label:
+            next < 45
+              ? "Enviando o pedido ao motor de vídeo..."
+              : next < 75
+                ? "O provedor está renderizando os quadros e o áudio..."
+                : "Finalizando o vídeo no provedor...",
+        };
+      });
+    }, 4_000);
 
     try {
       const comfyProvider = providerStatus.find(
@@ -228,8 +247,10 @@ function AIVideoGeneratorPage() {
       toast.success("Vídeo animado com movimento gerado com sucesso!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Não foi possível gerar o vídeo.";
-      toast.error(msg);
+      setGenerationError(msg);
+      toast.error(msg, { duration: 12_000 });
     } finally {
+      window.clearInterval(progressTimer);
       setIsGenerating(false);
     }
   };
@@ -485,7 +506,7 @@ function AIVideoGeneratorPage() {
                     <button
                       key={eng.id}
                       type="button"
-                      onClick={() => setEngineModel(eng.id as any)}
+                      onClick={() => setEngineModel(eng.id as typeof engineModel)}
                       className={`flex flex-col items-start rounded-xl border p-3 text-left transition ${
                         engineModel === eng.id
                           ? "border-violet-400/70 bg-gradient-to-b from-violet-500/20 to-purple-600/10 ring-2 ring-violet-400/20"
@@ -641,6 +662,18 @@ function AIVideoGeneratorPage() {
               <p className="mt-0.5 text-xs text-slate-500">
                 Visualize o vídeo sintetizado pela inteligência artificial
               </p>
+
+              {generationError && !isGenerating && (
+                <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs leading-5 text-rose-100">
+                  <div className="flex items-start gap-2">
+                    <CircleAlert className="mt-0.5 size-4 shrink-0 text-rose-400" />
+                    <div>
+                      <strong className="block text-rose-300">A geração não foi iniciada</strong>
+                      <span>{generationError}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4">
                 {isGenerating ? (

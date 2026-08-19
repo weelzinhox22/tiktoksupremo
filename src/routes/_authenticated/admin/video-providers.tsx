@@ -104,6 +104,7 @@ function VideoProviderAdminPage() {
     setDrafts((current) => ({ ...current, [id]: { ...current[id]!, ...patch } }));
   const save = async (provider: VideoProviderId) => {
     const draft = drafts[provider]!;
+    const activatesWithNewKey = provider !== "comfyui" && Boolean(draft.secret.trim());
     let settings: Record<string, unknown>;
     try {
       settings = JSON.parse(draft.settingsText) as Record<string, unknown>;
@@ -134,14 +135,18 @@ function VideoProviderAdminPage() {
         data: {
           provider,
           displayName: draft.displayName,
-          enabled: draft.enabled,
+          enabled: draft.enabled || activatesWithNewKey,
           isDefault: draft.isDefault,
           secret: draft.secret || undefined,
           clearSecret: draft.clearSecret,
           settings,
         },
       });
-      toast.success("Configuração salva sem expor a chave.");
+      toast.success(
+        activatesWithNewKey
+          ? "Chave salva e provedor ativado. Agora use Testar para confirmar o acesso ao modelo."
+          : "Configuração salva sem expor a chave.",
+      );
       await load();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao salvar.");
@@ -167,6 +172,21 @@ function VideoProviderAdminPage() {
         if (!response.ok) throw new Error(`ComfyUI respondeu HTTP ${response.status}.`);
         toast.success("ComfyUI encontrado neste computador. O gerador local está pronto.");
         return;
+      }
+      const draft = drafts[provider]!;
+      if (draft.secret.trim()) {
+        const settings = JSON.parse(draft.settingsText) as Record<string, unknown>;
+        await saveVideoProviderConfig({
+          data: {
+            provider,
+            displayName: draft.displayName,
+            enabled: true,
+            isDefault: draft.isDefault,
+            secret: draft.secret,
+            clearSecret: false,
+            settings,
+          },
+        });
       }
       const result = await testVideoProviderConfig({ data: { provider } });
       if (result.success) toast.success(result.message);
@@ -290,6 +310,13 @@ function VideoProviderAdminPage() {
                     {"{{WIDTH}}"}, {"{{HEIGHT}}"}, {"{{FRAMES}}"} e {"{{SEED}}"}. Em produção,
                     baseUrl deve ser um endereço HTTPS que o servidor consiga acessar; localhost
                     funciona apenas quando a aplicação e o ComfyUI rodam na mesma máquina.
+                  </p>
+                )}
+                {catalog.id === "veo" && (
+                  <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] leading-5 text-amber-100">
+                    Uma API key do AI Studio não garante acesso ao Veo. A geração de vídeo não está
+                    disponível no Free Tier: habilite o faturamento no mesmo projeto da chave e
+                    clique em Testar para validar especificamente o modelo configurado.
                   </p>
                 )}
                 <label className="flex items-center gap-2 text-xs">
