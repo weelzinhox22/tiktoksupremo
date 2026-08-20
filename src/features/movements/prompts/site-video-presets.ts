@@ -1,6 +1,6 @@
 import type { MovementPreset } from "@/lib/supabase/types";
 
-// Import all 16 MP4 video assets from "src/assets/prompts/videos para o site"
+// Import all MP4 video assets from "src/assets/prompts/videos para o site"
 import ctaSimpaticaVideo from "@/assets/prompts/videos para o site/CTA SIMPATICA.mp4";
 import frenteDetalheRealistaCta10sVideo from "@/assets/prompts/videos para o site/FRENTE + DETALHE REALISTA + CTA — 10 SEG.mp4";
 import frenteLadoCabeloVideo from "@/assets/prompts/videos para o site/FRENTE+ LADO+ CABELO.mp4";
@@ -18,6 +18,7 @@ import mostrarAsPecasVideo from "@/assets/prompts/videos para o site/Mostrar as 
 import mostrarOTecidoDePertoVideo from "@/assets/prompts/videos para o site/Mostrar o tecido de perto.mp4";
 import passarAMaoNaRoupaVideo from "@/assets/prompts/videos para o site/Passar a mão na roupa.mp4";
 import cetimVideo from "@/assets/prompts/videos para o site/cetim.mp4";
+import unboxingSuspenseRevelacaoProgressivaVideo from "@/assets/prompts/videos para o site/Unboxing Suspense — Revelação Progressiva.mp4";
 
 export {
   ctaSimpaticaVideo,
@@ -37,6 +38,7 @@ export {
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
   cetimVideo,
+  unboxingSuspenseRevelacaoProgressivaVideo,
 };
 
 // 1. Gancho esticar roupa
@@ -1453,7 +1455,170 @@ A premium POV overhead boutique unboxing video where the woman opens the closed 
   updated_at: "2026-08-19T21:30:00.000Z",
 };
 
+// 18. Unboxing Suspense — Revelação Progressiva
+export const UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET: MovementPreset & { videoUrl?: string; duration?: string; mediaType?: "image" | "video" } = {
+  id: "10000000-0000-4000-8000-000000000118",
+  user_id: null,
+  name: "Unboxing Suspense — Revelação Progressiva",
+  category: "fashion",
+  formats: ["VÍDEO", "UNBOXING", "SUSPENSE", "PROGRESSIVO", "POV"],
+  description: "Vídeo vertical de 8 segundos com revelação progressiva em etapas: pacote fechado → vislumbre do tecido → primeira peça revelada → segunda peça → arrumação final.",
+  prompt_instruction: `Create an ultra-realistic TikTok Shop fashion suspense-unboxing video using the provided image as the main visual reference.
+
+VIDEO FORMAT:
+* 9:16 vertical
+* 8 seconds
+* ultra-realistic product video
+* static overhead camera
+* no camera movement
+* no zoom
+* no panning
+* no cuts
+* no transitions
+
+SCENE CONTINUITY:
+Preserve exactly the same environment, lighting, framing, perspective, feminine hands, skin tone, nails, bracelets, rings, surface texture, shadows, and decorative objects from the reference image.
+
+CORE RETENTION IDEA:
+The clothing must NOT be fully revealed immediately.
+The video must create visual suspense by revealing the product gradually.
+The viewer should first see only the closed package, then a small glimpse of the fabric, then a partial clothing reveal, and only near the second half of the video should the main garment become clearly visible.
+
+STARTING FRAME:
+A boutique-style package or soft shipping package is already centered on the surface.
+Both feminine hands are already touching the package naturally.
+The package should look slightly full, clearly suggesting that clothing is hidden inside.
+
+ACTION SEQUENCE:
+
+0.0–1.0 SECOND:
+The hands immediately grip the top opening of the package and begin opening it.
+The movement must start instantly with no idle pause.
+The package crinkles naturally.
+
+1.0–2.0 SECONDS:
+The woman opens only part of the package.
+IMPORTANT:
+Do NOT fully expose the garment yet.
+Only a small section of the clothing fabric becomes visible through the opening.
+The fabric color and texture should be noticeable, but the full product shape must remain hidden.
+
+2.0–3.5 SECONDS:
+The woman reaches inside and slowly pulls only a small portion of the first garment upward.
+She briefly stretches or separates the fabric slightly with her fingers so the viewer can see the material.
+Do not remove the entire garment yet.
+The rest of the garment remains physically inside the same package.
+
+3.5–5.0 SECONDS:
+The woman pulls the first garment completely out of the package.
+She lifts it naturally just above the surface for a brief reveal.
+The garment must unfold naturally with realistic gravity.
+She then places it neatly beside or in front of the package.
+
+5.0–6.5 SECONDS:
+The hands immediately return to the same package.
+If a second clothing piece exists, the woman reaches inside and begins pulling it out.
+Again, reveal it progressively rather than instantly.
+First show only part of the fabric, then remove it fully.
+
+6.5–8.0 SECONDS:
+Both clothing pieces are now visible.
+The woman makes one quick, elegant final adjustment to the garments.
+The opened package must remain visible in the scene.
+End on a clean, satisfying product presentation.
+
+RETENTION RULES:
+* do not reveal the entire outfit in the first 2 seconds
+* do not pull all garments out together
+* do not instantly spawn clothing outside the package
+* do not teleport objects
+* keep the package visible throughout the entire scene
+* create progressive visual discovery
+* each second should introduce new visual information
+* there should be continuous hand movement
+* avoid slow empty moments
+* prioritize curiosity and anticipation
+* the main product reveal should happen approximately between seconds 3.5 and 5
+* if there is a second piece, its reveal should happen approximately between seconds 5 and 7
+
+PACKAGE BEHAVIOR:
+* the package remains the exact same physical object throughout the video
+* realistic deformation only
+* realistic folds
+* realistic crinkling
+* realistic opening behavior
+* no morphing
+* no sudden disappearance
+
+CLOTHING BEHAVIOR:
+* realistic fabric physics
+* natural gravity
+* realistic folds
+* realistic stretching
+* no deformation
+* no morphing
+* no duplicated garments
+* no additional clothing pieces
+* each piece is handled separately
+
+HAND BEHAVIOR:
+* realistic feminine hands
+* anatomically correct fingers
+* no extra fingers
+* no duplicated hands
+* natural gripping
+* natural wrist movement
+* elegant but fast movements
+* no robotic motion
+
+AUDIO:
+* realistic package crinkling
+* realistic opening sound
+* subtle fabric movement
+* synchronized with hand actions
+* no music
+* no voice
+* no talking
+* no artificial exaggerated sound effects
+
+VISUAL STYLE:
+* satisfying fashion unboxing
+* premium boutique feeling
+* visually addictive
+* natural TikTok Shop POV
+* realistic smartphone-style content
+* not commercial studio footage
+* fast visual progression
+* strong curiosity-based reveal
+
+FINAL GOAL:
+Create an 8-second overhead fashion unboxing video designed around curiosity and progressive product reveal.
+The viewer should initially wonder what is inside the package.
+The clothing must be revealed in stages:
+closed package → small fabric glimpse → partial garment reveal → first full garment reveal → second garment reveal → final arrangement.
+Do not show everything immediately.`,
+  movement_json: {
+    tipo: "prompt_video_unboxing_suspense_revelacao_progressiva",
+    duracao_segundos: 8,
+    camera: "top-down overhead 9:16 estatica",
+    estrutura_tempo: {
+      "0-1s": "começa a abrir o pacote imediatamente",
+      "1-2s": "abre parcialmente mostrando apenas um pequeno vislumbre do tecido",
+      "2-3.5s": "puxa parte da primeira peça mostrando a textura sem revelar toda",
+      "3.5-5s": "revela e tira a primeira peça inteira",
+      "5-6.5s": "volta a mão para o pacote e tira a segunda peça",
+      "6.5-8s": "faz o ajuste final elegante com o pacote ainda visível"
+    }
+  },
+  tags: ["unboxing suspense", "revelacao progressiva", "curiosidade", "alta retencao", "8s", "tiktok shop", "overhead", "video"],
+  videoUrl: unboxingSuspenseRevelacaoProgressivaVideo,
+  duration: "8s",
+  created_at: "2026-08-19T22:30:00.000Z",
+  updated_at: "2026-08-19T22:30:00.000Z",
+};
+
 export const SITE_VIDEO_PRESETS: (MovementPreset & { videoUrl?: string; duration?: string })[] = [
+  UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET,
   ABRINDO_PAPEL_CETIM_PRESET,
   GANCHO_PACOTE_TRANSPARENTE_PRESET,
   GANCHO_EMBALAGEM_TIKTOK_SHOP_PRESET,

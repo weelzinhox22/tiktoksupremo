@@ -12,6 +12,7 @@ import { POV_WAISTBAND_ELASTIC_PRESET } from "@/features/movements/prompts/pov-w
 
 import {
   SITE_VIDEO_PRESETS,
+  UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET,
   ABRINDO_PAPEL_CETIM_PRESET,
   GANCHO_ESTICAR_ROUPA_PRESET,
   GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET,
@@ -46,10 +47,12 @@ import {
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
   cetimVideo,
+  unboxingSuspenseRevelacaoProgressivaVideo,
 } from "@/features/movements/prompts/site-video-presets";
 
 import {
   SITE_IMAGE_PRESETS,
+  SUSPENSE_UNBOXING_STARTING_FRAME_PRESET,
   RECRIANDO_CENARIO_PRESET,
   REMOVER_ROUPAS_TEXTO_PRESET,
   COLOCANDO_A_MAO_NO_AMBIENTE_PRESET,
@@ -62,6 +65,7 @@ import {
   colocarRoupaAmbienteImage,
   roupaNoPacoteImage,
   colocarEmbalagemTikTokImage,
+  suspenseUnboxingStartingFrameImage,
 } from "@/features/movements/prompts/site-image-presets";
 
 export {
@@ -85,6 +89,8 @@ export {
   POV_WAISTBAND_ELASTIC_PRESET,
   SITE_VIDEO_PRESETS,
   SITE_IMAGE_PRESETS,
+  UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET,
+  SUSPENSE_UNBOXING_STARTING_FRAME_PRESET,
   ABRINDO_PAPEL_CETIM_PRESET,
   GANCHO_ESTICAR_ROUPA_PRESET,
   GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET,
@@ -125,12 +131,14 @@ export {
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
   cetimVideo,
+  unboxingSuspenseRevelacaoProgressivaVideo,
   recriandoCenarioImage,
   removerRoupasTextosImage,
   colocandoMaoAmbienteImage,
   colocarRoupaAmbienteImage,
   roupaNoPacoteImage,
   colocarEmbalagemTikTokImage,
+  suspenseUnboxingStartingFrameImage,
 };
 
 export const PASSANDO_A_MAO_PRESET: MovementPreset = {
@@ -690,6 +698,7 @@ export const BUILTIN_MOVEMENT_PRESETS: MovementPreset[] = [
 ];
 
 export const PRESET_VIDEO_MAP: Record<string, string> = {
+  [UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET.id]: unboxingSuspenseRevelacaoProgressivaVideo,
   [ABRINDO_PAPEL_CETIM_PRESET.id]: cetimVideo,
   [GANCHO_ESTICAR_ROUPA_PRESET.id]: ganchoEsticarRoupaVideo,
   [GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET.id]: ganchoTaparCameraPegarProdutoVideo,
@@ -710,6 +719,7 @@ export const PRESET_VIDEO_MAP: Record<string, string> = {
 };
 
 export const PRESET_IMAGE_MAP: Record<string, string> = {
+  [SUSPENSE_UNBOXING_STARTING_FRAME_PRESET.id]: suspenseUnboxingStartingFrameImage,
   [RECRIANDO_CENARIO_PRESET.id]: recriandoCenarioImage,
   [REMOVER_ROUPAS_TEXTO_PRESET.id]: removerRoupasTextosImage,
   [COLOCANDO_A_MAO_NO_AMBIENTE_PRESET.id]: colocandoMaoAmbienteImage,
@@ -719,6 +729,7 @@ export const PRESET_IMAGE_MAP: Record<string, string> = {
 };
 
 export const PRESET_DURATION_MAP: Record<string, string> = {
+  [UNBOXING_SUSPENSE_REVELACAO_PROGRESSIVA_PRESET.id]: "8s",
   [ABRINDO_PAPEL_CETIM_PRESET.id]: "8s",
   [GANCHO_ESTICAR_ROUPA_PRESET.id]: "8s",
   [GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET.id]: "10s",
@@ -736,6 +747,7 @@ export const PRESET_DURATION_MAP: Record<string, string> = {
   [CTA_SIMPATICA_PRESET.id]: "4s",
   [FRENTE_DETALHE_REALISTA_CTA_10SEG_PRESET.id]: "10s",
   [LADO_CTA_FRENTE_CABELO_PRESET.id]: "10s",
+  [SUSPENSE_UNBOXING_STARTING_FRAME_PRESET.id]: "Imagem",
   [RECRIANDO_CENARIO_PRESET.id]: "Imagem",
   [REMOVER_ROUPAS_TEXTO_PRESET.id]: "Imagem",
   [COLOCANDO_A_MAO_NO_AMBIENTE_PRESET.id]: "Imagem",

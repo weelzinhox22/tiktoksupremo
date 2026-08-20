@@ -1,12 +1,13 @@
 import type { MovementPreset } from "@/lib/supabase/types";
 
-// Import all 6 image assets from "src/assets/prompts/videos para o site"
+// Import all 7 image assets from "src/assets/prompts/videos para o site"
 import recriandoCenarioImage from "@/assets/prompts/videos para o site/Recriando cenário.jpg";
 import removerRoupasTextosImage from "@/assets/prompts/videos para o site/Remover roupas e textos.jpg";
 import colocandoMaoAmbienteImage from "@/assets/prompts/videos para o site/Colocando a mão no ambiente.jpg";
 import colocarRoupaAmbienteImage from "@/assets/prompts/videos para o site/Colocar roupa no ambiente.jpg";
 import roupaNoPacoteImage from "@/assets/prompts/videos para o site/Roupa no pacote.jpg";
 import colocarEmbalagemTikTokImage from "@/assets/prompts/videos para o site/Colocar embalagem do TikTok.jpg";
+import suspenseUnboxingStartingFrameImage from "@/assets/prompts/videos para o site/Suspense Unboxing — Starting Frame.jpeg";
 
 export {
   recriandoCenarioImage,
@@ -15,6 +16,7 @@ export {
   colocarRoupaAmbienteImage,
   roupaNoPacoteImage,
   colocarEmbalagemTikTokImage,
+  suspenseUnboxingStartingFrameImage,
 };
 
 // 1. Recriando cenário
@@ -384,6 +386,165 @@ A clean, realistic overhead product image where the model is naturally holding t
   updated_at: "2026-08-19T18:35:00.000Z",
 };
 
+// 7. Suspense Unboxing — Starting Frame
+export const SUSPENSE_UNBOXING_STARTING_FRAME_PRESET: MovementPreset & { imageUrl?: string; mediaType?: "image" | "video" } = {
+  id: "20000000-0000-4000-8000-000000000007",
+  user_id: null,
+  name: "Suspense Unboxing — Starting Frame",
+  category: "fashion",
+  formats: ["IMAGEM", "STARTING FRAME", "UNBOXING", "SUSPENSE", "FLAT LAY"],
+  description: "Gera a imagem inicial (Frame 0) de suspense 9:16 com pacote boutique fechado no tapete fofo, mãos femininas prontas para abrir e apenas um vislumbre sutil do tecido para reter o público.",
+  prompt_instruction: `Create an ultra-realistic TikTok Shop fashion unboxing STARTING IMAGE using the provided clothing photo as the main product reference.
+
+IMPORTANT PRODUCT REFERENCE:
+Use the uploaded clothing image strictly as the reference for the product inside the package.
+
+Preserve exactly:
+* the same clothing design
+* the same colors
+* the same fabric appearance
+* the same number of pieces
+* the same proportions
+* the same details
+* the same patterns
+* the same trims
+* the same shape
+* the same style
+
+Do not redesign the clothing.
+Do not change the color.
+Do not add extra garments.
+Do not remove any garment.
+Do not invent details that are not present in the clothing reference image.
+
+IMAGE FORMAT:
+* vertical 9:16
+* ultra-realistic smartphone-style photo
+* TikTok Shop POV aesthetic
+* static overhead top-down view
+* natural home environment
+* realistic imperfections
+* not overly polished
+* not studio photography
+
+SCENE:
+Create a feminine, premium-looking overhead unboxing setup.
+Use a soft fluffy cream/beige carpet as the main surface.
+The environment should feel warm, elegant, cozy, and Pinterest-inspired.
+Include subtle decorative objects near the edges of the frame, such as:
+* a small marble side table partially visible
+* a small neutral flower arrangement
+* a perfume bottle
+* a small jewelry dish with a few gold rings
+* a beige handbag partially visible
+* subtle feminine decor
+
+Keep the center area clean and visually focused on the package.
+
+LIGHTING:
+* warm natural golden-hour style lighting
+* soft sunlight entering from one side
+* realistic shadows
+* gentle highlights
+* natural smartphone exposure
+* no harsh studio lighting
+
+HANDS:
+Show only the woman’s forearms and hands entering naturally from the bottom of the frame.
+Hands must be:
+* feminine
+* medium/tan skin tone
+* realistic anatomy
+* white or nude manicured nails
+* delicate gold bracelets
+* a few subtle gold rings
+* natural hand proportions
+
+No face.
+No body.
+Hands and forearms only.
+
+MAIN OBJECT:
+Place ONE boutique-style clothing package exactly in the center of the carpet.
+The package should be large enough to realistically contain the clothing shown in the reference image.
+Use a soft premium boutique package made from slightly crinkled white tissue paper or a soft neutral shipping wrap.
+The clothing must be physically INSIDE the package.
+
+IMPORTANT:
+The clothing itself should NOT be fully visible.
+Only a very subtle small glimpse of the actual clothing fabric may be visible through a tiny opening or fold in the package.
+The visible fabric must match the exact clothing color and material from the uploaded clothing reference.
+The viewer should immediately understand that something is hidden inside the package, but should NOT be able to see the complete outfit.
+
+PACKAGE APPEARANCE:
+* realistic tissue paper folds
+* natural wrinkles
+* slightly bulky from the clothing inside
+* believable volume
+* physically realistic
+* premium boutique presentation
+* no printed branding
+* no random logos
+* no readable text
+
+HAND POSITION:
+Both hands should lightly hold the package near the upper left and upper right sides, as if the woman is about to open it.
+The fingers should already be touching the package.
+The pose must clearly suggest: “she is about to open this package.”
+Do not show the package already open.
+
+COMPOSITION:
+* package centered
+* hands symmetrically but naturally positioned
+* enough empty space around the package
+* decorative objects only near the edges
+* product remains the visual focus
+* clean TikTok Shop POV composition
+
+CONTINUITY PURPOSE:
+This image will be used as the first frame of an AI-generated unboxing video.
+Therefore:
+* the package must look physically capable of containing the referenced clothing
+* the clothing inside must match the uploaded reference exactly
+* the hands must already be positioned for immediate opening
+* the scene must be easy to animate into a realistic unboxing sequence
+
+STRICT RULES:
+* do not display the clothing outside the package
+* do not fully reveal the clothing
+* do not change the referenced clothing
+* do not invent another outfit
+* do not show extra clothing pieces
+* do not duplicate garments
+* do not show a model wearing the clothes
+* do not show a person’s face
+* no extra fingers
+* no deformed hands
+* no floating objects
+* no unrealistic package shape
+* no excessive luxury styling
+* no text overlay
+* no captions
+* no TikTok interface
+* no watermarks
+
+FINAL GOAL:
+Generate a hyper-realistic 9:16 overhead TikTok Shop POV image where a woman is holding a closed boutique-style package containing the EXACT clothing shown in the uploaded reference image.
+The outfit must remain hidden inside the package, with at most a tiny realistic glimpse of the fabric visible, creating curiosity about what is inside and making the image ideal as the first frame of a suspense-style fashion unboxing video.`,
+  movement_json: {
+    tipo: "prompt_imagem_suspense_unboxing_starting_frame",
+    formato: "vertical 9:16",
+    camera: "top-down overhead view",
+    superficie: "tapete fofo bege/cream",
+    objeto: "pacote boutique fechado com vislumbre sutil do tecido",
+    maos: "maos femininas segurando o pacote prontas para abrir"
+  },
+  tags: ["suspense unboxing", "starting frame", "frame 0", "pacote fechado", "curiosidade", "tiktok shop", "imagem"],
+  imageUrl: suspenseUnboxingStartingFrameImage,
+  created_at: "2026-08-19T22:30:00.000Z",
+  updated_at: "2026-08-19T22:30:00.000Z",
+};
+
 export const SITE_IMAGE_PRESETS: (MovementPreset & { imageUrl?: string; mediaType?: "image" | "video" })[] = [
   RECRIANDO_CENARIO_PRESET,
   REMOVER_ROUPAS_TEXTO_PRESET,
@@ -391,4 +552,5 @@ export const SITE_IMAGE_PRESETS: (MovementPreset & { imageUrl?: string; mediaTyp
   COLOCAR_ROUPA_NO_AMBIENTE_PRESET,
   ROUPA_NO_PACOTE_PRESET,
   COLOCAR_EMBALAGEM_TIKTOK_PRESET,
+  SUSPENSE_UNBOXING_STARTING_FRAME_PRESET,
 ];
