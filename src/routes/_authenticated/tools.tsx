@@ -16,6 +16,8 @@ import {
   ArrowRight,
   Zap,
   Wrench,
+  Radio,
+  TrendingUp,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -114,6 +116,24 @@ const toolCategories = [
     category: "Inteligência, Métricas & Testes",
     description: "Monitore tendências, pontue seus vídeos e acompanhe conversões",
     tools: [
+      {
+        title: "Rastreador de Criativos & Vendas",
+        description: "Monitore quais ganchos da biblioteca estão gerando mais cliques no carrinho e vendas reais.",
+        to: "/creative-tracker",
+        icon: TrendingUp,
+        badge: "ROI & Vendas",
+        badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+        gradient: "from-emerald-500/10 via-transparent to-transparent",
+      },
+      {
+        title: "Scripts de Live IA 24/7",
+        description: "Gere roteiros contínuos em loop para transmissões ao vivo com avatares e clones IA.",
+        to: "/live-scripts",
+        icon: Radio,
+        badge: "Live Shopping",
+        badgeColor: "bg-red-500/10 text-red-400 border-red-500/20",
+        gradient: "from-red-500/10 via-transparent to-transparent",
+      },
       {
         title: "Radar Viral",
         description: "Descubra tendências, criativos em alta e produtos escalando no TikTok Shop.",

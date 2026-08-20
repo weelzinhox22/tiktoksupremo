@@ -12,6 +12,7 @@ import { POV_WAISTBAND_ELASTIC_PRESET } from "@/features/movements/prompts/pov-w
 
 import {
   SITE_VIDEO_PRESETS,
+  ABRINDO_PAPEL_CETIM_PRESET,
   GANCHO_ESTICAR_ROUPA_PRESET,
   GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET,
   GANCHO_JOGAR_ROUPA_OPCAO_2_PRESET,
@@ -44,6 +45,7 @@ import {
   mostrarAsPecasVideo,
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
+  cetimVideo,
 } from "@/features/movements/prompts/site-video-presets";
 
 import {
@@ -83,6 +85,7 @@ export {
   POV_WAISTBAND_ELASTIC_PRESET,
   SITE_VIDEO_PRESETS,
   SITE_IMAGE_PRESETS,
+  ABRINDO_PAPEL_CETIM_PRESET,
   GANCHO_ESTICAR_ROUPA_PRESET,
   GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET,
   GANCHO_JOGAR_ROUPA_OPCAO_2_PRESET,
@@ -121,6 +124,7 @@ export {
   mostrarAsPecasVideo,
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
+  cetimVideo,
   recriandoCenarioImage,
   removerRoupasTextosImage,
   colocandoMaoAmbienteImage,
@@ -686,6 +690,7 @@ export const BUILTIN_MOVEMENT_PRESETS: MovementPreset[] = [
 ];
 
 export const PRESET_VIDEO_MAP: Record<string, string> = {
+  [ABRINDO_PAPEL_CETIM_PRESET.id]: cetimVideo,
   [GANCHO_ESTICAR_ROUPA_PRESET.id]: ganchoEsticarRoupaVideo,
   [GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET.id]: ganchoTaparCameraPegarProdutoVideo,
   [GANCHO_JOGAR_ROUPA_OPCAO_2_PRESET.id]: ganchoJogarRoupaOpcao2Video,
@@ -714,6 +719,7 @@ export const PRESET_IMAGE_MAP: Record<string, string> = {
 };
 
 export const PRESET_DURATION_MAP: Record<string, string> = {
+  [ABRINDO_PAPEL_CETIM_PRESET.id]: "8s",
   [GANCHO_ESTICAR_ROUPA_PRESET.id]: "8s",
   [GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET.id]: "10s",
   [GANCHO_JOGAR_ROUPA_OPCAO_2_PRESET.id]: "8s",

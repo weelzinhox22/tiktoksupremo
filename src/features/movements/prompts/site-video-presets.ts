@@ -17,6 +17,7 @@ import ladoCtaFrenteCabeloVideo from "@/assets/prompts/videos para o site/LADO +
 import mostrarAsPecasVideo from "@/assets/prompts/videos para o site/Mostrar as peças.mp4";
 import mostrarOTecidoDePertoVideo from "@/assets/prompts/videos para o site/Mostrar o tecido de perto.mp4";
 import passarAMaoNaRoupaVideo from "@/assets/prompts/videos para o site/Passar a mão na roupa.mp4";
+import cetimVideo from "@/assets/prompts/videos para o site/cetim.mp4";
 
 export {
   ctaSimpaticaVideo,
@@ -35,6 +36,7 @@ export {
   mostrarAsPecasVideo,
   mostrarOTecidoDePertoVideo,
   passarAMaoNaRoupaVideo,
+  cetimVideo,
 };
 
 // 1. Gancho esticar roupa
@@ -1321,12 +1323,143 @@ export const LADO_CTA_FRENTE_CABELO_PRESET: MovementPreset & { videoUrl?: string
   updated_at: "2026-08-19T18:15:00.000Z",
 };
 
+// 17. Abrindo Pacote em Papel de Cetim
+export const ABRINDO_PAPEL_CETIM_PRESET: MovementPreset & { videoUrl?: string; duration?: string; mediaType?: "image" | "video" } = {
+  id: "10000000-0000-4000-8000-000000000117",
+  user_id: null,
+  name: "Abrindo Pacote em Papel de Cetim",
+  category: "fashion",
+  formats: ["POV", "FLAT LAY", "UNBOXING", "MODA", "GANCHO"],
+  description: "Unboxing boutique realista onde a mulher desdobra o papel de cetim/seda branco revelando cada peça do conjunto organizado perfeitamente sobre o tapete.",
+  prompt_instruction: `Create a realistic overhead product unboxing video using the provided images as reference.
+
+FRAME REFERENCES:
+- Image 1 = starting frame
+- Image 2 = ending frame
+
+VIDEO FORMAT:
+- 9:16 vertical
+- 8 seconds
+- realistic fashion product video
+- static overhead camera
+- no camera movement
+- no zoom
+- no cuts
+- no transitions
+
+SCENE CONTINUITY:
+Preserve exactly the same environment from Image 1 and Image 2:
+- same fluffy cream carpet
+- same warm golden lighting
+- same mirror position
+- same marble side table
+- same flowers
+- same perfume bottle
+- same small dish with rings
+- same beige handbag
+- same framing
+- same perspective
+- same feminine arms and hands
+- same skin tone
+- same white/nude nails
+- same gold bracelets and rings
+
+ACTION:
+The video starts exactly like Image 1:
+a boutique-style package wrapped in white tissue paper is already centered on the carpet, held lightly by the woman’s hands.
+
+The woman opens the tissue package in a smooth, elegant, realistic way.
+She unfolds the tissue paper naturally, without sudden movements.
+
+Inside the package is the black two-piece outfit:
+- one black bandeau top
+- one black layered mini skirt
+
+IMPORTANT:
+The outfit must be removed from the package naturally and realistically.
+The woman must take out and place each clothing piece carefully.
+
+REMOVAL SEQUENCE:
+1. First, she opens the tissue wrapping.
+2. She removes the black bandeau top first and places it neatly in its exact final position.
+3. Then she removes the black layered skirt and places it neatly below the top in its exact final position.
+4. She makes subtle final adjustments so the arrangement matches Image 2 exactly.
+
+FINAL FRAME:
+The ending frame must match Image 2:
+- the black bandeau top positioned at the top
+- the black layered mini skirt positioned below it
+- both pieces neatly displayed
+- same spacing
+- same orientation
+- same composition
+- same arm/hand position as a natural product presentation
+
+MOTION STYLE:
+- elegant
+- smooth
+- controlled
+- realistic
+- satisfying boutique unboxing feel
+- premium fashion reveal
+- natural fabric behavior
+- realistic tissue paper movement
+
+STRICT RULES:
+- do not change the environment
+- do not change the outfit design
+- do not add extra clothing pieces
+- do not add extra objects
+- do not show any model body
+- hands and arms only
+- do not distort the hands
+- do not deform the clothing
+- do not morph the outfit
+- do not teleport the clothes
+- do not make the package disappear instantly
+- the tissue paper must open realistically
+- the top and skirt must be handled as separate physical pieces
+- keep everything realistic and consistent
+
+GOAL:
+A premium POV overhead boutique unboxing video where the woman opens the closed tissue-wrapped package and reveals the black two-piece outfit, ending with the exact final arrangement shown in Image 2.`,
+  movement_json: {
+    video_format: {
+      aspect_ratio: "9:16",
+      duration_seconds: 8,
+      style: "realistic fashion boutique unboxing",
+      camera: "static overhead top-down angle, no zoom, no cuts, no pan"
+    },
+    frame_references: {
+      image_1: "starting frame (closed white tissue paper package centered on carpet)",
+      image_2: "ending frame (opened outfit with top and layered skirt neatly arranged)"
+    },
+    action_flow: {
+      frame_0_2s: "woman holds white boutique tissue package centered on cream fluffy carpet, gently unseals and folds open the tissue paper",
+      frame_2_5s: "smoothly removes the black bandeau top and places it at the upper center",
+      frame_5_7s: "removes the black layered mini skirt and positions it neatly below the top",
+      frame_7_8s: "subtle final fingertip adjustment aligning spacing to match Image 2 perfectly"
+    },
+    physics_and_realism: {
+      tissue_paper: "realistic paper fold physics, smooth tactile feedback, no morphing",
+      fabric_behavior: "natural weight and drape, separate physical garments",
+      hands_and_arms: "consistent feminine arms, nude nails, delicate gold bracelets, natural human motion"
+    }
+  },
+  tags: ["unboxing", "papel de cetim", "papel de seda", "boutique", "flat lay", "overhead", "8s", "alta retencao"],
+  videoUrl: cetimVideo,
+  duration: "8s",
+  created_at: "2026-08-19T21:30:00.000Z",
+  updated_at: "2026-08-19T21:30:00.000Z",
+};
+
 export const SITE_VIDEO_PRESETS: (MovementPreset & { videoUrl?: string; duration?: string })[] = [
+  ABRINDO_PAPEL_CETIM_PRESET,
+  GANCHO_PACOTE_TRANSPARENTE_PRESET,
+  GANCHO_EMBALAGEM_TIKTOK_SHOP_PRESET,
   GANCHO_ESTICAR_ROUPA_PRESET,
   GANCHO_TAPAR_CAMERA_PEGAR_PRODUTO_PRESET,
   GANCHO_JOGAR_ROUPA_OPCAO_2_PRESET,
-  GANCHO_PACOTE_TRANSPARENTE_PRESET,
-  GANCHO_EMBALAGEM_TIKTOK_SHOP_PRESET,
   PASSAR_A_MAO_NA_ROUPA_SITE_PRESET,
   MOSTRAR_AS_PECAS_PRESET,
   MOSTRAR_O_TECIDO_DE_PERTO_PRESET,

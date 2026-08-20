@@ -21,9 +21,11 @@ import { Route as AuthenticatedCharactersRouteImport } from './routes/_authentic
 import { Route as AuthenticatedCopiesRouteImport } from './routes/_authenticated/copies'
 import { Route as AuthenticatedCopyModelerRouteImport } from './routes/_authenticated/copy-modeler'
 import { Route as AuthenticatedCreativeLabRouteImport } from './routes/_authenticated/creative-lab'
+import { Route as AuthenticatedCreativeTrackerRouteImport } from './routes/_authenticated/creative-tracker'
 import { Route as AuthenticatedDailyStudioRouteImport } from './routes/_authenticated/daily-studio'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedHookStudioRouteImport } from './routes/_authenticated/hook-studio'
+import { Route as AuthenticatedLiveScriptsRouteImport } from './routes/_authenticated/live-scripts'
 import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
 import { Route as AuthenticatedMovementsRouteImport } from './routes/_authenticated/movements'
 import { Route as AuthenticatedPerformanceRouteImport } from './routes/_authenticated/performance'
@@ -108,6 +110,12 @@ const AuthenticatedCreativeLabRoute =
     path: '/creative-lab',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCreativeTrackerRoute =
+  AuthenticatedCreativeTrackerRouteImport.update({
+    id: '/creative-tracker',
+    path: '/creative-tracker',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDailyStudioRoute =
   AuthenticatedDailyStudioRouteImport.update({
     id: '/daily-studio',
@@ -124,6 +132,12 @@ const AuthenticatedHookStudioRoute = AuthenticatedHookStudioRouteImport.update({
   path: '/hook-studio',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLiveScriptsRoute =
+  AuthenticatedLiveScriptsRouteImport.update({
+    id: '/live-scripts',
+    path: '/live-scripts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedMetadataCleanerRoute =
   AuthenticatedMetadataCleanerRouteImport.update({
     id: '/metadata-cleaner',
@@ -255,9 +269,11 @@ export interface FileRoutesByFullPath {
   '/copies': typeof AuthenticatedCopiesRoute
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
+  '/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -292,9 +308,11 @@ export interface FileRoutesByTo {
   '/copies': typeof AuthenticatedCopiesRoute
   '/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
+  '/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/movements': typeof AuthenticatedMovementsRoute
   '/performance': typeof AuthenticatedPerformanceRoute
@@ -331,9 +349,11 @@ export interface FileRoutesById {
   '/_authenticated/copies': typeof AuthenticatedCopiesRoute
   '/_authenticated/copy-modeler': typeof AuthenticatedCopyModelerRoute
   '/_authenticated/creative-lab': typeof AuthenticatedCreativeLabRoute
+  '/_authenticated/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/_authenticated/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/hook-studio': typeof AuthenticatedHookStudioRoute
+  '/_authenticated/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
   '/_authenticated/movements': typeof AuthenticatedMovementsRoute
   '/_authenticated/performance': typeof AuthenticatedPerformanceRoute
@@ -370,9 +390,11 @@ export interface FileRouteTypes {
     | '/copies'
     | '/copy-modeler'
     | '/creative-lab'
+    | '/creative-tracker'
     | '/daily-studio'
     | '/dashboard'
     | '/hook-studio'
+    | '/live-scripts'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
@@ -407,9 +429,11 @@ export interface FileRouteTypes {
     | '/copies'
     | '/copy-modeler'
     | '/creative-lab'
+    | '/creative-tracker'
     | '/daily-studio'
     | '/dashboard'
     | '/hook-studio'
+    | '/live-scripts'
     | '/metadata-cleaner'
     | '/movements'
     | '/performance'
@@ -445,9 +469,11 @@ export interface FileRouteTypes {
     | '/_authenticated/copies'
     | '/_authenticated/copy-modeler'
     | '/_authenticated/creative-lab'
+    | '/_authenticated/creative-tracker'
     | '/_authenticated/daily-studio'
     | '/_authenticated/dashboard'
     | '/_authenticated/hook-studio'
+    | '/_authenticated/live-scripts'
     | '/_authenticated/metadata-cleaner'
     | '/_authenticated/movements'
     | '/_authenticated/performance'
@@ -567,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreativeLabRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/creative-tracker': {
+      id: '/_authenticated/creative-tracker'
+      path: '/creative-tracker'
+      fullPath: '/creative-tracker'
+      preLoaderRoute: typeof AuthenticatedCreativeTrackerRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/daily-studio': {
       id: '/_authenticated/daily-studio'
       path: '/daily-studio'
@@ -586,6 +619,13 @@ declare module '@tanstack/react-router' {
       path: '/hook-studio'
       fullPath: '/hook-studio'
       preLoaderRoute: typeof AuthenticatedHookStudioRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/live-scripts': {
+      id: '/_authenticated/live-scripts'
+      path: '/live-scripts'
+      fullPath: '/live-scripts'
+      preLoaderRoute: typeof AuthenticatedLiveScriptsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/metadata-cleaner': {
@@ -746,9 +786,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCopiesRoute: typeof AuthenticatedCopiesRoute
   AuthenticatedCopyModelerRoute: typeof AuthenticatedCopyModelerRoute
   AuthenticatedCreativeLabRoute: typeof AuthenticatedCreativeLabRoute
+  AuthenticatedCreativeTrackerRoute: typeof AuthenticatedCreativeTrackerRoute
   AuthenticatedDailyStudioRoute: typeof AuthenticatedDailyStudioRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedHookStudioRoute: typeof AuthenticatedHookStudioRoute
+  AuthenticatedLiveScriptsRoute: typeof AuthenticatedLiveScriptsRoute
   AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
   AuthenticatedMovementsRoute: typeof AuthenticatedMovementsRoute
   AuthenticatedPerformanceRoute: typeof AuthenticatedPerformanceRoute
@@ -778,9 +820,11 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCopiesRoute: AuthenticatedCopiesRoute,
   AuthenticatedCopyModelerRoute: AuthenticatedCopyModelerRoute,
   AuthenticatedCreativeLabRoute: AuthenticatedCreativeLabRoute,
+  AuthenticatedCreativeTrackerRoute: AuthenticatedCreativeTrackerRoute,
   AuthenticatedDailyStudioRoute: AuthenticatedDailyStudioRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedHookStudioRoute: AuthenticatedHookStudioRoute,
+  AuthenticatedLiveScriptsRoute: AuthenticatedLiveScriptsRoute,
   AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
   AuthenticatedMovementsRoute: AuthenticatedMovementsRoute,
   AuthenticatedPerformanceRoute: AuthenticatedPerformanceRoute,

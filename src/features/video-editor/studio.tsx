@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Captions,
   Copy,
   Film,
   GripVertical,
   HelpCircle,
   Keyboard,
+  Layers,
   Link2Off,
+  Magnet,
+  Maximize2,
+  Minimize2,
   Music2,
   Pause,
   Play,
@@ -14,15 +19,19 @@ import {
   Scissors,
   SkipBack,
   SkipForward,
+  Sliders,
   Sparkles,
+  Split,
   Trash2,
   Type,
   Undo2,
   Upload,
   Volume2,
   VolumeX,
+  Wand2,
   ZoomIn,
   ZoomOut,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,7 +153,9 @@ export function VideoStudio({
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
-  const [activePanel, setActivePanel] = useState<"media" | "text" | "audio">("media");
+  const [activePanel, setActivePanel] = useState<
+    "media" | "text" | "captions" | "audio" | "transitions" | "effects"
+  >("media");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutQuery, setShortcutQuery] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
@@ -252,30 +263,48 @@ export function VideoStudio({
     window.addEventListener("pointerup", finish, { once: true });
   };
 
-  const addText = (preset?: TextPreset) => {
+  const addText = (kindOrPreset?: "heading" | "body" | TextPreset) => {
+    const isPreset = typeof kindOrPreset === "object" && kindOrPreset !== null;
+    const isHeading = kindOrPreset === "heading" || (!isPreset && kindOrPreset !== "body");
     const start = Math.min(currentTime, Math.max(0, layout.duration - 0.25));
     const overlay: EditorTextOverlay = {
       id: `text-${crypto.randomUUID()}`,
-      text: preset?.previewText ?? "Seu texto aqui",
+      text: isPreset
+        ? kindOrPreset.previewText
+        : isHeading
+          ? "Adicionar cabeçalho"
+          : "Adicionar corpo de texto",
       start,
       end: Math.min(layout.duration, start + 3),
       x: 50,
-      y: 76,
-      fontSize: 44,
+      y: isHeading ? 32 : 55,
+      fontSize: isHeading ? 52 : 36,
       color: "#ffffff",
-      backgroundColor: "rgba(0,0,0,0.55)",
-      style: "caption",
+      backgroundColor: "transparent",
+      style: "classic",
       animationIn: "fade",
       animationOut: "fade",
       animationLoop: "none",
-      animationDuration: 0.35,
-      ...(preset ? presetStyleToOverlay(preset) : {}),
+      animationDuration: 0.25,
+      fontFamily: "Montserrat, system-ui, sans-serif",
+      fontWeight: isHeading ? 900 : 700,
+      strokeColor: "#000000",
+      strokeWidth: isHeading ? 6 : 4,
+      shadowColor: "rgba(0,0,0,0.6)",
+      shadowBlur: 2,
+      shadowOffsetX: 0,
+      shadowOffsetY: 2,
+      rotation: 0,
+      letterSpacing: -0.2,
+      textTransform: "none",
+      borderRadius: 0,
+      ...(isPreset ? presetStyleToOverlay(kindOrPreset) : {}),
     };
     onChangeTextOverlays([...textOverlays, overlay]);
     setSelectedTextId(overlay.id);
     setSelectedAudioId(null);
     setActivePanel("text");
-    if (preset) setEditingTextId(overlay.id);
+    setEditingTextId(overlay.id);
   };
 
   const applyTextPreset = (preset: TextPreset) => {
@@ -746,14 +775,15 @@ export function VideoStudio({
         </div>
       </div>
 
-      <div className="grid min-h-[610px] xl:grid-cols-[280px_minmax(420px,1fr)_310px]">
+      <div className="grid min-h-[640px] xl:grid-cols-[340px_minmax(460px,1fr)_320px]">
         <EditorResourcePanel
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           segments={timelineSegments}
           audioLayers={audioLayers}
           disabled={disabled}
-          onAddText={() => addText()}
+          onAddHeading={() => addText("heading")}
+          onAddBody={() => addText("body")}
           onApplyPreset={applyTextPreset}
           onImportVideos={onImportVideos}
           onImportAudio={onImportAudio}
@@ -767,10 +797,19 @@ export function VideoStudio({
             setSelectedTextId(null);
           }}
         />
-        <div className="flex min-w-0 flex-col items-center justify-center bg-[#050609] p-5">
+        <div className="flex min-w-0 flex-col items-center justify-between bg-[#08090d] p-4 relative">
+          {/* Top Player Indicator */}
+          <div className="w-full flex items-center justify-between text-[11px] text-slate-400 pb-2">
+            <span className="flex items-center gap-1.5 font-medium">
+              <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
+              9:16 Vertical (TikTok / Reels)
+            </span>
+            <span className="font-mono text-slate-500 text-[10px]">1080 × 1920</span>
+          </div>
+
           <div
             ref={previewRef}
-            className="relative aspect-[9/16] max-h-[510px] w-full max-w-[287px] overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10"
+            className="relative aspect-[9/16] max-h-[500px] w-full max-w-[282px] overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10 my-auto"
           >
             {activeEntries.some((entry) => entry.segment.file) ? (
               activeEntries.map((entry, activeIndex) => {
@@ -856,36 +895,89 @@ export function VideoStudio({
               })}
           </div>
 
-          <div className="mt-4 flex items-center gap-2 text-white">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-white/10 hover:text-white"
-              onClick={() => seek(0)}
-            >
-              <SkipBack />
-            </Button>
-            <Button
-              size="icon"
-              className="size-11 rounded-full"
-              onClick={() => {
-                if (currentTime >= layout.duration) seek(0);
-                setPlaying((current) => !current);
-              }}
-            >
-              {playing ? <Pause /> : <Play className="ml-0.5" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="hover:bg-white/10 hover:text-white"
-              onClick={() => seek(layout.duration)}
-            >
-              <SkipForward />
-            </Button>
-            <span className="ml-2 min-w-28 font-mono text-xs text-slate-300">
-              {formatTime(currentTime)} / {formatTime(layout.duration)}
-            </span>
+          {/* CapCut Style Bottom Transport Bar */}
+          <div className="w-full flex items-center justify-between border-t border-white/10 pt-3 px-2 text-white">
+            {/* Left Actions: Split, Delete, Duplicate */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-slate-300 hover:bg-white/10 hover:text-white"
+                disabled={(!selectedSegment && !selectedAudio) || disabled}
+                onClick={splitCurrentSelection}
+                title="Dividir no cursor (S)"
+              >
+                <Scissors className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-rose-300 hover:bg-rose-500/10"
+                disabled={(!selectedSegment && !selectedText && !selectedAudio) || disabled}
+                onClick={removeSelection}
+                title="Excluir (Delete)"
+              >
+                <Trash2 className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-slate-300 hover:bg-white/10"
+                disabled={(!selectedSegment && !selectedText && !selectedAudio) || disabled}
+                onClick={duplicateSelection}
+                title="Duplicar (Ctrl+D)"
+              >
+                <Copy className="size-4" />
+              </Button>
+            </div>
+
+            {/* Center: Transport & Timecode */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-slate-400 hover:bg-white/10 hover:text-white"
+                onClick={() => seek(0)}
+                title="Voltar ao início"
+              >
+                <SkipBack className="size-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                className="size-9 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg shadow-cyan-500/20"
+                onClick={() => {
+                  if (currentTime >= layout.duration) seek(0);
+                  setPlaying((current) => !current);
+                }}
+              >
+                {playing ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-slate-400 hover:bg-white/10 hover:text-white"
+                onClick={() => seek(layout.duration)}
+                title="Ir para o final"
+              >
+                <SkipForward className="size-3.5" />
+              </Button>
+              <span className="font-mono text-[11px] text-slate-300 ml-1">
+                {formatTime(currentTime)} <span className="text-slate-600">|</span> {formatTime(layout.duration)}
+              </span>
+            </div>
+
+            {/* Right: Magnet & Fit */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-slate-400 hover:text-cyan-300"
+                onClick={zoomToFit}
+                title="Ajustar zoom à janela"
+              >
+                <Maximize2 className="size-3.5" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -897,6 +989,7 @@ export function VideoStudio({
               disabled={disabled}
               onChange={(patch) => updateText(selectedText.id, patch)}
               onRemove={() => removeText(selectedText.id)}
+              onClose={() => setSelectedTextId(null)}
             />
           ) : selectedAudio ? (
             <AudioInspector
@@ -1358,19 +1451,21 @@ function EditorResourcePanel({
   segments,
   audioLayers,
   disabled,
-  onAddText,
+  onAddHeading,
+  onAddBody,
   onApplyPreset,
   onImportVideos,
   onImportAudio,
   onSelectSegment,
   onSelectAudio,
 }: {
-  activePanel: "media" | "text" | "audio";
-  onPanelChange: (panel: "media" | "text" | "audio") => void;
+  activePanel: "media" | "text" | "captions" | "audio" | "transitions" | "effects";
+  onPanelChange: (panel: "media" | "text" | "captions" | "audio" | "transitions" | "effects") => void;
   segments: EditorSegment[];
   audioLayers: EditorAudioLayer[];
   disabled: boolean;
-  onAddText: () => void;
+  onAddHeading?: () => void;
+  onAddBody?: () => void;
   onApplyPreset: (preset: TextPreset) => void;
   onImportVideos: (files: File[]) => void;
   onImportAudio: (file: File) => void;
@@ -1380,34 +1475,49 @@ function EditorResourcePanel({
   const tabs = [
     { id: "media" as const, label: "Mídia", icon: Film },
     { id: "text" as const, label: "Texto", icon: Type },
+    { id: "captions" as const, label: "Legendas", icon: Captions },
     { id: "audio" as const, label: "Áudio", icon: Music2 },
+    { id: "transitions" as const, label: "Transições", icon: Split },
+    { id: "effects" as const, label: "Efeitos", icon: Wand2 },
   ];
+
   return (
-    <aside className="min-h-0 border-r border-white/10 bg-[#11141d] text-slate-100">
-      <div className="grid grid-cols-3 border-b border-white/10 p-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            aria-pressed={activePanel === tab.id}
-            className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-[10px] transition ${
-              activePanel === tab.id
-                ? "bg-primary/15 text-primary"
-                : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
-            }`}
-            onClick={() => onPanelChange(tab.id)}
-          >
-            <tab.icon className="size-4" />
-            {tab.label}
-          </button>
-        ))}
+    <aside className="flex min-h-0 border-r border-white/10 bg-[#0e1017] text-slate-100">
+      {/* CapCut Vertical Icon Rail */}
+      <div className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-white/10 bg-[#08090d] py-3">
+        {tabs.map((tab) => {
+          const isActive = activePanel === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              aria-pressed={isActive}
+              className={`flex w-12 flex-col items-center justify-center gap-1 rounded-xl py-2.5 text-[9px] font-semibold transition-all ${
+                isActive
+                  ? "bg-white/10 text-white shadow-inner ring-1 ring-white/20"
+                  : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
+              }`}
+              onClick={() => onPanelChange(tab.id)}
+            >
+              <tab.icon className={`size-4 ${isActive ? "text-cyan-400" : "text-slate-400"}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
-      <div className="max-h-[610px] overflow-y-auto p-3">
+
+      {/* Subpanel Drawer Content */}
+      <div className="w-72 max-h-[640px] overflow-y-auto p-3.5 bg-[#11131a]">
         {activePanel === "media" && (
           <div className="space-y-4">
-            <Button className="w-full" size="sm" asChild>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Biblioteca de Mídia</span>
+              <span className="text-[10px] text-slate-400">{segments.length} clipes</span>
+            </div>
+
+            <Button className="w-full bg-primary hover:bg-primary/90 text-black font-bold h-9 text-xs gap-1.5 shadow-lg" size="sm" asChild>
               <label className="cursor-pointer">
-                <Upload /> Importar vídeos
+                <Upload className="size-3.5" /> Importar vídeos
                 <input
                   className="sr-only"
                   type="file"
@@ -1421,59 +1531,89 @@ function EditorResourcePanel({
                 />
               </label>
             </Button>
+
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  No projeto
+                  Na Timeline
                 </p>
-                <span className="text-[10px] text-slate-600">{segments.length}</span>
               </div>
               <div className="space-y-1.5">
                 {segments.map((segment, index) => (
                   <button
                     key={segment.id}
                     type="button"
-                    className="flex w-full items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.025] p-2 text-left transition hover:border-primary/30 hover:bg-primary/[0.06]"
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-white/[0.07] bg-white/[0.025] p-2 text-left transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.06]"
                     onClick={() => onSelectSegment(segment.id)}
                   >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sky-500/15 text-sky-300">
-                      <Film className="size-3.5" />
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-300 font-mono text-[10px]">
+                      0{index + 1}
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-[11px] font-medium text-slate-200">
                         {segment.label}
                       </span>
                       <span className="text-[9px] text-slate-500">
-                        Clipe {index + 1} ·{" "}
-                        {((segment.end - segment.start) / segment.playbackRate).toFixed(1)}s
+                        {((segment.end - segment.start) / segment.playbackRate).toFixed(1)}s · {segment.playbackRate}x
                       </span>
                     </span>
                   </button>
                 ))}
               </div>
             </div>
-            <p className="rounded-lg border border-white/[0.06] bg-black/20 p-3 text-[10px] leading-4 text-slate-500">
-              Dica: selecione um clipe e pressione <kbd className="text-slate-300">S</kbd> para
-              dividir exatamente no cursor vermelho.
-            </p>
           </div>
         )}
 
         {activePanel === "text" && (
           <div className="space-y-4">
-            <Button className="w-full" size="sm" onClick={onAddText} disabled={disabled}>
-              <Type /> Adicionar texto{" "}
-              <kbd className="ml-auto rounded bg-black/20 px-1 text-[9px]">T</kbd>
-            </Button>
-            <TextPresetBrowser onApply={onApplyPreset} />
+            <TextPresetBrowser
+              onApply={onApplyPreset}
+              onAddHeading={onAddHeading}
+              onAddBody={onAddBody}
+            />
+          </div>
+        )}
+
+        {activePanel === "captions" && (
+          <div className="space-y-3.5 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-white">Legendas CapCut</span>
+              <span className="text-[10px] text-amber-300 bg-amber-400/10 px-1.5 py-0.5 rounded">IA Sync</span>
+            </div>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Gera legendas automáticas sincronizadas com a fala no estilo viral dos criadores do CapCut.
+            </p>
+
+            <div className="space-y-2 pt-1">
+              {[
+                { name: "🟡 CapCut Fundo Amarelo", desc: "Texto preto em caixa amarela destacada", preset: "capcut_yellow" as const },
+                { name: "🟣 CapCut Fundo Roxo", desc: "Roxo vibrante com glow e traço", preset: "capcut_purple" as const },
+                { name: "🟢 CapCut Verde Neon", desc: "Verde elétrico de alta retenção", preset: "capcut_neon_green" as const },
+                { name: "⚡ CapCut Palavra Dinâmica", desc: "Destaca cada palavra conforme falada", preset: "capcut_dynamic" as const },
+              ].map((item) => (
+                <div
+                  key={item.name}
+                  className="p-2.5 rounded-xl border border-white/10 bg-black/40 hover:border-cyan-400/50 hover:bg-white/[0.03] transition cursor-pointer"
+                >
+                  <p className="font-bold text-[11px] text-slate-200">{item.name}</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">{item.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {activePanel === "audio" && (
           <div className="space-y-4">
-            <Button className="w-full" size="sm" asChild>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Trilhas & Áudios</span>
+              <span className="text-[10px] text-slate-400">{audioLayers.length} camadas</span>
+            </div>
+
+            <Button className="w-full h-8 text-xs font-bold gap-1" size="sm" asChild>
               <label className="cursor-pointer">
-                <Upload /> Importar áudio
+                <Upload className="size-3.5" /> Importar áudio / música
                 <input
                   className="sr-only"
                   type="file"
@@ -1487,27 +1627,25 @@ function EditorResourcePanel({
                 />
               </label>
             </Button>
+
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Camadas de áudio
-                </p>
-                <span className="text-[10px] text-slate-600">{audioLayers.length}</span>
-              </div>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                Camadas de Áudio
+              </p>
               {audioLayers.length ? (
                 <div className="space-y-1.5">
                   {audioLayers.map((layer) => (
                     <button
                       key={layer.id}
                       type="button"
-                      className="flex w-full items-center gap-2 rounded-lg border border-cyan-400/10 bg-cyan-400/[0.04] p-2 text-left transition hover:border-cyan-300/30"
+                      className="flex w-full items-center gap-2 rounded-xl border border-cyan-400/15 bg-cyan-400/[0.04] p-2 text-left transition hover:border-cyan-300/40"
                       onClick={() => onSelectAudio(layer.id)}
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-cyan-500/15 text-cyan-300">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-300">
                         <Music2 className="size-3.5" />
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-[11px] text-slate-200">
+                        <span className="block truncate text-[11px] font-medium text-slate-200">
                           {layer.name}
                         </span>
                         <span className="text-[9px] text-slate-500">
@@ -1518,10 +1656,58 @@ function EditorResourcePanel({
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl border border-dashed border-white/10 px-3 py-7 text-center text-[10px] leading-4 text-slate-500">
-                  Importe uma música ou separe o áudio de um clipe.
+                <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-[10px] leading-4 text-slate-500">
+                  Importe uma música ou separe o áudio do clipe na timeline.
                 </p>
               )}
+            </div>
+          </div>
+        )}
+
+        {activePanel === "transitions" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Transições CapCut</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Dissolver", id: "fade" },
+                { label: "Fade Preto", id: "dip-black" },
+                { label: "Deslizar", id: "slide-left" },
+                { label: "Zoom In", id: "zoom-in" },
+              ].map((t) => (
+                <div
+                  key={t.id}
+                  className="p-2.5 rounded-xl border border-white/10 bg-black/40 text-center hover:border-cyan-400 hover:bg-white/[0.04] transition cursor-pointer"
+                >
+                  <Split className="size-4 mx-auto text-cyan-400 mb-1" />
+                  <span className="text-[10px] font-semibold text-slate-300">{t.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activePanel === "effects" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Efeitos & Filtros</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Glow Suave", id: "glow" },
+                { label: "Nitidez HD", id: "sharpen" },
+                { label: "Vinheta", id: "vignette" },
+                { label: "Aquecido", id: "warm" },
+              ].map((e) => (
+                <div
+                  key={e.id}
+                  className="p-2.5 rounded-xl border border-white/10 bg-black/40 text-center hover:border-amber-400 hover:bg-white/[0.04] transition cursor-pointer"
+                >
+                  <Wand2 className="size-4 mx-auto text-amber-400 mb-1" />
+                  <span className="text-[10px] font-semibold text-slate-300">{e.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -1578,36 +1764,35 @@ function TextCanvasElement({
     <>
       {selected && !editing && (
         <div
-          className="absolute z-40 flex -translate-x-1/2 items-center gap-0.5 rounded-lg border border-white/10 bg-[#151924]/95 p-1 shadow-xl backdrop-blur"
-          style={{ left: `${overlay.x}%`, top: `calc(${overlay.y}% - 46px)` }}
+          className="absolute z-40 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-white/15 bg-[#12141c]/95 px-2 py-1 shadow-2xl backdrop-blur"
+          style={{ left: `${overlay.x}%`, top: `calc(${overlay.y}% - 38px)` }}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-[10px] text-white hover:bg-white/10"
+          <span className="size-3.5 flex items-center justify-center text-slate-400">🔒</span>
+          <span className="h-3 w-px bg-white/20" />
+          <button
+            type="button"
+            className="text-[10px] text-white hover:text-cyan-400 font-bold px-1"
             onClick={onEdit}
           >
-            <Type className="size-3" /> Editar
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="size-7 text-white hover:bg-white/10"
+            Editar
+          </button>
+          <button
+            type="button"
+            className="text-[10px] text-slate-300 hover:text-white px-1"
             onClick={onDuplicate}
-            title="Duplicar (Ctrl + D)"
+            title="Duplicar (Ctrl+D)"
           >
             <Copy className="size-3" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="size-7 text-rose-300 hover:bg-rose-500/10"
+          </button>
+          <button
+            type="button"
+            className="text-[10px] text-rose-400 hover:text-rose-300 px-1"
             onClick={onRemove}
-            title="Excluir (Delete)"
+            title="Excluir"
           >
             <Trash2 className="size-3" />
-          </Button>
+          </button>
         </div>
       )}
       {editing ? (
@@ -1615,7 +1800,7 @@ function TextCanvasElement({
           autoFocus
           value={overlay.text}
           aria-label="Editar texto no vídeo"
-          className="absolute z-40 max-w-[84%] resize-none overflow-hidden border border-primary bg-transparent text-center leading-tight outline-none ring-2 ring-primary/35"
+          className="absolute z-40 max-w-[88%] resize-none overflow-hidden border-2 border-cyan-400 bg-transparent text-center leading-tight outline-none shadow-xl rounded-md"
           style={elementStyle}
           rows={Math.max(1, overlay.text.split("\n").length)}
           onChange={(event) => onChange(event.target.value)}
@@ -1636,10 +1821,27 @@ function TextCanvasElement({
           onPointerDown={onPointerDown}
           onClick={onSelect}
           onDoubleClick={onEdit}
-          className={`absolute z-30 max-w-[84%] cursor-move whitespace-pre-wrap text-center leading-tight ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-transparent" : ""}`}
+          className={`absolute z-30 max-w-[88%] cursor-move whitespace-pre-wrap text-center leading-tight transition-shadow ${
+            selected
+              ? "border-2 border-cyan-400 rounded-md shadow-lg shadow-cyan-500/20 ring-1 ring-cyan-300/40"
+              : "hover:outline hover:outline-1 hover:outline-white/30 rounded-md"
+          }`}
           style={elementStyle}
           title="Arraste para mover · duplo clique para editar"
         >
+          {selected && (
+            <>
+              {/* Corner circle handles like CapCut */}
+              <span className="absolute -top-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-cyan-400 shadow-md" />
+              <span className="absolute -top-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-cyan-400 shadow-md" />
+              <span className="absolute -bottom-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-cyan-400 shadow-md" />
+              <span className="absolute -bottom-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-cyan-400 shadow-md" />
+              {/* Center rotation handle */}
+              <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 size-3.5 rounded-full bg-[#12141c] border border-cyan-400 flex items-center justify-center text-[8px] text-cyan-300 font-bold shadow-md">
+                ⟳
+              </span>
+            </>
+          )}
           {(overlay.decorations ?? []).map((decoration, index) => (
             <span
               key={`${decoration.type}-${index}`}
@@ -2251,187 +2453,316 @@ function TextInspector({
   disabled,
   onChange,
   onRemove,
+  onClose,
 }: {
   overlay: EditorTextOverlay;
   duration: number;
   disabled: boolean;
   onChange: (patch: Partial<EditorTextOverlay>) => void;
   onRemove: () => void;
+  onClose?: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"basic" | "tts" | "anim" | "track">("basic");
+  const [applyAll, setApplyAll] = useState(false);
+
   return (
-    <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-amber-300">
-            Camada de texto
-          </p>
-          <h3 className="mt-1 text-sm font-semibold">Editar texto</h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-8 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
-          onClick={onRemove}
-        >
-          <Trash2 />
-        </Button>
-      </div>
-      <textarea
-        className="min-h-24 w-full resize-none rounded-lg border border-white/10 bg-black/25 p-3 text-sm outline-none focus:border-primary"
-        value={overlay.text}
-        disabled={disabled}
-        onChange={(event) => onChange({ text: event.target.value })}
-      />
-      <InspectorGroup title="Aparência">
-        <DarkSelect
-          label="Efeito de texto"
-          value={overlay.style}
-          disabled={disabled}
-          onChange={(value) => onChange({ style: value as EditorTextOverlay["style"] })}
-        >
-          <option value="caption">Legenda TikTok</option>
-          <option value="impact">Impacto / oferta</option>
-          <option value="neon">Neon creator</option>
-          <option value="classic">Clássico com contorno</option>
-          <option value="minimal">Minimalista</option>
-        </DarkSelect>
-        <Range
-          label="Tamanho"
-          value={overlay.fontSize}
-          min={18}
-          max={96}
-          suffix="px"
-          disabled={disabled}
-          onChange={(fontSize) => onChange({ fontSize })}
-        />
-        <DarkSelect
-          label="Fonte"
-          value={overlay.fontFamily ?? "Arial Black, Arial, sans-serif"}
-          disabled={disabled}
-          onChange={(fontFamily) => onChange({ fontFamily })}
-        >
-          <option value="Arial Black, Arial, sans-serif">Impacto moderno</option>
-          <option value="Impact, Arial Black, sans-serif">Impact</option>
-          <option value="Trebuchet MS, Arial, sans-serif">Trebuchet</option>
-          <option value="Georgia, serif">Editorial</option>
-          <option value="Times New Roman, Georgia, serif">Serif clássico</option>
-          <option value="Verdana, Arial, sans-serif">Legenda legível</option>
-        </DarkSelect>
-        <div className="grid grid-cols-2 gap-2">
-          <ColorControl
-            label="Texto"
-            value={overlay.color}
-            onChange={(color) => onChange({ color })}
-          />
-          <label className="text-[10px] text-slate-400">
-            Fundo
-            <select
-              className="mt-1 h-9 w-full rounded-md border border-white/10 bg-[#090b11] px-2 text-xs text-white"
-              value={overlay.backgroundColor}
-              onChange={(event) => onChange({ backgroundColor: event.target.value })}
+    <div className="flex h-full text-slate-100">
+      {/* Main Inspector Panel */}
+      <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+        {/* Header: Básico + Close button */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-white tracking-wide">Básico</span>
+            <span className="text-[10px] text-slate-500 font-mono">Texto</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              className="size-6 rounded-md hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 flex items-center justify-center text-xs transition"
+              onClick={onRemove}
+              title="Excluir texto"
             >
-              <option value="transparent">Sem fundo</option>
-              <option value="rgba(0,0,0,0.55)">Preto</option>
-              <option value="rgba(255,255,255,0.88)">Branco</option>
-              <option value="rgba(124,58,237,0.85)">Roxo</option>
+              <Trash2 className="size-3.5" />
+            </button>
+            {onClose && (
+              <button
+                type="button"
+                className="size-6 rounded-md hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center text-xs transition"
+                onClick={onClose}
+                title="Fechar"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Textarea: Direct Text Input */}
+        <div>
+          <textarea
+            className="min-h-20 w-full resize-none rounded-xl border border-white/10 bg-black/40 p-3 text-xs font-medium text-white outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 shadow-inner"
+            value={overlay.text}
+            disabled={disabled}
+            placeholder="Digite o texto aqui..."
+            onChange={(event) => onChange({ text: event.target.value })}
+          />
+        </div>
+
+        {/* Font Family & Size */}
+        <div className="grid grid-cols-[1fr_80px] gap-2">
+          <label className="block text-[10px] text-slate-400 font-medium">
+            Fonte
+            <select
+              className="mt-1 h-8 w-full rounded-lg border border-white/10 bg-[#161822] px-2 text-xs text-white outline-none focus:border-cyan-400"
+              value={overlay.fontFamily ?? "Montserrat, system-ui, sans-serif"}
+              disabled={disabled}
+              onChange={(e) => onChange({ fontFamily: e.target.value })}
+            >
+              <option value="Montserrat, system-ui, sans-serif">Padrão (Montserrat)</option>
+              <option value="Arial Black, Arial, sans-serif">Arial Black</option>
+              <option value="Impact, Arial Black, sans-serif">Impact Bold</option>
+              <option value="Nunito, system-ui, sans-serif">Nunito Redondo</option>
+              <option value="Trebuchet MS, Arial, sans-serif">Trebuchet</option>
+              <option value="Georgia, serif">Editorial Serif</option>
             </select>
           </label>
-        </div>
-        {overlay.captionWords?.length ? (
-          <div className="grid grid-cols-2 gap-2">
-            <ColorControl
-              label="Palavra falada"
-              value={overlay.highlightColor ?? "#facc15"}
-              onChange={(highlightColor) => onChange({ highlightColor })}
-            />
-            <DarkSelect
-              label="Preset"
-              value={overlay.captionPreset ?? "tiktok"}
+
+          <label className="block text-[10px] text-slate-400 font-medium">
+            Tamanho
+            <input
+              type="number"
+              min="14"
+              max="120"
+              className="mt-1 h-8 w-full rounded-lg border border-white/10 bg-[#161822] px-2 text-xs text-white outline-none focus:border-cyan-400 font-mono"
+              value={overlay.fontSize}
               disabled={disabled}
-              onChange={(captionPreset) =>
-                onChange({
-                  captionPreset: captionPreset as NonNullable<EditorTextOverlay["captionPreset"]>,
-                })
-              }
+              onChange={(e) => onChange({ fontSize: Number(e.target.value) })}
+            />
+          </label>
+        </div>
+
+        {/* Typography Formatting Toolbar: B / I / U / Align / Case */}
+        <div className="flex items-center justify-between bg-black/30 p-1.5 rounded-xl border border-white/10">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onChange({ fontWeight: overlay.fontWeight === 900 ? 500 : 900 })}
+              className={`size-7 rounded-lg text-xs font-black transition flex items-center justify-center ${
+                overlay.fontWeight === 900 ? "bg-white/20 text-cyan-300 ring-1 ring-cyan-400" : "text-slate-400 hover:text-white"
+              }`}
+              title="Negrito"
             >
-              <option value="tiktok">TikTok</option>
-              <option value="capcut">CapCut</option>
-              <option value="karaoke">Karaokê</option>
-              <option value="impact">Impacto</option>
-              <option value="minimal">Minimalista</option>
-            </DarkSelect>
+              B
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange({ textTransform: overlay.textTransform === "uppercase" ? "none" : "uppercase" })}
+              className={`size-7 rounded-lg text-xs font-bold transition flex items-center justify-center ${
+                overlay.textTransform === "uppercase" ? "bg-white/20 text-cyan-300 ring-1 ring-cyan-400" : "text-slate-400 hover:text-white"
+              }`}
+              title="Maiúsculas (AA)"
+            >
+              AA
+            </button>
           </div>
-        ) : null}
-        <div className="grid grid-cols-2 gap-2">
-          <ColorControl
-            label="Contorno"
-            value={overlay.strokeColor ?? "#111827"}
-            onChange={(strokeColor) => onChange({ strokeColor })}
-          />
-          <DarkNumber
-            label="Espessura"
-            value={overlay.strokeWidth ?? 3}
-            min={0}
-            max={12}
-            disabled={disabled}
-            onChange={(strokeWidth) => onChange({ strokeWidth })}
+
+          <div className="flex items-center gap-1">
+            {[-0.5, 0, 1].map((spacing) => (
+              <button
+                key={spacing}
+                type="button"
+                onClick={() => onChange({ letterSpacing: spacing })}
+                className={`px-1.5 h-7 rounded-lg text-[10px] font-mono transition ${
+                  (overlay.letterSpacing ?? 0) === spacing ? "bg-white/20 text-cyan-300" : "text-slate-500 hover:text-white"
+                }`}
+              >
+                {spacing === 0 ? "Normal" : `${spacing}px`}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Section: Estilo (Preenchimento, Traço, Fundo, Sombra) */}
+        <div className="space-y-3 border-t border-white/10 pt-3">
+          <span className="text-[11px] font-bold text-white block">Estilo</span>
+
+          {/* Preenchimento */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-300 text-[11px]">Preenchimento</span>
+            <div className="flex items-center gap-2">
+              <label className="size-6 rounded-md border border-white/20 cursor-pointer overflow-hidden shadow-inner flex items-center justify-center" style={{ backgroundColor: overlay.color }}>
+                <input
+                  type="color"
+                  value={overlay.color.startsWith("#") ? overlay.color : "#ffffff"}
+                  onChange={(e) => onChange({ color: e.target.value })}
+                  className="sr-only"
+                />
+              </label>
+              <span className="font-mono text-[10px] text-slate-400">{overlay.color}</span>
+            </div>
+          </div>
+
+          {/* Traço (Stroke) */}
+          <div className="space-y-1.5 bg-black/20 p-2.5 rounded-xl border border-white/5">
+            <div className="flex items-center justify-between text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(overlay.strokeWidth ?? 0) > 0}
+                  onChange={(e) => onChange({ strokeWidth: e.target.checked ? 6 : 0 })}
+                  className="rounded accent-cyan-400"
+                />
+                <span className="text-slate-300 text-[11px] font-medium">Traço (Contorno)</span>
+              </label>
+              {(overlay.strokeWidth ?? 0) > 0 && (
+                <label className="size-5 rounded border border-white/20 cursor-pointer overflow-hidden" style={{ backgroundColor: overlay.strokeColor ?? "#000000" }}>
+                  <input
+                    type="color"
+                    value={overlay.strokeColor?.startsWith("#") ? overlay.strokeColor : "#000000"}
+                    onChange={(e) => onChange({ strokeColor: e.target.value })}
+                    className="sr-only"
+                  />
+                </label>
+              )}
+            </div>
+            {(overlay.strokeWidth ?? 0) > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="range"
+                  min="1"
+                  max="14"
+                  value={overlay.strokeWidth ?? 6}
+                  onChange={(e) => onChange({ strokeWidth: Number(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+                <span className="font-mono text-[10px] text-cyan-300 font-bold w-6">{overlay.strokeWidth ?? 6}px</span>
+              </div>
+            )}
+          </div>
+
+          {/* Plano de fundo */}
+          <div className="space-y-1.5 bg-black/20 p-2.5 rounded-xl border border-white/5">
+            <div className="flex items-center justify-between text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={overlay.backgroundColor !== "transparent"}
+                  onChange={(e) => onChange({ backgroundColor: e.target.checked ? "#facc15" : "transparent" })}
+                  className="rounded accent-cyan-400"
+                />
+                <span className="text-slate-300 text-[11px] font-medium">Plano de fundo</span>
+              </label>
+              {overlay.backgroundColor !== "transparent" && (
+                <label className="size-5 rounded border border-white/20 cursor-pointer overflow-hidden" style={{ backgroundColor: overlay.backgroundColor }}>
+                  <input
+                    type="color"
+                    value={overlay.backgroundColor.startsWith("#") ? overlay.backgroundColor : "#facc15"}
+                    onChange={(e) => onChange({ backgroundColor: e.target.value })}
+                    className="sr-only"
+                  />
+                </label>
+              )}
+            </div>
+            {overlay.backgroundColor !== "transparent" && (
+              <div className="flex items-center gap-1 pt-1">
+                {["#facc15", "#7c3aed", "rgba(0,0,0,0.8)", "#ffffff"].map((presetBg) => (
+                  <button
+                    key={presetBg}
+                    type="button"
+                    onClick={() => onChange({ backgroundColor: presetBg })}
+                    className="h-5 px-2 rounded text-[9px] font-bold border border-white/10"
+                    style={{ backgroundColor: presetBg, color: presetBg === "#ffffff" || presetBg === "#facc15" ? "#000" : "#fff" }}
+                  >
+                    {presetBg === "#facc15" ? "Amarelo" : presetBg === "#7c3aed" ? "Roxo" : presetBg === "#ffffff" ? "Branco" : "Preto"}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sombra */}
+          <div className="space-y-1.5 bg-black/20 p-2.5 rounded-xl border border-white/5">
+            <div className="flex items-center justify-between text-xs">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(overlay.shadowBlur ?? 0) > 0}
+                  onChange={(e) => onChange({ shadowBlur: e.target.checked ? 6 : 0 })}
+                  className="rounded accent-cyan-400"
+                />
+                <span className="text-slate-300 text-[11px] font-medium">Sombra</span>
+              </label>
+            </div>
+            {(overlay.shadowBlur ?? 0) > 0 && (
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="range"
+                  min="1"
+                  max="16"
+                  value={overlay.shadowBlur ?? 6}
+                  onChange={(e) => onChange({ shadowBlur: Number(e.target.value) })}
+                  className="w-full accent-cyan-400"
+                />
+                <span className="font-mono text-[10px] text-cyan-300 font-bold w-6">{overlay.shadowBlur ?? 6}px</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Opacidade Slider */}
+        <div className="space-y-1 border-t border-white/10 pt-3">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-slate-300 font-medium">Opacidade</span>
+            <span className="font-mono text-cyan-300 font-bold">100%</span>
+          </div>
+          <input
+            type="range"
+            min="10"
+            max="100"
+            defaultValue="100"
+            className="w-full accent-cyan-400"
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <DarkNumber
-            label="Rotação"
-            value={overlay.rotation ?? 0}
-            min={-30}
-            max={30}
-            disabled={disabled}
-            onChange={(rotation) => onChange({ rotation })}
-          />
-          <DarkNumber
-            label="Espaçamento"
-            value={overlay.letterSpacing ?? 0}
-            min={-3}
-            max={12}
-            disabled={disabled}
-            onChange={(letterSpacing) => onChange({ letterSpacing })}
-          />
+
+        {/* Aplicar a tudo */}
+        <div className="pt-2">
+          <label className="flex items-center gap-2 text-[11px] text-slate-400 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={applyAll}
+              onChange={(e) => setApplyAll(e.target.checked)}
+              className="rounded accent-cyan-400"
+            />
+            <span>Aplicar estilo a todos os textos</span>
+          </label>
         </div>
-      </InspectorGroup>
-      <InspectorGroup title="Tempo na tela">
-        <div className="grid grid-cols-2 gap-2">
-          <DarkNumber
-            label="Entrada"
-            value={overlay.start}
-            min={0}
-            max={overlay.end - 0.1}
-            disabled={disabled}
-            onChange={(start) => onChange({ start })}
-          />
-          <DarkNumber
-            label="Saída"
-            value={overlay.end}
-            min={overlay.start + 0.1}
-            max={duration}
-            disabled={disabled}
-            onChange={(end) => onChange({ end })}
-          />
-        </div>
-      </InspectorGroup>
-      <InspectorGroup title="Animação">
-        <AnimationPresetChooser overlay={overlay} disabled={disabled} onChange={onChange} />
-        <Range
-          label="Duração"
-          value={overlay.animationDuration}
-          min={0.1}
-          max={1.2}
-          step={0.05}
-          suffix="s"
-          disabled={disabled}
-          onChange={(animationDuration) => onChange({ animationDuration })}
-        />
-      </InspectorGroup>
-      <p className="text-[10px] leading-4 text-slate-500">
-        Arraste o texto diretamente sobre o vídeo para posicioná-lo.
-      </p>
+      </div>
+
+      {/* Far Right Mini Icon Strip (CapCut style) */}
+      <div className="flex w-10 flex-col items-center gap-3 border-l border-white/10 pl-2 pt-2 text-slate-400">
+        <button
+          type="button"
+          onClick={() => setActiveTab("basic")}
+          className={`flex flex-col items-center gap-0.5 text-[8px] font-bold ${
+            activeTab === "basic" ? "text-cyan-400" : "text-slate-500 hover:text-white"
+          }`}
+          title="Básico"
+        >
+          <Type className="size-4" />
+          <span>Básico</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("anim")}
+          className={`flex flex-col items-center gap-0.5 text-[8px] font-bold ${
+            activeTab === "anim" ? "text-cyan-400" : "text-slate-500 hover:text-white"
+          }`}
+          title="Animação"
+        >
+          <Sparkles className="size-4" />
+          <span>Anim.</span>
+        </button>
+      </div>
     </div>
   );
 }

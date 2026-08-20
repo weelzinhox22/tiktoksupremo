@@ -35,6 +35,8 @@ import {
   Bot,
   Settings,
   Wrench,
+  Radio,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -47,6 +49,7 @@ const navGroups = [
     title: "Principal",
     items: [
       { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
+      { label: "Rastreador de Vendas", icon: TrendingUp, to: "/creative-tracker" as const },
       { label: "Fábrica diária", icon: Factory, to: "/daily-studio" as const },
       { label: "Agente de produção", icon: Bot, to: "/production-agent" as const },
       { label: "Meus Projetos", icon: FolderKanban, to: "/projects" as const },
@@ -56,6 +59,7 @@ const navGroups = [
     title: "Criação & Roteiro",
     items: [
       { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
+      { label: "Scripts de Live IA", icon: Radio, to: "/live-scripts" as const },
       { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
       { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
     ],

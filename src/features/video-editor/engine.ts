@@ -95,7 +95,16 @@ export type EditorTextOverlay = {
   captionWords?: string[];
   activeWordIndex?: number;
   highlightColor?: string;
-  captionPreset?: "tiktok" | "capcut" | "karaoke" | "minimal" | "impact";
+  captionPreset?:
+    | "tiktok"
+    | "capcut"
+    | "capcut_yellow"
+    | "capcut_purple"
+    | "capcut_neon_green"
+    | "capcut_dynamic"
+    | "karaoke"
+    | "minimal"
+    | "impact";
   important?: boolean;
   decorations?: Array<{
     type: "sparkle" | "star" | "dot" | "bolt";

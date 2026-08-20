@@ -1,6 +1,15 @@
 import type { EditorSegment, EditorTextOverlay } from "@/features/video-editor/engine";
 
-export type CaptionPreset = "tiktok" | "capcut" | "karaoke" | "minimal" | "impact";
+export type CaptionPreset =
+  | "tiktok"
+  | "capcut"
+  | "capcut_yellow"
+  | "capcut_purple"
+  | "capcut_neon_green"
+  | "capcut_dynamic"
+  | "karaoke"
+  | "minimal"
+  | "impact";
 export type TimedWord = { text: string; start: number; end: number; important: boolean };
 export type SpeechAnalysis = {
   duration: number;
@@ -11,49 +20,108 @@ export type SpeechAnalysis = {
 };
 
 const importantTerms =
-  /\b(gr[aá]tis|novo|segredo|resultado|desconto|oferta|economize|melhor|r[aá]pido|agora|aten[cç][aã]o|comprovado|exclusiv[oa]|problema|solu[cç][aã]o|antes|depois)\b/i;
+  /\b(gr[aá]tis|novo|segredo|resultado|desconto|oferta|economize|melhor|r[aá]pido|agora|aten[cç][aã]o|comprovado|exclusiv[oa]|problema|solu[cç][aã]o|antes|depois|qualidade|tecido|cintura|transparente)\b/i;
 const emojiRules: Array<[RegExp, string]> = [
   [/\b(dinheiro|pre[cç]o|desconto|economize|barato|oferta)\b/i, "💰"],
   [/\b(aten[cç][aã]o|cuidado|erro|problema)\b/i, "⚠️"],
   [/\b(segredo|dica|ideia)\b/i, "💡"],
   [/\b(r[aá]pido|agora|corre)\b/i, "⚡"],
-  [/\b(am[eé]i|amor|incr[ií]vel)\b/i, "😍"],
+  [/\b(am[eé]i|amor|incr[ií]vel|lindo|perfeito)\b/i, "😍"],
   [/\b(resultado|funciona|comprovado)\b/i, "✅"],
+  [/\b(roupa|vestido|cal[cç]a|tecido)\b/i, "👗"],
 ];
 
 const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
+  capcut_yellow: {
+    y: 74,
+    fontSize: 50,
+    color: "#000000",
+    backgroundColor: "#facc15",
+    style: "caption",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
+    fontWeight: 900,
+    strokeColor: "#000000",
+    strokeWidth: 0,
+    borderRadius: 14,
+    highlightColor: "#ffffff",
+    textTransform: "uppercase",
+  },
+  capcut_purple: {
+    y: 74,
+    fontSize: 50,
+    color: "#ffffff",
+    backgroundColor: "#7c3aed",
+    style: "caption",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
+    fontWeight: 900,
+    strokeColor: "#000000",
+    strokeWidth: 2,
+    borderRadius: 14,
+    highlightColor: "#facc15",
+    textTransform: "uppercase",
+  },
+  capcut_neon_green: {
+    y: 74,
+    fontSize: 50,
+    color: "#000000",
+    backgroundColor: "#22c55e",
+    style: "caption",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
+    fontWeight: 900,
+    strokeColor: "#000000",
+    strokeWidth: 0,
+    borderRadius: 14,
+    highlightColor: "#ffffff",
+    textTransform: "uppercase",
+  },
+  capcut_dynamic: {
+    y: 76,
+    fontSize: 54,
+    color: "#ffffff",
+    backgroundColor: "transparent",
+    style: "impact",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
+    fontWeight: 900,
+    strokeColor: "#000000",
+    strokeWidth: 7,
+    highlightColor: "#facc15",
+    textTransform: "uppercase",
+  },
   tiktok: {
     y: 72,
     fontSize: 48,
     color: "#fff",
-    backgroundColor: "rgba(0,0,0,.48)",
+    backgroundColor: "rgba(0,0,0,.58)",
     style: "caption",
-    fontFamily: "Arial Black, Arial, sans-serif",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
     fontWeight: 900,
     strokeColor: "#101010",
     strokeWidth: 4,
     borderRadius: 12,
     highlightColor: "#facc15",
+    textTransform: "none",
   },
   capcut: {
     y: 76,
     fontSize: 50,
     color: "#fff",
-    backgroundColor: "transparent",
-    style: "classic",
-    fontFamily: "Arial Black, Arial, sans-serif",
+    backgroundColor: "#facc15",
+    style: "caption",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
     fontWeight: 900,
     strokeColor: "#000",
-    strokeWidth: 6,
+    strokeWidth: 0,
+    borderRadius: 14,
     highlightColor: "#a3e635",
+    textTransform: "uppercase",
   },
   karaoke: {
     y: 70,
     fontSize: 46,
     color: "#d1d5db",
-    backgroundColor: "rgba(8,8,12,.68)",
+    backgroundColor: "rgba(8,8,12,.75)",
     style: "caption",
-    fontFamily: "Verdana, Arial, sans-serif",
+    fontFamily: "Montserrat, Arial, sans-serif",
     fontWeight: 800,
     strokeColor: "#111827",
     strokeWidth: 3,
@@ -63,9 +131,9 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     y: 74,
     fontSize: 40,
     color: "#fff",
-    backgroundColor: "rgba(0,0,0,.35)",
+    backgroundColor: "rgba(0,0,0,.45)",
     style: "minimal",
-    fontFamily: "Verdana, Arial, sans-serif",
+    fontFamily: "Montserrat, Arial, sans-serif",
     fontWeight: 700,
     strokeWidth: 0,
     highlightColor: "#fff",
@@ -76,11 +144,12 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     color: "#fff",
     backgroundColor: "transparent",
     style: "impact",
-    fontFamily: "Impact, Arial Black, sans-serif",
+    fontFamily: "Impact, Montserrat, sans-serif",
     fontWeight: 900,
     strokeColor: "#000",
     strokeWidth: 7,
     highlightColor: "#fb2c36",
+    textTransform: "uppercase",
   },
 };
 
@@ -110,7 +179,9 @@ export function timedWordsToCaptions(
   words: TimedWord[],
   options: { preset: CaptionPreset; emojis: boolean; wordsPerCard?: number },
 ) {
-  const cardSize = Math.max(1, Math.min(6, options.wordsPerCard ?? 4));
+  const isCapcutStyle = options.preset.startsWith("capcut");
+  const defaultSize = isCapcutStyle ? 3 : 4;
+  const cardSize = Math.max(1, Math.min(6, options.wordsPerCard ?? defaultSize));
   const overlays: EditorTextOverlay[] = [];
   for (let offset = 0; offset < words.length; offset += cardSize) {
     const card = words.slice(offset, offset + cardSize);
@@ -127,7 +198,7 @@ export function timedWordsToCaptions(
         end: Math.max(word.start + 0.08, word.end),
         x: 50,
         y: 76,
-        fontSize: 46,
+        fontSize: 48,
         color: "#fff",
         backgroundColor: "rgba(0,0,0,.55)",
         style: "caption",
@@ -135,7 +206,7 @@ export function timedWordsToCaptions(
         animationOut: "none",
         animationLoop: "none",
         animationDuration: 0.12,
-        fontFamily: "Arial Black, Arial, sans-serif",
+        fontFamily: "Montserrat, Arial Black, sans-serif",
         fontWeight: 900,
         strokeColor: "#111827",
         strokeWidth: 3,
@@ -146,7 +217,7 @@ export function timedWordsToCaptions(
         rotation: 0,
         letterSpacing: 0,
         textTransform: "none",
-        borderRadius: 12,
+        borderRadius: 14,
         captionWords: displayWords,
         activeWordIndex,
         important: word.important,

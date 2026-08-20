@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   Check,
   ChevronRight,
@@ -20,11 +21,26 @@ import {
   Smartphone,
   Undo2,
   Upload,
+  Zap,
+  Sparkles,
+  RotateCcw,
+  Image as ImageIcon,
+  ShoppingBag,
+  CheckCircle2,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   disposeVideoEngine,
   downloadVideo,
@@ -59,6 +75,13 @@ import {
   enrichCreativeAudit,
   type CaptionPreset,
 } from "@/features/video-editor/automation";
+import {
+  generateSmartHeadlinesFromContext,
+  createNaturalFrame0Overlay,
+  type Frame0Headline,
+  type HeadlineBgStyle,
+} from "@/features/video-editor/frame0-headlines";
+import { listProductLibrary } from "@/features/libraries/queries";
 import { transcribeLocalFileServerFn } from "@/features/tiktok-downloader/transcribe-server";
 
 export const Route = createFileRoute("/_authenticated/video-editor")({
@@ -133,10 +156,23 @@ function ProfessionalVideoEditorPage() {
   const [exportPercent, setExportPercent] = useState(0);
   const [shortcutsOpenRequest, setShortcutsOpenRequest] = useState(0);
   const [automationBusy, setAutomationBusy] = useState<"captions" | "silence" | null>(null);
-  const [captionPreset, setCaptionPreset] = useState<CaptionPreset>("capcut");
+  const [captionPreset, setCaptionPreset] = useState<CaptionPreset>("capcut_yellow");
   const [captionEmojis, setCaptionEmojis] = useState(true);
   const [auditBusy, setAuditBusy] = useState(false);
   const [editorTemplates, setEditorTemplates] = useState<VideoEditorTemplate[]>([]);
+  const productsQuery = useQuery({ queryKey: ["product-library"], queryFn: listProductLibrary });
+  const [isHeadlineModalOpen, setIsHeadlineModalOpen] = useState(false);
+  const [headlineProductContext, setHeadlineProductContext] = useState<string>("Conjunto cropped e saia");
+  const [headlineProductImage, setHeadlineProductImage] = useState<string | null>(null);
+  const [headlinesList, setHeadlinesList] = useState<Frame0Headline[]>(() =>
+    generateSmartHeadlinesFromContext("Conjunto cropped e saia", 5),
+  );
+  const [headlineBgStyle, setHeadlineBgStyle] = useState<HeadlineBgStyle>("transparent_stroke");
+  const [headlineCustomBgColor, setHeadlineCustomBgColor] = useState<string>("#facc15");
+  const [headlineFontSize, setHeadlineFontSize] = useState<number>(48);
+  const [headlineStrokeWidth, setHeadlineStrokeWidth] = useState<number>(6);
+  const [headlineTextColor, setHeadlineTextColor] = useState<string>("#ffffff");
+  const [headlineStrokeColor, setHeadlineStrokeColor] = useState<string>("#000000");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadedRef = useRef(false);
   const replaceProject = editor.replace;
@@ -526,6 +562,40 @@ function ProfessionalVideoEditorPage() {
     }
   };
 
+  const openHeadlineModal = () => {
+    if (!headlinesList.length) {
+      setHeadlinesList(generateSmartHeadlinesFromContext(headlineProductContext, 5));
+    }
+    setIsHeadlineModalOpen(true);
+  };
+
+  const regenerateHeadlines = (customContext?: string) => {
+    const ctx = customContext ?? headlineProductContext;
+    setHeadlinesList(generateSmartHeadlinesFromContext(ctx, 5));
+    toast.success("5 novas headlines contextualizadas geradas!");
+  };
+
+  const applyFrame0Headline = (headlineText: string) => {
+    const overlay = createNaturalFrame0Overlay(headlineText, {
+      bgStyle: headlineBgStyle,
+      customBgColor: headlineCustomBgColor,
+      fontSize: headlineFontSize,
+      strokeWidth: headlineStrokeWidth,
+      strokeColor: headlineStrokeColor,
+      textColor: headlineTextColor,
+    });
+    updateProject(
+      (current) => ({
+        ...current,
+        textOverlays: [overlay, ...current.textOverlays],
+      }),
+      "add-frame0-headline",
+      true,
+    );
+    setIsHeadlineModalOpen(false);
+    toast.success("Headline inserida no Frame 0 (0.0s a 1.2s) com sucesso!");
+  };
+
   const removeEdgeSilence = async () => {
     if (!selectedSegment?.file) {
       toast.error("Selecione um clipe na timeline.");
@@ -715,6 +785,18 @@ function ProfessionalVideoEditorPage() {
           <Button
             size="sm"
             variant="outline"
+            className="border-amber-500/30 text-amber-300 hover:bg-amber-500/10 gap-1.5"
+            disabled={!hasMedia}
+            onClick={openHeadlineModal}
+            title="Gerar 5 headlines de curiosidade extrema para forçar retenção no Frame 0 (1.2s)"
+          >
+            <Zap className="size-3.5 text-amber-400" />
+            <span className="hidden xl:inline">Headline 1.2s</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
             className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10"
             disabled={!selectedSegment || Boolean(automationBusy)}
             onClick={() => void createAutomaticCaptions()}
@@ -725,16 +807,19 @@ function ProfessionalVideoEditorPage() {
           </Button>
           <select
             aria-label="Preset das legendas automáticas"
-            className="hidden h-8 rounded-md border border-white/10 bg-[#0b0d13] px-2 text-[10px] text-slate-300 2xl:block"
+            className="hidden h-8 rounded-md border border-white/10 bg-[#0b0d13] px-2 text-[10px] text-slate-300 xl:block"
             value={captionPreset}
             disabled={Boolean(automationBusy)}
             onChange={(event) => setCaptionPreset(event.target.value as CaptionPreset)}
           >
-            <option value="capcut">CapCut bold</option>
-            <option value="tiktok">TikTok creator</option>
-            <option value="karaoke">Karaokê</option>
-            <option value="impact">Oferta impacto</option>
-            <option value="minimal">Minimalista</option>
+            <option value="capcut_yellow">🟡 CapCut Fundo Amarelo</option>
+            <option value="capcut_purple">🟣 CapCut Fundo Roxo</option>
+            <option value="capcut_neon_green">🟢 CapCut Verde Neon</option>
+            <option value="capcut_dynamic">⚡ CapCut Palavra Dinâmica</option>
+            <option value="tiktok">📱 TikTok Creator</option>
+            <option value="karaoke">🎤 Karaokê</option>
+            <option value="impact">🔥 Impacto Oferta</option>
+            <option value="minimal">✨ Minimalista</option>
           </select>
           <Button
             size="sm"
@@ -785,11 +870,11 @@ function ProfessionalVideoEditorPage() {
           />
           <Button
             size="sm"
-            className="bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-lg shadow-violet-950/40 hover:from-violet-500 hover:to-cyan-400"
+            className="bg-[#0ea5e9] hover:bg-[#0284c7] text-white font-bold px-4 h-8 rounded-lg shadow-lg shadow-sky-500/25 gap-1.5 transition-all"
             disabled={!hasMedia || exporting}
             onClick={() => void exportVideo()}
           >
-            {exporting ? <Loader2 className="animate-spin" /> : <Download />}
+            {exporting ? <Loader2 className="animate-spin size-3.5" /> : <Download className="size-3.5" />}
             Exportar
           </Button>
         </div>
@@ -916,6 +1001,316 @@ function ProfessionalVideoEditorPage() {
           />
         </div>
       )}
+
+      {/* Frame 0 Headline Generator Dialog */}
+      <Dialog open={isHeadlineModalOpen} onOpenChange={setIsHeadlineModalOpen}>
+        <DialogContent className="max-w-2xl bg-[#0c0e14]/95 border-white/15 text-slate-100 p-6 shadow-2xl backdrop-blur-2xl">
+          <DialogHeader className="space-y-1 pb-2 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40 text-[10px] px-2 py-0.5 font-bold flex items-center gap-1">
+                <Zap className="size-3 text-amber-400" />
+                Gatilho Psicológico de Pausa (Frame 0)
+              </Badge>
+              <span className="text-[11px] text-muted-foreground">Duração: 0.0s a 1.2s</span>
+            </div>
+            <DialogTitle className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              Headlines Inteligentes do Produto (Estilo TikTok)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-400 leading-relaxed">
+              Gera frases naturais e persuasivas baseadas na foto e nicho do seu produto com a tipografia idêntica ao modelo de alta conversão.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Product & Photo Context Bar */}
+          <div className="bg-white/[0.03] p-3 rounded-xl border border-white/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+              {/* Product Photo Upload / Thumbnail */}
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <div className="size-10 rounded-lg border border-dashed border-white/25 bg-black/50 hover:border-amber-400 flex items-center justify-center overflow-hidden transition">
+                  {headlineProductImage ? (
+                    <img src={headlineProductImage} alt="Produto" className="size-full object-cover" />
+                  ) : (
+                    <ImageIcon className="size-4 text-slate-400" />
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const url = URL.createObjectURL(file);
+                      setHeadlineProductImage(url);
+                      const cleanName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+                      setHeadlineProductContext(cleanName);
+                      regenerateHeadlines(cleanName);
+                      toast.success("Foto carregada e headlines geradas para o produto!");
+                    }
+                  }}
+                />
+              </label>
+
+              {/* Product Name / Context Input */}
+              <div className="flex-1 min-w-0">
+                <Input
+                  value={headlineProductContext}
+                  onChange={(e) => setHeadlineProductContext(e.target.value)}
+                  placeholder="Ex: Conjunto cropped e saia de cetim, Vestido canelado..."
+                  className="h-8 text-xs bg-black/60 border-white/10"
+                />
+              </div>
+
+              <Button
+                type="button"
+                variant="hero"
+                size="sm"
+                className="h-8 text-xs font-bold shrink-0 gap-1"
+                onClick={() => regenerateHeadlines(headlineProductContext)}
+              >
+                <Sparkles className="size-3" /> Gerar Headlines
+              </Button>
+            </div>
+
+            {/* Quick Niche Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              <span className="text-[10px] text-slate-500 font-medium mr-1">Exemplos rápidos:</span>
+              {[
+                { label: "👗 Conjunto", value: "Conjunto cropped e saia" },
+                { label: "👗 Vestido", value: "Vestido midi modelador" },
+                { label: "🧘 Fitness", value: "Legging fitness sem transparencia" },
+                { label: "👖 Alfaiataria", value: "Calca e cropped alfaiataria" },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => {
+                    setHeadlineProductContext(chip.value);
+                    regenerateHeadlines(chip.value);
+                  }}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition ${
+                    headlineProductContext === chip.value
+                      ? "border-amber-400 bg-amber-400/20 text-amber-300 font-bold"
+                      : "border-white/10 bg-white/5 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+
+              {/* Store Products selector if available */}
+              {productsQuery.data && productsQuery.data.length > 0 && (
+                <select
+                  aria-label="Carregar produto da loja"
+                  className="ml-auto h-6 rounded border border-white/15 bg-black/80 px-2 text-[10px] text-amber-300 font-medium"
+                  defaultValue=""
+                  onChange={(e) => {
+                    const prod = productsQuery.data?.find((p) => p.id === e.target.value);
+                    if (prod) {
+                      setHeadlineProductContext(prod.name);
+                      if (prod.previewUrl) setHeadlineProductImage(prod.previewUrl);
+                      regenerateHeadlines(prod.name);
+                    }
+                    e.target.value = "";
+                  }}
+                >
+                  <option value="">🛒 Carregar da sua loja...</option>
+                  {productsQuery.data.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
+          {/* Visual Style & Typography Bar */}
+          <div className="bg-white/[0.03] p-3 rounded-xl border border-white/10 space-y-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-medium text-[11px]">Estilo do Fundo:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setHeadlineBgStyle("transparent_stroke")}
+                    className={`h-6 px-2 rounded-md border text-[10px] font-bold flex items-center gap-1 transition ${
+                      headlineBgStyle === "transparent_stroke"
+                        ? "border-amber-400 bg-amber-400/20 text-amber-300 ring-1 ring-amber-400"
+                        : "border-white/15 bg-black/40 text-slate-400 hover:text-white"
+                    }`}
+                    title="Idêntico à foto de referência: Texto branco com borda preta sem fundo"
+                  >
+                    🔲 Transparente (Igual à Foto)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHeadlineBgStyle("yellow_box")}
+                    className={`h-6 px-2 rounded-md border text-[10px] font-bold transition ${
+                      headlineBgStyle === "yellow_box"
+                        ? "border-amber-400 bg-amber-400 text-black ring-1 ring-amber-400"
+                        : "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                    }`}
+                  >
+                    🟡 Amarelo
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHeadlineBgStyle("purple_box")}
+                    className={`h-6 px-2 rounded-md border text-[10px] font-bold transition ${
+                      headlineBgStyle === "purple_box"
+                        ? "border-purple-500 bg-purple-600 text-white ring-1 ring-purple-500"
+                        : "border-purple-500/40 bg-purple-500/10 text-purple-300"
+                    }`}
+                  >
+                    🟣 Roxo
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setHeadlineBgStyle("black_box")}
+                    className={`h-6 px-2 rounded-md border text-[10px] font-bold transition ${
+                      headlineBgStyle === "black_box"
+                        ? "border-white/40 bg-black text-white ring-1 ring-white"
+                        : "border-white/15 bg-black/40 text-slate-400"
+                    }`}
+                  >
+                    🖤 Preto
+                  </button>
+
+                  {/* Custom color picker */}
+                  <label
+                    className={`h-6 px-2 rounded-md border text-[10px] font-bold flex items-center gap-1 cursor-pointer transition ${
+                      headlineBgStyle === "custom"
+                        ? "border-cyan-400 bg-cyan-400/20 text-cyan-300 ring-1 ring-cyan-400"
+                        : "border-white/15 bg-black/40 text-slate-400"
+                    }`}
+                    title="Escolher qualquer cor de fundo"
+                  >
+                    🎨 Cor Livre
+                    <input
+                      type="color"
+                      value={headlineCustomBgColor}
+                      onChange={(e) => {
+                        setHeadlineCustomBgColor(e.target.value);
+                        setHeadlineBgStyle("custom");
+                      }}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Font Size & Stroke Width Sliders */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[10px]">Tamanho:</span>
+                  <input
+                    type="range"
+                    min="32"
+                    max="60"
+                    value={headlineFontSize}
+                    onChange={(e) => setHeadlineFontSize(Number(e.target.value))}
+                    className="w-16 accent-amber-400"
+                  />
+                  <span className="font-mono text-amber-300 font-bold text-[10px]">{headlineFontSize}px</span>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[10px]">Borda:</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    value={headlineStrokeWidth}
+                    onChange={(e) => setHeadlineStrokeWidth(Number(e.target.value))}
+                    className="w-14 accent-amber-400"
+                  />
+                  <span className="font-mono text-slate-300 font-bold text-[10px]">{headlineStrokeWidth}px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 5 Headline Cards */}
+          <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+            {headlinesList.map((item, idx) => (
+              <div
+                key={item.id}
+                onClick={() => applyFrame0Headline(item.headline)}
+                className="group p-3 rounded-xl border border-white/10 bg-black/40 hover:border-amber-400/60 hover:bg-amber-500/[0.04] cursor-pointer transition-all space-y-2"
+              >
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-slate-400 flex items-center gap-1.5">
+                    <span className="flex size-4 items-center justify-center rounded-full bg-white/10 text-[9px] font-mono text-slate-300">
+                      0{idx + 1}
+                    </span>
+                    {item.categoryLabel}
+                  </span>
+                  <span className="text-[10px] text-amber-300/80 group-hover:text-amber-300 font-medium flex items-center gap-1">
+                    <Plus className="size-3" /> Inserir no Frame 0 (1.2s)
+                  </span>
+                </div>
+
+                {/* Simulated Visual Preview Card - Exactly matching the user reference photo */}
+                <div
+                  className={`py-2 px-3 rounded-lg text-center font-bold tracking-tight transition-all ${
+                    headlineBgStyle === "transparent_stroke"
+                      ? "bg-transparent text-white"
+                      : headlineBgStyle === "yellow_box"
+                        ? "bg-[#facc15] text-black"
+                        : headlineBgStyle === "purple_box"
+                          ? "bg-[#7c3aed] text-white"
+                          : headlineBgStyle === "black_box"
+                            ? "bg-black/80 text-white"
+                            : headlineBgStyle === "white_box"
+                              ? "bg-white text-black"
+                              : "text-white"
+                  }`}
+                  style={{
+                    backgroundColor: headlineBgStyle === "custom" ? headlineCustomBgColor : undefined,
+                    fontFamily: "system-ui, Montserrat, Nunito, Arial, sans-serif",
+                    fontSize: `${Math.max(14, Math.round(headlineFontSize * 0.35))}px`,
+                    fontWeight: 900,
+                    textShadow:
+                      headlineBgStyle === "transparent_stroke"
+                        ? `-2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000, 0px 3px 6px rgba(0,0,0,0.8)`
+                        : undefined,
+                  }}
+                >
+                  {item.headline}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs border-white/15 text-slate-300 hover:bg-white/10 gap-1.5"
+              onClick={() => regenerateHeadlines(headlineProductContext)}
+            >
+              <RotateCcw className="size-3.5 text-amber-400" />
+              Gerar Mais 5 Headlines
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-slate-400 hover:text-white"
+              onClick={() => setIsHeadlineModalOpen(false)}
+            >
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
