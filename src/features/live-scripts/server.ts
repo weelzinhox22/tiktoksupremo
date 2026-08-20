@@ -10,6 +10,8 @@ const generateLiveScriptSchema = z.object({
   urgency: z.string().optional(),
   tone: z.string().optional().default("energia_alta"),
   streamerStyle: z.string().optional().default("vendedora_amiga"),
+  sceneCount: z.number().min(6).max(250).default(24),
+  startFromIndex: z.number().optional().default(1),
 });
 
 export interface LiveMicroBlock {
@@ -25,14 +27,35 @@ export interface LiveMicroBlock {
   hookTrigger: string;
 }
 
+export interface SavedLiveScript {
+  id: string;
+  title: string;
+  productName: string;
+  totalScenes: number;
+  totalDuration: string;
+  summary: string;
+  blocks: LiveMicroBlock[];
+  created_at: string;
+}
+
+function formatSecondsToTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
 export const generateLiveScriptServerFn = createServerFn({ method: "POST" })
   .validator(generateLiveScriptSchema)
   .handler(async ({ data }): Promise<{ blocks: LiveMicroBlock[]; summary: string }> => {
     const { getAIProvider } = await import("@/lib/ai/factory");
     const { provider } = getAIProvider();
 
-    const prompt = `Você é o maior especialista em lives de alta conversão do TikTok Shop e vendas ao vivo (live streaming de fábrica e e-commerce).
-Sua missão é criar um ROTEIRO COMPLETO DE LIVE contínuo para o produto abaixo, dividido estritamente em FALAS PEQUENAS E RÁPIDAS DE ATÉ 8 SEGUNDOS cada.
+    const targetCount = data.sceneCount || 24;
+    const startIndex = data.startFromIndex || 1;
+    const startSeconds = (startIndex - 1) * 8;
+
+    const prompt = `Você é o maior especialista em lives de alta conversão do TikTok Shop e vendas ao vivo (live streaming de fábrica e e-commerce de moda/produtos).
+Sua missão é criar um ROTEIRO COMPLETO DE LIVE contínuo para o produto abaixo, dividido estritamente em ${targetCount} FALAS PEQUENAS E RÁPIDAS DE ATÉ 8 SEGUNDOS cada.
 
 DADOS DO PRODUTO:
 - Nome: ${data.productName}
@@ -44,20 +67,27 @@ DADOS DO PRODUTO:
 - Estilo: ${data.streamerStyle}
 
 REGRAS CRÍTICAS:
-1. Divida a transmissão em 12 a 16 micro-falas numeradas sequencialmente.
+1. Crie exatamente ${targetCount} micro-falas numeradas sequencialmente a partir do número ${startIndex}.
 2. CADA FALA DEVE DURAR NO MÁXIMO 8 SEGUNDOS (cerca de 15 a 25 palavras por bloco).
-3. Cada micro-bloco deve ter uma ação visual clara para o avatar / streamer fazer (ex: esticar o tecido na câmera, apontar para a sacolinha, responder o chat, aproximar o tecido).
-4. Linguagem 100% natural, humana, persuasiva, com gírias de live ("meninas", "olha isso aqui", "clica no carrinho", "já garante o seu").
-5. Alterne entre: Acolhimento, Prova do Tecido, Quebra de Objeção, Resposta ao Chat, Alerta de Escassez e Chamada para o Carrinho.
-6. A última fala deve conectar suavemente de volta à primeira para rodar 24/7 em loop infinito sem cortes.
+3. Cada micro-bloco deve ter uma ação visual clara para o avatar / streamer fazer (ex: esticar o tecido, aproximar da lente, apontar para a sacolinha amarela, responder o chat, provar tamanho, contar estoque).
+4. Linguagem 100% natural, humana, persuasiva, com gírias de live ("meninas", "olha isso aqui", "clica na sacolinha", "já garante o seu").
+5. Ciclo de Live Completo:
+   - Acolhimento e Cidade no chat
+   - Revelação da Oferta & Ancoragem de Preço
+   - Prova de Tecido, Elasticidade e Gramatura
+   - Quebra de Objeções (Transparência, Tamanhos P ao GG, Lavagem)
+   - Interação com Comentários Fictícios do Chat ("Mariana perguntou do frete", "Camila garantiu o dela")
+   - Alertas de Escassez e Cronômetro de Desconto
+   - Chamada Forte para a Sacolinha Amarela e Cupom
+   - Reinício Suave de Loop para transmissão 24/7 sem cortes.
 
 Retorne estritamente um JSON no seguinte formato (sem markdown extra):
 {
   "summary": "Resumo da estratégia da live",
   "blocks": [
     {
-      "stepNumber": 1,
-      "timeframe": "00:00 - 00:08",
+      "stepNumber": ${startIndex},
+      "timeframe": "${formatSecondsToTime(startSeconds)} - ${formatSecondsToTime(startSeconds + 8)}",
       "durationSeconds": 8,
       "stageName": "Acolhimento & Gancho de Entrada",
       "badge": "Entrada",
@@ -74,183 +104,220 @@ Retorne estritamente um JSON no seguinte formato (sem markdown extra):
       const cleaned = responseText.replace(/```json\n?/g, "").replace(/```/g, "").trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
       if (parsed && Array.isArray(parsed["blocks"]) && parsed["blocks"].length > 0) {
-        const blocks: LiveMicroBlock[] = (parsed["blocks"] as Record<string, unknown>[]).map((b: Record<string, unknown>, idx: number) => ({
-          id: `micro-block-${idx + 1}-${Date.now()}`,
-          stepNumber: typeof b["stepNumber"] === "number" ? b["stepNumber"] : idx + 1,
-          timeframe: typeof b["timeframe"] === "string" ? b["timeframe"] : `00:${String(idx * 8).padStart(2, "0")} - 00:${String((idx + 1) * 8).padStart(2, "0")}`,
-          durationSeconds: typeof b["durationSeconds"] === "number" ? b["durationSeconds"] : 8,
-          stageName: typeof b["stageName"] === "string" ? b["stageName"] : `Fase ${idx + 1}`,
-          badge: typeof b["badge"] === "string" ? b["badge"] : "Live",
-          badgeColor:
-            idx % 5 === 0
-              ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
-              : idx % 5 === 1
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                : idx % 5 === 2
-                  ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
-                  : idx % 5 === 3
-                    ? "bg-pink-500/20 text-pink-300 border-pink-500/30"
-                    : "bg-amber-500/20 text-amber-300 border-amber-500/30",
-          actionGuide: typeof b["actionGuide"] === "string" ? b["actionGuide"] : "Gesticular e demonstrar a peça com energia.",
-          speech: typeof b["speech"] === "string" ? b["speech"] : "",
-          hookTrigger: typeof b["hookTrigger"] === "string" ? b["hookTrigger"] : "Retenção e conversão",
-        }));
+        const blocks: LiveMicroBlock[] = (parsed["blocks"] as Record<string, unknown>[]).map((b: Record<string, unknown>, idx: number) => {
+          const actualStep = startIndex + idx;
+          const blockStartSec = (actualStep - 1) * 8;
+          const blockEndSec = actualStep * 8;
+          return {
+            id: `micro-block-${actualStep}-${Date.now()}-${idx}`,
+            stepNumber: typeof b["stepNumber"] === "number" ? b["stepNumber"] : actualStep,
+            timeframe: typeof b["timeframe"] === "string" ? b["timeframe"] : `${formatSecondsToTime(blockStartSec)} - ${formatSecondsToTime(blockEndSec)}`,
+            durationSeconds: typeof b["durationSeconds"] === "number" ? b["durationSeconds"] : 8,
+            stageName: typeof b["stageName"] === "string" ? b["stageName"] : `Fase ${actualStep}`,
+            badge: typeof b["badge"] === "string" ? b["badge"] : "Live",
+            badgeColor:
+              actualStep % 5 === 0
+                ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+                : actualStep % 5 === 1
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                  : actualStep % 5 === 2
+                    ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                    : actualStep % 5 === 3
+                      ? "bg-pink-500/20 text-pink-300 border-pink-500/30"
+                      : "bg-amber-500/20 text-amber-300 border-amber-500/30",
+            actionGuide: typeof b["actionGuide"] === "string" ? b["actionGuide"] : "Gesticular e demonstrar a peça com energia.",
+            speech: typeof b["speech"] === "string" ? b["speech"] : "",
+            hookTrigger: typeof b["hookTrigger"] === "string" ? b["hookTrigger"] : "Retenção e conversão",
+          };
+        });
         return {
           blocks,
-          summary: typeof parsed["summary"] === "string" ? parsed["summary"] : "Roteiro dinâmico gerado via Gemini com falas de até 8s.",
+          summary: typeof parsed["summary"] === "string" ? parsed["summary"] : `Roteiro dinâmico gerado via Gemini com ${blocks.length} falas de até 8s.`,
         };
       }
     } catch (err) {
       console.error("Erro ao gerar roteiro de live via Gemini:", err);
     }
 
-    // Fallback inteligente com 12 micro-blocos de até 8s
-    const fallbackBlocks: LiveMicroBlock[] = [
-      {
-        id: "fb-1",
-        stepNumber: 1,
-        timeframe: "00:00 - 00:08",
-        durationSeconds: 8,
-        stageName: "1. Acolhimento & Cidade",
-        badge: "Entrada",
-        badgeColor: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-        actionGuide: "Sorriso aberto, olhando na câmera e gesticulando.",
-        speech: `Oi meninas! Sejam muito bem-vindas à nossa live oficial de fábrica! Já digita aqui no chat de qual cidade vocês tão assistindo!`,
-        hookTrigger: "Engajamento imediato no chat",
-      },
-      {
-        id: "fb-2",
-        stepNumber: 2,
-        timeframe: "00:08 - 00:16",
-        durationSeconds: 8,
-        stageName: "2. Revelação da Oferta",
-        badge: "Gatilho de Curiosidade",
-        badgeColor: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-        actionGuide: "Puxa a peça principal e exibe na frente com entusiasmo.",
-        speech: `Hoje conseguimos liberar um lote exclusivo do ${data.productName} direto da confecção por menos da metade do preço de shopping!`,
-        hookTrigger: "Âncora de preço e curiosidade",
-      },
-      {
-        id: "fb-3",
-        stepNumber: 3,
-        timeframe: "00:16 - 00:24",
-        durationSeconds: 8,
-        stageName: "3. Textura de Perto",
-        badge: "Prova de Tecido",
-        badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-        actionGuide: "Aproxima o tecido bem perto da lente da câmera.",
-        speech: `Deixa eu aproximar bem da câmera pra vocês verem: olha a gramatura desse ${data.fabric || "tecido premium"}!`,
-        hookTrigger: "Quebra de medo de comprar online",
-      },
-      {
-        id: "fb-4",
-        stepNumber: 4,
-        timeframe: "00:24 - 00:32",
-        durationSeconds: 8,
-        stageName: "4. Teste de Elasticidade",
-        badge: "Elasticidade",
-        badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-        actionGuide: "Estica o tecido com as duas mãos firmes e solta.",
-        speech: `Estou esticando com força aqui na live e vejam: ele não deforma e tem zero transparência!`,
-        hookTrigger: "Demonstração física de qualidade",
-      },
-      {
-        id: "fb-5",
-        stepNumber: 5,
-        timeframe: "00:32 - 00:40",
-        durationSeconds: 8,
-        stageName: "5. Benefício do Corpo",
-        badge: "Modelagem",
-        badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-        actionGuide: "Aponta para o caimento da cintura e quadril.",
-        speech: `O caimento veste como uma luva porque ${data.benefit || "modela sem marcar nada no corpo"}!`,
-        hookTrigger: "Desejo de auto-estima e conforto",
-      },
-      {
-        id: "fb-6",
-        stepNumber: 6,
-        timeframe: "00:40 - 00:48",
-        durationSeconds: 8,
-        stageName: "6. Comparativo de Shopping",
-        badge: "Ancoragem",
-        badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-        actionGuide: "Balança a cabeça afirmativamente mostrando a etiqueta.",
-        speech: `Em loja de shopping vocês pagam fácil ${data.price || "R$ 149,90"}, mas aqui no TikTok Shop hoje tá saindo por apenas ${data.discountPrice || "R$ 69,90"}!`,
-        hookTrigger: "Percepção de ganho financeiro extremo",
-      },
-      {
-        id: "fb-7",
-        stepNumber: 7,
-        timeframe: "00:48 - 00:56",
-        durationSeconds: 8,
-        stageName: "7. Respondendo Tamanhos",
-        badge: "Chat Ao Vivo",
-        badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-        actionGuide: "Olha para baixo simulando ler um comentário e responde rindo.",
-        speech: `A Mariana perguntou do tamanho: meninas, a grade vai do P ao GG e o elastano se adapta perfeitamente!`,
-        hookTrigger: "Humanização e prova social ao vivo",
-      },
-      {
-        id: "fb-8",
-        stepNumber: 8,
-        timeframe: "00:56 - 01:04",
-        durationSeconds: 8,
-        stageName: "8. Frete & Envio Expresso",
-        badge: "Confiança",
-        badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-        actionGuide: "Faz sinal de positivo com as mãos.",
-        speech: `O frete é expresso com envio em até 24h e rastreio direto pelo app do TikTok até sua casa!`,
-        hookTrigger: "Segurança na entrega rápida",
-      },
-      {
-        id: "fb-9",
-        stepNumber: 9,
-        timeframe: "01:04 - 01:12",
-        durationSeconds: 8,
-        stageName: "9. Alerta de Escassez",
-        badge: "Urgência",
-        badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-        actionGuide: "Olha para a tela com expressão de surpresa.",
-        speech: `Atenção: o sistema acabou de avisar que restam ${data.urgency || "apenas 12 unidades nesse valor promocional"}!`,
-        hookTrigger: "FOMO (medo de ficar sem)",
-      },
-      {
-        id: "fb-10",
-        stepNumber: 10,
-        timeframe: "01:12 - 01:20",
-        durationSeconds: 8,
-        stageName: "10. Chamada para a Sacolinha",
-        badge: "Clique no Carrinho",
-        badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-        actionGuide: "Aponta com o dedo para o canto inferior esquerdo onde fica a sacolinha amarela.",
-        speech: `Clica agora na sacolinha amarela aqui embaixo no cantinho e garante a sua antes que encerre o lote!`,
-        hookTrigger: "CTA clara de conversão",
-      },
-      {
-        id: "fb-11",
-        stepNumber: 11,
-        timeframe: "01:20 - 01:28",
-        durationSeconds: 8,
-        stageName: "11. Cor e Variação",
-        badge: "Seleção Rápida",
-        badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-        actionGuide: "Mostra as opções de cores ou fita de tecido.",
-        speech: `Escolhe sua cor e tamanho na sacolinha, clica em comprar com cupom e volta aqui pra me avisar no chat!`,
-        hookTrigger: "Facilitação da jornada de compra",
-      },
-      {
-        id: "fb-12",
-        stepNumber: 12,
-        timeframe: "01:28 - 01:36",
-        durationSeconds: 8,
-        stageName: "12. Reinício do Loop 24/7",
-        badge: "Loop Infinito",
-        badgeColor: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-        actionGuide: "Ajeita a peça e saúda quem acabou de entrar.",
-        speech: `Pra você que acabou de cair na nossa live oficial de fábrica, deixa eu te mostrar agora por que essa peça é perfeita...`,
-        hookTrigger: "Transição suave para repetição 24h sem quebra",
-      },
+    // Fallback gerador com a quantidade exata de falas requisitada
+    const stages = [
+      { name: "Acolhimento & Cidade", badge: "Entrada", speech: `Oi meninas! Sejam bem-vindas à nossa live oficial de fábrica! Digita aqui no chat de qual cidade vocês tão assistindo!`, action: "Sorriso aberto, olhando na câmera e gesticulando." },
+      { name: "Revelação da Oferta", badge: "Gatilho de Curiosidade", speech: `Hoje conseguimos liberar um lote exclusivo do ${data.productName} direto da confecção por menos da metade do preço de shopping!`, action: "Puxa a peça principal e exibe na frente com entusiasmo." },
+      { name: "Textura de Perto", badge: "Prova de Tecido", speech: `Deixa eu aproximar bem da câmera pra vocês verem: olha a gramatura desse ${data.fabric || "tecido premium"}!`, action: "Aproxima o tecido bem perto da lente da câmera." },
+      { name: "Teste de Elasticidade", badge: "Elasticidade", speech: `Estou esticando com força aqui na live e vejam: ele não deforma e tem zero transparência!`, action: "Estica o tecido com as duas mãos firmes e solta." },
+      { name: "Benefício do Corpo", badge: "Modelagem", speech: `O caimento veste como uma luva porque ${data.benefit || "modela sem marcar nada no corpo"}!`, action: "Aponta para o caimento da cintura e quadril." },
+      { name: "Comparativo de Preço", badge: "Ancoragem", speech: `Em loja de shopping vocês pagam fácil ${data.price || "R$ 149,90"}, mas aqui no TikTok Shop hoje tá saindo por apenas ${data.discountPrice || "R$ 69,90"}!`, action: "Balança a cabeça afirmativamente mostrando a etiqueta." },
+      { name: "Respondendo Tamanhos", badge: "Chat Ao Vivo", speech: `A Mariana perguntou do tamanho: meninas, a grade vai do P ao GG e o elastano se adapta perfeitamente!`, action: "Olha para baixo simulando ler um comentário e responde rindo." },
+      { name: "Frete & Envio Expresso", badge: "Confiança", speech: `O frete é expresso com envio em até 24h e rastreio direto pelo app do TikTok até sua casa!`, action: "Faz sinal de positivo com as mãos." },
+      { name: "Alerta de Escassez", badge: "Urgência", speech: `Atenção: o sistema acabou de avisar que restam ${data.urgency || "apenas 12 unidades nesse valor promocional"}!`, action: "Olha para a tela com expressão de surpresa." },
+      { name: "Chamada para a Sacolinha", badge: "Clique no Carrinho", speech: `Clica agora na sacolinha amarela aqui embaixo no cantinho e garante a sua antes que encerre o lote!`, action: "Aponta com o dedo para o canto inferior esquerdo onde fica a sacolinha amarela." },
+      { name: "Cor e Variação", badge: "Seleção Rápida", speech: `Escolhe sua cor e tamanho na sacolinha, clica em comprar com cupom e volta aqui pra me avisar no chat!`, action: "Mostra as opções de cores ou fita de tecido." },
+      { name: "Reinício do Loop 24/7", badge: "Loop Infinito", speech: `Pra você que acabou de cair na nossa live oficial de fábrica, deixa eu te mostrar agora por que essa peça é perfeita...`, action: "Ajeita a peça e saúda quem acabou de entrar." },
     ];
 
-    return { blocks: fallbackBlocks, summary: "Roteiro otimizado em 12 micro-falas de 8 segundos com loop contínuo." };
+    const fallbackBlocks: LiveMicroBlock[] = Array.from({ length: targetCount }, (_, idx) => {
+      const actualStep = startIndex + idx;
+      const stage = stages[idx % stages.length]!;
+      const blockStartSec = (actualStep - 1) * 8;
+      const blockEndSec = actualStep * 8;
+
+      return {
+        id: `fb-${actualStep}-${Date.now()}`,
+        stepNumber: actualStep,
+        timeframe: `${formatSecondsToTime(blockStartSec)} - ${formatSecondsToTime(blockEndSec)}`,
+        durationSeconds: 8,
+        stageName: `${actualStep}. ${stage.name}`,
+        badge: stage.badge,
+        badgeColor:
+          actualStep % 5 === 0
+            ? "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
+            : actualStep % 5 === 1
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+              : actualStep % 5 === 2
+                ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                : actualStep % 5 === 3
+                  ? "bg-pink-500/20 text-pink-300 border-pink-500/30"
+                  : "bg-amber-500/20 text-amber-300 border-amber-500/30",
+        actionGuide: stage.action,
+        speech: stage.speech,
+        hookTrigger: "Retenção e conversão",
+      };
+    });
+
+    return { blocks: fallbackBlocks, summary: `Roteiro otimizado em ${targetCount} micro-falas de 8 segundos com loop contínuo.` };
+  });
+
+const saveLiveScriptSchema = z.object({
+  productName: z.string().min(1),
+  totalScenes: z.number(),
+  totalDuration: z.string(),
+  summary: z.string().optional(),
+  blocks: z.array(
+    z.object({
+      id: z.string(),
+      stepNumber: z.number(),
+      timeframe: z.string(),
+      durationSeconds: z.number(),
+      stageName: z.string(),
+      badge: z.string(),
+      badgeColor: z.string(),
+      actionGuide: z.string(),
+      speech: z.string(),
+      hookTrigger: z.string(),
+    })
+  ),
+});
+
+export const saveLiveScriptServerFn = createServerFn({ method: "POST" })
+  .validator(saveLiveScriptSchema)
+  .handler(async ({ data }): Promise<{ success: boolean; id: string }> => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("Usuário não autenticado.");
+    }
+
+    const fullContent = data.blocks
+      .map((b) => `[${b.timeframe}] (${b.stageName})\nAção: ${b.actionGuide}\nFala: "${b.speech}"`)
+      .join("\n\n---\n\n");
+
+    const hookText = data.blocks[0]?.speech || "";
+    const ctaText = data.blocks[data.blocks.length - 1]?.speech || "";
+
+    const { data: inserted, error } = await supabase
+      .from("copy_library")
+      .insert({
+        user_id: user.id,
+        title: `Live TikTok Shop (${data.totalScenes} falas) — ${data.productName}`.slice(0, 180),
+        content: fullContent,
+        hook: hookText,
+        body: data.summary || "Roteiro contínuo de Live IA",
+        cta: ctaText,
+        analysis: {
+          blocks: data.blocks,
+          totalDuration: data.totalDuration,
+          totalScenes: data.totalScenes,
+          productName: data.productName,
+        },
+        language_style: ["live_streaming", "vendas_tiktok"],
+        tags: ["live_script", "tiktok_shop_live", data.productName],
+        source: "manual",
+      })
+      .select("id")
+      .single();
+
+    if (error || !inserted) {
+      throw new Error(`Erro ao salvar no banco de dados: ${error?.message || "Desconhecido"}`);
+    }
+
+    return { success: true, id: inserted.id };
+  });
+
+export const listSavedLiveScriptsServerFn = createServerFn({ method: "GET" })
+  .handler(async (): Promise<{ savedLives: SavedLiveScript[] }> => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return { savedLives: [] };
+
+    const { data: rows, error } = await supabase
+      .from("copy_library")
+      .select("*")
+      .eq("user_id", user.id)
+      .contains("tags", ["live_script"])
+      .order("created_at", { ascending: false });
+
+    if (error || !rows) return { savedLives: [] };
+
+    const savedLives: SavedLiveScript[] = rows.map((r) => {
+      const analysis = (r.analysis as Record<string, unknown>) || {};
+      const blocks = Array.isArray(analysis["blocks"]) ? (analysis["blocks"] as LiveMicroBlock[]) : [];
+      const totalDuration = typeof analysis["totalDuration"] === "string" ? analysis["totalDuration"] : "";
+      const totalScenes = typeof analysis["totalScenes"] === "number" ? analysis["totalScenes"] : blocks.length;
+      const productName = typeof analysis["productName"] === "string" ? analysis["productName"] : r.title;
+
+      return {
+        id: r.id,
+        title: r.title,
+        productName,
+        totalScenes,
+        totalDuration,
+        summary: r.body || "",
+        blocks,
+        created_at: r.created_at,
+      };
+    });
+
+    return { savedLives };
+  });
+
+export const deleteSavedLiveScriptServerFn = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }): Promise<{ success: boolean }> => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await getSupabaseServerClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) throw new Error("Usuário não autenticado.");
+
+    const { error } = await supabase
+      .from("copy_library")
+      .delete()
+      .eq("id", data.id)
+      .eq("user_id", user.id);
+
+    if (error) throw new Error(`Erro ao deletar: ${error.message}`);
+    return { success: true };
   });

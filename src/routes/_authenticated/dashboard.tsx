@@ -16,6 +16,7 @@ import {
   Radio,
   RotateCw,
   Play,
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const { user } = Route.useRouteContext();
+
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: listProjects });
   const performanceQuery = useQuery({ queryKey: ["performance"], queryFn: listPerformance });
   const productsQuery = useQuery({ queryKey: ["product-library"], queryFn: listProductLibrary });
@@ -85,15 +87,15 @@ function Dashboard() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-4 pb-6">
+    <div className="mx-auto w-full max-w-7xl space-y-4 pb-6 animate-in fade-in duration-300">
       {/* Header Bar */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/[0.07] bg-[#0E1017] px-5 py-4 shadow-lg shadow-black/20">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/[0.08] bg-[#0E1017] px-5 py-4 shadow-lg shadow-black/30">
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <Badge className="border-[#9B7CFF]/30 bg-[#9B7CFF]/10 text-[#9B7CFF] text-[10px] font-bold px-2 py-0.5">
               <Sparkles className="mr-1 size-3" /> Tik Supremo Studio
             </Badge>
-            <span className="text-[11px] text-[#666A78]">Painel de Controle</span>
+            <span className="text-[11px] text-[#666A78]">Painel Criativo</span>
           </div>
           <h1 className="text-xl font-extrabold text-[#F7F7FB] tracking-tight md:text-2xl">
             Olá, {user.displayName}
@@ -107,7 +109,7 @@ function Dashboard() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-xs font-semibold border-white/10 bg-white/[0.02] hover:bg-white/[0.06] text-[#A3A6B3] hover:text-[#F7F7FB]"
+            className="h-8 text-xs font-semibold border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-[#A3A6B3] hover:text-[#F7F7FB] transition-all hover:scale-[1.02]"
             asChild
           >
             <Link to="/tiktok-downloader">
@@ -117,7 +119,7 @@ function Dashboard() {
 
           <Button
             size="sm"
-            className="h-8 text-xs font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/20"
+            className="h-8 text-xs font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             asChild
           >
             <Link to="/projects/new">
@@ -158,36 +160,44 @@ function Dashboard() {
       {/* Central 2-Column Bento Grid: Tool Shortcuts (Left) + Featured Video (Right) */}
       <section className="grid gap-4 lg:grid-cols-12 items-stretch">
         {/* Left Column: 4 Tool Shortcuts in 2x2 Grid (7 Cols) */}
-        <div className="lg:col-span-7 grid grid-cols-2 gap-3 h-full">
-          <UnifiedToolShortcut
+        <div className="lg:col-span-7 grid grid-cols-2 gap-3">
+          <ToolActionCard
             to="/projects/new"
             icon={Clapperboard}
             title="Criar Roteiro"
             subtitle="Prompts VEO & Kling para conversão"
+            tag="VEO / Kling"
+            theme="purple"
           />
-          <UnifiedToolShortcut
+          <ToolActionCard
             to="/follower-growth"
             icon={Flame}
-            title="Roteiros para Upar Conta"
-            subtitle="Ganchos para reter e ganhar seguidores"
+            title="Roteiros para Upar"
+            subtitle="Ganchos de Follow Imediato"
+            tag="POV Quente"
+            theme="pink"
           />
-          <UnifiedToolShortcut
+          <ToolActionCard
             to="/live-scripts"
             icon={Radio}
             title="Scripts de Live IA"
-            subtitle="Falas de até 8s geradas via Gemini"
+            subtitle="Falas curtas de até 8s via Gemini"
+            tag="Gemini 8s"
+            theme="amber"
           />
-          <UnifiedToolShortcut
+          <ToolActionCard
             to="/tiktok-downloader"
             icon={Download}
             title="Baixar do TikTok"
             subtitle="Download sem marca d'água em HD"
+            tag="HD 1080p"
+            theme="cyan"
           />
         </div>
 
         {/* Right Column: Featured Video Card (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col h-full">
-          <div className="h-full rounded-2xl border border-white/[0.07] bg-[#0E1017] p-4 shadow-xl flex flex-col justify-between space-y-3">
+        <div className="lg:col-span-5 flex flex-col">
+          <div className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-4 shadow-xl flex flex-col justify-between space-y-3 transition-all hover:border-[#9B7CFF]/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Badge className="bg-[#9B7CFF]/15 text-[#9B7CFF] border border-[#9B7CFF]/25 text-[10px] font-bold px-2 py-0.5">
@@ -199,7 +209,7 @@ function Dashboard() {
               <button
                 type="button"
                 onClick={handleNextVideo}
-                className="text-xs text-[#A3A6B3] hover:text-[#F7F7FB] flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                className="text-xs text-[#A3A6B3] hover:text-[#F7F7FB] flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-white/[0.04] transition-all hover:scale-105"
                 title="Ver próximo movimento"
               >
                 <RotateCw className="size-3 text-[#9B7CFF]" /> Trocar Vídeo
@@ -207,7 +217,7 @@ function Dashboard() {
             </div>
 
             {/* Video Player Frame */}
-            <div className="w-full aspect-[16/10] rounded-xl overflow-hidden bg-black/60 relative border border-white/[0.08] shadow-inner">
+            <div className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-black/80 relative border border-white/[0.08] shadow-inner group">
               {currentVideoSrc ? (
                 <video
                   key={currentVideoSrc}
@@ -216,7 +226,7 @@ function Dashboard() {
                   loop
                   muted
                   playsInline
-                  className="size-full object-cover"
+                  className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
                 <div className="size-full flex items-center justify-center text-slate-600">
@@ -226,7 +236,7 @@ function Dashboard() {
             </div>
 
             {/* Title & Primary Action */}
-            <div className="space-y-2.5 pt-0.5">
+            <div className="space-y-2 pt-0.5">
               <div>
                 <h3 className="text-xs font-bold text-[#F7F7FB] truncate">{currentVideoPreset?.name}</h3>
                 <p className="text-[11px] text-[#A3A6B3] line-clamp-1 mt-0.5">
@@ -235,7 +245,7 @@ function Dashboard() {
               </div>
 
               <Button
-                className="w-full h-8.5 font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/15 text-xs gap-1.5"
+                className="w-full h-8.5 font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/15 text-xs gap-1.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 asChild
               >
                 <Link to="/movements">
@@ -248,7 +258,7 @@ function Dashboard() {
       </section>
 
       {/* Recent Projects Section */}
-      <section className="rounded-2xl border border-white/[0.07] bg-[#0E1017] p-4 shadow-xl space-y-3">
+      <section className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-4 shadow-xl space-y-3">
         <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
           <h2 className="text-xs font-bold text-[#F7F7FB] flex items-center gap-2">
             <FolderKanban className="size-3.5 text-[#9B7CFF]" /> Meus Últimos Roteiros
@@ -265,7 +275,7 @@ function Dashboard() {
                 key={proj.id}
                 to="/projects/$projectId"
                 params={{ projectId: proj.id }}
-                className="group flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.015] p-3 hover:border-[#9B7CFF]/30 hover:bg-white/[0.03] transition-all"
+                className="group flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.015] p-3 hover:border-[#9B7CFF]/30 hover:bg-white/[0.03] transition-all duration-200 hover:-translate-y-0.5"
               >
                 <div className="min-w-0 flex-1 pr-2">
                   <p className="text-xs font-bold text-[#F7F7FB] truncate group-hover:text-[#9B7CFF] transition-colors">
@@ -303,8 +313,8 @@ function UnifiedMetricCard({
   detail?: string;
 }) {
   return (
-    <article className="rounded-2xl border border-white/[0.07] bg-[#0E1017] p-3.5 shadow-md flex items-center gap-3 hover:border-[#9B7CFF]/25 transition-all">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#9B7CFF]/10 text-[#9B7CFF] border border-[#9B7CFF]/20">
+    <article className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-3.5 shadow-md flex items-center gap-3 hover:border-[#9B7CFF]/30 hover:bg-white/[0.015] transition-all duration-200 hover:-translate-y-0.5">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#9B7CFF]/10 text-[#9B7CFF] border border-[#9B7CFF]/20 shadow-inner">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
@@ -316,34 +326,83 @@ function UnifiedMetricCard({
   );
 }
 
-function UnifiedToolShortcut({
+function ToolActionCard({
   to,
   icon: Icon,
   title,
   subtitle,
+  tag,
+  theme,
 }: {
   to: string;
   icon: typeof Clapperboard;
   title: string;
   subtitle: string;
+  tag: string;
+  theme: "purple" | "pink" | "amber" | "cyan";
 }) {
+  const themeStyles = {
+    purple: {
+      border: "hover:border-[#9B7CFF]/50 border-white/[0.08]",
+      bgHover: "hover:bg-[#9B7CFF]/[0.04]",
+      iconBg: "bg-[#9B7CFF]/15 text-[#9B7CFF] border-[#9B7CFF]/35",
+      badge: "bg-[#9B7CFF]/15 text-[#9B7CFF] border-[#9B7CFF]/30",
+      accent: "group-hover:text-[#9B7CFF]",
+      arrow: "group-hover:text-[#9B7CFF]",
+    },
+    pink: {
+      border: "hover:border-pink-500/50 border-white/[0.08]",
+      bgHover: "hover:bg-pink-500/[0.04]",
+      iconBg: "bg-pink-500/15 text-pink-400 border-pink-500/35",
+      badge: "bg-pink-500/15 text-pink-300 border-pink-500/30",
+      accent: "group-hover:text-pink-300",
+      arrow: "group-hover:text-pink-400",
+    },
+    amber: {
+      border: "hover:border-amber-500/50 border-white/[0.08]",
+      bgHover: "hover:bg-amber-500/[0.04]",
+      iconBg: "bg-amber-500/15 text-amber-400 border-amber-500/35",
+      badge: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+      accent: "group-hover:text-amber-300",
+      arrow: "group-hover:text-amber-400",
+    },
+    cyan: {
+      border: "hover:border-cyan-500/50 border-white/[0.08]",
+      bgHover: "hover:bg-cyan-500/[0.04]",
+      iconBg: "bg-cyan-500/15 text-cyan-400 border-cyan-500/35",
+      badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
+      accent: "group-hover:text-cyan-300",
+      arrow: "group-hover:text-cyan-400",
+    },
+  };
+
+  const st = themeStyles[theme];
+
   return (
     <Link
       to={to}
-      className="group rounded-2xl border border-white/[0.07] bg-[#0E1017] p-3.5 transition-all duration-150 hover:-translate-y-0.5 hover:border-[#9B7CFF]/35 hover:bg-[#9B7CFF]/[0.02] shadow-md flex flex-col justify-between h-full"
+      className={`group relative rounded-2xl border bg-[#11131E] p-4 shadow-md flex flex-col justify-between min-h-[118px] transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${st.border} ${st.bgHover} active:scale-[0.98] overflow-hidden`}
     >
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex size-7 items-center justify-center rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#A3A6B3] group-hover:bg-[#9B7CFF]/10 group-hover:text-[#9B7CFF] group-hover:border-[#9B7CFF]/20 transition-colors">
-          <Icon className="size-3.5" />
+      {/* Top row with Icon and Badge */}
+      <div className="flex items-center justify-between">
+        <div className={`flex size-10 items-center justify-center rounded-xl border shadow-md transition-transform duration-300 group-hover:scale-110 ${st.iconBg}`}>
+          <Icon className="size-5" />
         </div>
-        <ArrowRight className="size-3 text-[#666A78] group-hover:text-[#9B7CFF] group-hover:translate-x-0.5 transition-all" />
+
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${st.badge}`}>
+            {tag}
+          </span>
+          <ArrowRight className={`size-3.5 text-[#666A78] transition-transform duration-200 group-hover:translate-x-0.5 ${st.arrow}`} />
+        </div>
       </div>
 
-      <div>
-        <h3 className="text-xs font-bold text-[#F7F7FB] group-hover:text-[#9B7CFF] transition-colors">
+      {/* Title & Subtitle */}
+      <div className="mt-2.5">
+        <h3 className={`text-sm font-bold text-[#F7F7FB] transition-colors duration-200 ${st.accent}`}>
           {title}
         </h3>
-        <p className="text-[10px] text-[#A3A6B3] line-clamp-2 mt-0.5 leading-tight">
+        <p className="text-xs text-[#A3A6B3] line-clamp-1 mt-0.5">
           {subtitle}
         </p>
       </div>

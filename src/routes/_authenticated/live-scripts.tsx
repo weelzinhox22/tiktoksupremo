@@ -9,7 +9,6 @@ import {
   Play,
   Pause,
   RotateCcw,
-  ClipboardCopy,
   Download,
   Flame,
   Zap,
@@ -26,6 +25,11 @@ import {
   Check,
   RefreshCw,
   Eye,
+  Plus,
+  Save,
+  Database,
+  Trash2,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -36,16 +40,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { listProductLibrary } from "@/features/libraries/queries";
 import {
   generateLiveScriptServerFn,
+  saveLiveScriptServerFn,
+  listSavedLiveScriptsServerFn,
+  deleteSavedLiveScriptServerFn,
   type LiveMicroBlock,
+  type SavedLiveScript,
 } from "@/features/live-scripts/server";
 
 export const Route = createFileRoute("/_authenticated/live-scripts")({
   component: LiveScriptsPage,
-  head: () => ({ meta: [{ title: "Scripts de Live IA (8s por Cena) — Tik Supremo" }] }),
+  head: () => ({ meta: [{ title: "Scripts de Live IA (Até 30min+) — Tik Supremo" }] }),
 });
+
+function formatDuration(totalSeconds: number): string {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  if (mins === 0) return `${secs}s`;
+  if (secs === 0) return `${mins}min`;
+  return `${mins}m ${secs}s`;
+}
 
 function LiveScriptsPage() {
   const productsQuery = useQuery({ queryKey: ["product-library"], queryFn: listProductLibrary });
+  const savedLivesQuery = useQuery({
+    queryKey: ["saved-live-scripts"],
+    queryFn: () => listSavedLiveScriptsServerFn(),
+  });
+
+  const [activeTab, setActiveTab] = useState<"editor" | "saved">("editor");
 
   const [productForm, setProductForm] = useState({
     name: "Vestido Midi Canelado com Fenda",
@@ -57,8 +79,12 @@ function LiveScriptsPage() {
     streamerStyle: "vendedora_amiga",
   });
 
+  const [sceneCount, setSceneCount] = useState<number>(24);
+  const [customSceneCount, setCustomSceneCount] = useState<string>("24");
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedFull, setCopiedFull] = useState(false);
+
   const [liveBlocks, setLiveBlocks] = useState<LiveMicroBlock[]>([
     {
       id: "fb-1",
@@ -108,107 +134,20 @@ function LiveScriptsPage() {
       speech: "Estou esticando com força aqui na live e vejam: ele não deforma e tem zero transparência!",
       hookTrigger: "Demonstração física de qualidade",
     },
-    {
-      id: "fb-5",
-      stepNumber: 5,
-      timeframe: "00:32 - 00:40",
-      durationSeconds: 8,
-      stageName: "5. Benefício do Corpo",
-      badge: "Modelagem",
-      badgeColor: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
-      actionGuide: "Aponta para o caimento da cintura e quadril.",
-      speech: "O caimento veste como uma luva porque modela a cintura sem marcar nada no corpo!",
-      hookTrigger: "Desejo de auto-estima e conforto",
-    },
-    {
-      id: "fb-6",
-      stepNumber: 6,
-      timeframe: "00:40 - 00:48",
-      durationSeconds: 8,
-      stageName: "6. Comparativo de Shopping",
-      badge: "Ancoragem",
-      badgeColor: "bg-amber-500/20 text-amber-300 border-amber-500/30",
-      actionGuide: "Balança a cabeça afirmativamente mostrando a etiqueta.",
-      speech: "Em loja de shopping vocês pagam fácil R$ 149,90, mas aqui no TikTok Shop hoje tá saindo por apenas R$ 69,90!",
-      hookTrigger: "Percepção de ganho financeiro extremo",
-    },
-    {
-      id: "fb-7",
-      stepNumber: 7,
-      timeframe: "00:48 - 00:56",
-      durationSeconds: 8,
-      stageName: "7. Respondendo Tamanhos",
-      badge: "Chat Ao Vivo",
-      badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-      actionGuide: "Olha para baixo simulando ler um comentário e responde rindo.",
-      speech: "A Mariana perguntou do tamanho: meninas, a grade vai do P ao GG e o elastano se adapta perfeitamente!",
-      hookTrigger: "Humanização e prova social ao vivo",
-    },
-    {
-      id: "fb-8",
-      stepNumber: 8,
-      timeframe: "00:56 - 01:04",
-      durationSeconds: 8,
-      stageName: "8. Frete & Envio Expresso",
-      badge: "Confiança",
-      badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
-      actionGuide: "Faz sinal de positivo com as mãos.",
-      speech: "O frete é expresso com envio em até 24h e rastreio direto pelo app do TikTok até sua casa!",
-      hookTrigger: "Segurança na entrega rápida",
-    },
-    {
-      id: "fb-9",
-      stepNumber: 9,
-      timeframe: "01:04 - 01:12",
-      durationSeconds: 8,
-      stageName: "9. Alerta de Escassez",
-      badge: "Urgência",
-      badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-      actionGuide: "Olha para a tela com expressão de surpresa.",
-      speech: "Atenção: o sistema acabou de avisar que restam apenas 12 unidades nesse valor promocional!",
-      hookTrigger: "FOMO (medo de ficar sem)",
-    },
-    {
-      id: "fb-10",
-      stepNumber: 10,
-      timeframe: "01:12 - 01:20",
-      durationSeconds: 8,
-      stageName: "10. Chamada para a Sacolinha",
-      badge: "Clique no Carrinho",
-      badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-      actionGuide: "Aponta com o dedo para o canto inferior esquerdo onde fica a sacolinha amarela.",
-      speech: "Clica agora na sacolinha amarela aqui embaixo no cantinho e garante a sua antes que encerre o lote!",
-      hookTrigger: "CTA clara de conversão",
-    },
-    {
-      id: "fb-11",
-      stepNumber: 11,
-      timeframe: "01:20 - 01:28",
-      durationSeconds: 8,
-      stageName: "11. Cor e Variação",
-      badge: "Seleção Rápida",
-      badgeColor: "bg-pink-500/20 text-pink-300 border-pink-500/30",
-      actionGuide: "Mostra as opções de cores ou fita de tecido.",
-      speech: "Escolhe sua cor e tamanho na sacolinha, clica em comprar com cupom e volta aqui pra me avisar no chat!",
-      hookTrigger: "Facilitação da jornada de compra",
-    },
-    {
-      id: "fb-12",
-      stepNumber: 12,
-      timeframe: "01:28 - 01:36",
-      durationSeconds: 8,
-      stageName: "12. Reinício do Loop 24/7",
-      badge: "Loop Infinito",
-      badgeColor: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30",
-      actionGuide: "Ajeita a peça e saúda quem acabou de entrar.",
-      speech: "Pra você que acabou de cair na nossa live oficial de fábrica, deixa eu te mostrar agora por que essa peça é perfeita...",
-      hookTrigger: "Transição suave para repetição 24h sem quebra",
-    },
   ]);
 
-  // Mutation to generate live script dynamically with Gemini
+  // Teleprompter / Live Simulation State
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentBlockIndex, setCurrentBlockIndex] = useState(0);
+  const [secondsInCurrentBlock, setSecondsInCurrentBlock] = useState(0);
+  const timerRef = useRef<number | null>(null);
+
+  const totalDurationSeconds = liveBlocks.reduce((acc, b) => acc + (b.durationSeconds || 8), 0);
+  const formattedTotalDuration = formatDuration(totalDurationSeconds);
+
+  // Mutations
   const generateMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (countToGen: number) => {
       const res = await generateLiveScriptServerFn({
         data: {
           productName: productForm.name,
@@ -218,365 +157,629 @@ function LiveScriptsPage() {
           benefit: productForm.benefit,
           urgency: productForm.urgency,
           streamerStyle: productForm.streamerStyle,
+          sceneCount: countToGen,
         },
       });
       return res;
     },
     onSuccess: (data) => {
-      if (data && data.blocks.length > 0) {
-        setLiveBlocks(data.blocks);
-        toast.success("Novo roteiro de Live gerado via Gemini com falas de até 8s!");
-      }
+      setLiveBlocks(data.blocks);
+      setCurrentBlockIndex(0);
+      setSecondsInCurrentBlock(0);
+      setIsPlaying(false);
+      toast.success(`Roteiro de Live gerado com ${data.blocks.length} falas (${formatDuration(data.blocks.length * 8)})!`);
     },
     onError: (err) => {
-      toast.error(err instanceof Error ? err.message : "Erro ao gerar roteiro.");
+      toast.error(`Erro ao gerar roteiro: ${err.message}`);
     },
   });
 
-  // Teleprompter / Live Reader Mode
-  const [isTeleprompterActive, setIsTeleprompterActive] = useState(false);
-  const [teleprompterSpeed, setTeleprompterSpeed] = useState<number>(30); // pixels per sec
-  const [isScrolling, setIsScrolling] = useState(false);
-  const teleprompterRef = useRef<HTMLDivElement | null>(null);
+  const appendMutation = useMutation({
+    mutationFn: async (countToAppend: number) => {
+      const res = await generateLiveScriptServerFn({
+        data: {
+          productName: productForm.name,
+          price: productForm.price,
+          discountPrice: productForm.discountPrice,
+          fabric: productForm.fabric,
+          benefit: productForm.benefit,
+          urgency: productForm.urgency,
+          streamerStyle: productForm.streamerStyle,
+          sceneCount: countToAppend,
+          startFromIndex: liveBlocks.length + 1,
+        },
+      });
+      return res;
+    },
+    onSuccess: (data) => {
+      setLiveBlocks((prev) => [...prev, ...data.blocks]);
+      toast.success(`Adicionadas mais ${data.blocks.length} falas à Live!`);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao estender roteiro: ${err.message}`);
+    },
+  });
 
-  // Teleprompter autoscroll effect
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await saveLiveScriptServerFn({
+        data: {
+          productName: productForm.name,
+          totalScenes: liveBlocks.length,
+          totalDuration: formattedTotalDuration,
+          summary: `Live TikTok Shop com ${liveBlocks.length} falas de 8s`,
+          blocks: liveBlocks,
+        },
+      });
+      return res;
+    },
+    onSuccess: () => {
+      toast.success("Roteiro de Live salvo com sucesso no Banco de Dados!");
+      savedLivesQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(`Erro ao salvar no banco de dados: ${err.message}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await deleteSavedLiveScriptServerFn({ data: { id } });
+    },
+    onSuccess: () => {
+      toast.success("Live removida com sucesso do banco de dados!");
+      savedLivesQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(`Erro ao deletar: ${err.message}`);
+    },
+  });
+
+  // Teleprompter Timer
   useEffect(() => {
-    let animationFrameId: number;
-    let lastTime = performance.now();
-
-    const scrollStep = (currentTime: number) => {
-      if (isScrolling && teleprompterRef.current) {
-        const delta = (currentTime - lastTime) / 1000;
-        teleprompterRef.current.scrollTop += teleprompterSpeed * delta;
-      }
-      lastTime = currentTime;
-      if (isScrolling) {
-        animationFrameId = requestAnimationFrame(scrollStep);
-      }
-    };
-
-    if (isScrolling) {
-      animationFrameId = requestAnimationFrame(scrollStep);
+    if (isPlaying) {
+      timerRef.current = window.setInterval(() => {
+        setSecondsInCurrentBlock((prev) => {
+          if (prev >= 7) {
+            setCurrentBlockIndex((currIdx) => {
+              if (currIdx >= liveBlocks.length - 1) {
+                return 0; // Continuous loop
+              }
+              return currIdx + 1;
+            });
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
 
     return () => {
-      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isScrolling, teleprompterSpeed]);
+  }, [isPlaying, liveBlocks.length]);
 
-  const copyFullLiveScript = async () => {
-    const fullText = liveBlocks
-      .map(
-        (b) =>
-          `[${b.timeframe}] ${b.stageName} (Duração: ${b.durationSeconds}s)\nAção: ${b.actionGuide}\nFala: "${b.speech}"\nGatilho: ${b.hookTrigger}\n`
-      )
-      .join("\n═══════════════════════════════════════════════════\n\n");
-    await navigator.clipboard.writeText(fullText);
-    toast.success("Roteiro completo de Live copiado!");
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProductId(productId);
+    const prod = productsQuery.data?.find((p) => p.id === productId);
+    if (prod) {
+      setProductForm({
+        name: prod.name,
+        price: prod.price ? `R$ ${prod.price.toFixed(2)}` : "R$ 149,90",
+        discountPrice: prod.price ? `R$ ${(prod.price * 0.5).toFixed(2)}` : "R$ 69,90",
+        fabric: prod.description || "Tecido encorpado premium",
+        benefit: prod.benefits?.[0] || "Modela a cintura e zero transparência",
+        urgency: "Últimas peças com frete grátis liberado",
+        streamerStyle: "vendedora_amiga",
+      });
+      toast.info(`Dados de "${prod.name}" carregados para a live!`);
+    }
   };
 
-  const copySingleBlock = (text: string, index: number) => {
+  const handleCopySingle = (text: string, index: number) => {
     navigator.clipboard.writeText(text);
     setCopiedIndex(index);
-    toast.success("Micro-fala copiada!");
+    toast.success(`Fala ${index + 1} copiada!`);
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
-  return (
-    <div className="mx-auto w-full max-w-7xl space-y-7 pb-16">
-      {/* Header */}
-      <header className="bento-hero p-6 md:p-8 relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <Badge className="border-red-500/30 bg-red-500/10 text-red-400 font-bold px-3 py-1 text-xs animate-pulse">
-            <Radio className="mr-1.5 size-3.5" /> Transmissão & Avatar IA 24/7
-          </Badge>
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-5xl text-white">
-            Scripts de Live IA (Cenas ≤ 8s com Gemini)
-          </h1>
-          <p className="text-sm leading-relaxed text-slate-300 md:text-base">
-            Gera roteiros completos para Lives de TikTok Shop e avatares contínuos, divididos rigorosamente em{" "}
-            <strong>falas rápidas de até 8 segundos</strong> para ritmo dinâmico, retenção ininterrupta e loop infinito.
-          </p>
+  const handleCopyFullScript = () => {
+    const full = liveBlocks
+      .map((b) => `[${b.timeframe}] (${b.stageName})\nAção: ${b.actionGuide}\nFala: "${b.speech}"`)
+      .join("\n\n---\n\n");
+    navigator.clipboard.writeText(full);
+    setCopiedFull(true);
+    toast.success("Roteiro completo copiado para a área de transferência!");
+    setTimeout(() => setCopiedFull(false), 2000);
+  };
 
-          <div className="flex flex-wrap gap-2 pt-2 text-xs text-slate-400 font-medium">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 border border-white/10">
-              <Sparkles className="size-3.5 text-amber-400" /> IA Gemini com Scripts Sempre Diferentes
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 border border-white/10">
-              <Zap className="size-3.5 text-cyan-400" /> Falas de 6 a 8 Segundos
-            </span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 border border-white/10">
-              <RotateCcw className="size-3.5 text-emerald-400" /> Loop 24h para OBS e TikTok Live Studio
-            </span>
+  const handleDownloadTxt = () => {
+    const full = `ROTEIRO DE LIVE IA — TIK SUPREMO STUDIO\nProduto: ${productForm.name}\nDuração Total: ${formattedTotalDuration} (${liveBlocks.length} falas)\n\n` +
+      liveBlocks
+        .map((b) => `[${b.timeframe}] ${b.stageName}\nAção: ${b.actionGuide}\nFala: "${b.speech}"`)
+        .join("\n\n--------------------------------------------\n\n");
+
+    const blob = new Blob([full], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `live-script-${productForm.name.toLowerCase().replace(/\s+/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Arquivo TXT exportado com sucesso!");
+  };
+
+  const handleLoadSavedLive = (saved: SavedLiveScript) => {
+    setLiveBlocks(saved.blocks);
+    setProductForm((prev) => ({ ...prev, name: saved.productName }));
+    setActiveTab("editor");
+    toast.success(`Live "${saved.title}" carregada com sucesso!`);
+  };
+
+  const durationPresets = [
+    { label: "12 falas (~1.5m)", count: 12 },
+    { label: "24 falas (~3.2m)", count: 24 },
+    { label: "50 falas (~6.5m)", count: 50 },
+    { label: "100 falas (~13m)", count: 100 },
+    { label: "150 falas (~20m)", count: 150 },
+    { label: "225 falas (~30m)", count: 225 },
+  ];
+
+  return (
+    <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
+      {/* Header */}
+      <header className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-6 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-400 font-bold px-2.5 py-0.5 text-xs">
+                <Radio className="mr-1.5 size-3.5 animate-pulse" /> Scripts de Live IA & Banco de Dados
+              </Badge>
+              <span className="text-xs text-[#666A78]">Falas de até 8s para Lives de 1m a 30m+</span>
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl text-[#F7F7FB]">
+              Gerador de Scripts para Live Streamings
+            </h1>
+            <p className="text-xs text-[#A3A6B3] leading-relaxed">
+              Crie roteiros contínuos em micro-blocos de <strong>até 8 segundos</strong> ideais para avatares virtuais e streamers humanos manterem retenção alta, interação com chat e chamadas na sacolinha amarela 24/7.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("editor")}
+              className={`h-9 text-xs font-semibold ${activeTab === "editor" ? "bg-[#9B7CFF]/15 border-[#9B7CFF]/30 text-[#9B7CFF]" : "border-white/10 text-[#A3A6B3]"}`}
+            >
+              <Radio className="size-3.5 mr-1.5" /> Criador de Live
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab("saved")}
+              className={`h-9 text-xs font-semibold ${activeTab === "saved" ? "bg-[#9B7CFF]/15 border-[#9B7CFF]/30 text-[#9B7CFF]" : "border-white/10 text-[#A3A6B3]"}`}
+            >
+              <Database className="size-3.5 mr-1.5 text-emerald-400" /> Lives Salvas ({savedLivesQuery.data?.savedLives?.length ?? 0})
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Grid: Form + Micro-Blocks */}
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        {/* Left Column: Product Data Form */}
-        <div className="space-y-4">
-          <div className="bento-card rounded-2xl border border-white/10 bg-[#0e1017] p-5 shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
-                <ShoppingBag className="size-4 text-cyan-400" /> Produto da Live
+      {activeTab === "saved" ? (
+        /* Saved Lives from Database */
+        <section className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div>
+              <h2 className="text-base font-bold text-[#F7F7FB] flex items-center gap-2">
+                <Database className="size-4 text-emerald-400" /> Minhas Lives Salvas no Banco de Dados
               </h2>
+              <p className="text-xs text-[#A3A6B3] mt-0.5">
+                Histórico de roteiros completos salvos diretamente no seu banco de dados.
+              </p>
+            </div>
+          </div>
+
+          {savedLivesQuery.isLoading ? (
+            <div className="py-12 text-center text-xs text-[#A3A6B3]">Carregando lives salvas do banco...</div>
+          ) : savedLivesQuery.data?.savedLives && savedLivesQuery.data.savedLives.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {savedLivesQuery.data.savedLives.map((saved) => (
+                <div
+                  key={saved.id}
+                  className="rounded-xl border border-white/[0.08] bg-[#11131E] p-4 flex flex-col justify-between space-y-3 hover:border-[#9B7CFF]/30 transition"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Badge className="bg-[#9B7CFF]/15 text-[#9B7CFF] border-white/10 text-[10px] font-bold">
+                        {saved.totalScenes} Falas ({saved.totalDuration})
+                      </Badge>
+                      <span className="text-[10px] text-[#666A78]">
+                        {new Date(saved.created_at).toLocaleDateString("pt-BR")}
+                      </span>
+                    </div>
+                    <h3 className="text-sm font-bold text-[#F7F7FB] line-clamp-1">{saved.productName}</h3>
+                    <p className="text-xs text-[#A3A6B3] line-clamp-2">{saved.summary}</p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/[0.06]">
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs font-bold bg-[#9B7CFF] text-[#07080D] hover:bg-[#AA92FF] flex-1"
+                      onClick={() => handleLoadSavedLive(saved)}
+                    >
+                      Carregar no Estúdio
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-7 text-[#666A78] hover:text-red-400 hover:bg-red-500/10 rounded-lg shrink-0"
+                      onClick={() => deleteMutation.mutate(saved.id)}
+                      title="Excluir do Supabase"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center space-y-2">
+              <Database className="mx-auto size-8 text-[#666A78]" />
+              <p className="text-xs text-[#A3A6B3]">Nenhuma live salva ainda.</p>
+              <Button size="sm" className="bg-[#9B7CFF] text-black font-bold text-xs" onClick={() => setActiveTab("editor")}>
+                Gerar e Salvar Primeira Live
+              </Button>
+            </div>
+          )}
+        </section>
+      ) : (
+        /* Live Editor & Live Teleprompter */
+        <div className="grid gap-6 lg:grid-cols-12 items-start">
+          {/* Left Column: Form & Product Selection (5 Cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Product Library Picker */}
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-4.5 shadow-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-[#F7F7FB] flex items-center gap-1.5">
+                  <Package className="size-3.5 text-[#9B7CFF]" /> Puxar Produto do Catálogo
+                </Label>
+                <span className="text-[10px] text-[#666A78]">Preenchimento automático</span>
+              </div>
+
+              <select
+                value={selectedProductId || ""}
+                onChange={(e) => handleSelectProduct(e.target.value)}
+                className="w-full h-9 rounded-xl border border-white/[0.08] bg-[#11131E] px-3 text-xs text-[#F7F7FB] focus:outline-none focus:border-[#9B7CFF]/50"
+              >
+                <option value="">Selecione um produto existente...</option>
+                {productsQuery.data?.map((prod) => (
+                  <option key={prod.id} value={prod.id}>
+                    {prod.name} ({prod.price ? `R$ ${prod.price.toFixed(2)}` : "Sem preço"})
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Quick Product Library Picker */}
-            {productsQuery.data && productsQuery.data.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-slate-400">Puxar da Biblioteca de Produtos</Label>
-                <select
-                  className="w-full h-9 rounded-xl border border-white/10 bg-[#161822] px-3 text-xs text-white outline-none focus:border-cyan-400"
-                  value={selectedProductId || ""}
-                  onChange={(e) => {
-                    const found = productsQuery.data?.find((p) => p.id === e.target.value);
-                    if (found) {
-                      setSelectedProductId(found.id);
-                      setProductForm((prev) => ({
-                        ...prev,
-                        name: found.name,
-                        price: found.price !== null ? `R$ ${found.price}` : prev.price,
-                        discountPrice: prev.discountPrice,
-                        benefit: Array.isArray(found.benefits) ? found.benefits.join(", ") : prev.benefit,
-                      }));
-                      toast.success(`Dados de "${found.name}" preenchidos!`);
-                    }
-                  }}
-                >
-                  <option value="">Selecione um produto salvo...</option>
-                  {productsQuery.data.map((prod) => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            {/* Live Settings & Scene Count */}
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-5 shadow-xl space-y-4">
+              <h2 className="text-sm font-bold text-[#F7F7FB] flex items-center gap-2">
+                <Sliders className="size-4 text-amber-400" /> Parâmetros da Live
+              </h2>
 
-            <div className="space-y-3">
-              <div>
-                <Label className="text-[11px] text-slate-400 font-medium">Nome do Produto</Label>
+              {/* DURATION / SCENE COUNT SELECTOR */}
+              <div className="space-y-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-3.5">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Clock className="size-3.5" /> Quantidade de Falas & Duração:
+                  </Label>
+                  <span className="text-[11px] font-mono font-bold text-[#F7F7FB]">
+                    {sceneCount} falas ({formatDuration(sceneCount * 8)})
+                  </span>
+                </div>
+
+                {/* Preset Chips */}
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  {durationPresets.map((preset) => (
+                    <button
+                      key={preset.count}
+                      type="button"
+                      onClick={() => {
+                        setSceneCount(preset.count);
+                        setCustomSceneCount(String(preset.count));
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition ${
+                        sceneCount === preset.count
+                          ? "bg-amber-400 text-black shadow-sm"
+                          : "border border-white/[0.08] bg-white/[0.02] text-[#A3A6B3] hover:text-white"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[10px] text-[#666A78] shrink-0">Quantidade personalizada:</span>
+                  <Input
+                    type="number"
+                    min={6}
+                    max={250}
+                    value={customSceneCount}
+                    onChange={(e) => {
+                      setCustomSceneCount(e.target.value);
+                      const parsed = parseInt(e.target.value, 10);
+                      if (!isNaN(parsed) && parsed >= 6 && parsed <= 250) {
+                        setSceneCount(parsed);
+                      }
+                    }}
+                    className="h-7 text-xs bg-black/60 border-white/15 text-white w-24 font-mono"
+                  />
+                  <span className="text-[10px] text-[#A3A6B3]">falas (8s cada)</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs text-[#A3A6B3]">Nome do Produto / Coleção</Label>
                 <Input
                   value={productForm.name}
                   onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                  placeholder="Ex: Conjunto Alfaiataria Feminino"
-                  className="mt-1 h-9 border-white/10 bg-[#161822] text-xs text-white"
+                  placeholder="Ex: Vestido Midi Canelado"
+                  className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-white"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label className="text-[11px] text-slate-400 font-medium">Preço Normal</Label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#A3A6B3]">Preço de Tabela</Label>
                   <Input
                     value={productForm.price}
                     onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
-                    placeholder="R$ 149,90"
-                    className="mt-1 h-9 border-white/10 bg-[#161822] text-xs text-white"
+                    className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-white"
                   />
                 </div>
-                <div>
-                  <Label className="text-[11px] text-slate-400 font-medium text-emerald-400">Preço Live (Desconto)</Label>
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#A3A6B3]">Preço na Live</Label>
                   <Input
                     value={productForm.discountPrice}
                     onChange={(e) => setProductForm({ ...productForm, discountPrice: e.target.value })}
-                    placeholder="R$ 69,90"
-                    className="mt-1 h-9 border-white/10 bg-[#161822] text-xs text-emerald-300 font-bold"
+                    className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-emerald-400 font-bold"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label className="text-[11px] text-slate-400 font-medium">Tecido & Toque</Label>
+              <div className="space-y-1">
+                <Label className="text-xs text-[#A3A6B3]">Tecido / Material / Diferencial</Label>
                 <Input
                   value={productForm.fabric}
                   onChange={(e) => setProductForm({ ...productForm, fabric: e.target.value })}
-                  placeholder="Ex: Linho com viscose e elastano premium"
-                  className="mt-1 h-9 border-white/10 bg-[#161822] text-xs text-white"
+                  placeholder="Ex: Canelado encorpado 320g com elastano"
+                  className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-white"
                 />
               </div>
 
-              <div>
-                <Label className="text-[11px] text-slate-400 font-medium">Benefício / Caimento</Label>
-                <Textarea
+              <div className="space-y-1">
+                <Label className="text-xs text-[#A3A6B3]">Benefício Principal de Caimento</Label>
+                <Input
                   value={productForm.benefit}
                   onChange={(e) => setProductForm({ ...productForm, benefit: e.target.value })}
-                  placeholder="Ex: Não amassa, cintura alta modeladora, zero transparência"
-                  rows={2}
-                  className="mt-1 resize-none border-white/10 bg-[#161822] text-xs text-white"
+                  placeholder="Ex: Modela a cintura e zero transparência"
+                  className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-white"
                 />
               </div>
 
-              <div>
-                <Label className="text-[11px] text-slate-400 font-medium text-amber-400">Urgência / Escassez</Label>
+              <div className="space-y-1">
+                <Label className="text-xs text-[#A3A6B3]">Gatilho de Escassez / Urgência</Label>
                 <Input
                   value={productForm.urgency}
                   onChange={(e) => setProductForm({ ...productForm, urgency: e.target.value })}
-                  placeholder="Ex: Últimas 15 peças com frete grátis"
-                  className="mt-1 h-9 border-white/10 bg-[#161822] text-xs text-amber-300"
+                  placeholder="Ex: Últimas 10 peças no lote promocional"
+                  className="h-8.5 text-xs bg-[#11131E] border-white/[0.08] text-white"
                 />
               </div>
-            </div>
-
-            <Button
-              className="w-full h-10 font-bold bg-primary hover:bg-primary/90 text-black shadow-lg gap-2"
-              disabled={generateMutation.isPending}
-              onClick={() => generateMutation.mutate()}
-            >
-              {generateMutation.isPending ? (
-                <>
-                  <RefreshCw className="size-4 animate-spin" /> Gerando com Gemini...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="size-4" /> Gerar Novo Script com Gemini
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Right Column: Micro-blocks list & Teleprompter Mode */}
-        <div className="space-y-4">
-          {/* Action Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0e1017] p-3.5">
-            <div className="flex items-center gap-2">
-              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 text-xs font-bold px-2.5 py-1">
-                {liveBlocks.length} Falas de até 8s
-              </Badge>
-              <span className="text-xs text-slate-400 font-mono">
-                Total: ~{(liveBlocks.length * 8)}s ({Math.floor((liveBlocks.length * 8) / 60)}m {((liveBlocks.length * 8) % 60)}s)
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs font-semibold border-white/10 bg-white/[0.03] hover:bg-white/[0.08]"
-                onClick={() => setIsTeleprompterActive(!isTeleprompterActive)}
-              >
-                <Eye className="size-3.5 mr-1.5 text-cyan-400" />
-                {isTeleprompterActive ? "Modo Cartões" : "Modo Teleprompter"}
-              </Button>
 
               <Button
-                size="sm"
-                className="h-8 text-xs font-bold bg-primary text-black shadow"
-                onClick={copyFullLiveScript}
+                onClick={() => generateMutation.mutate(sceneCount)}
+                disabled={generateMutation.isPending || !productForm.name.trim()}
+                className="w-full h-10 font-bold bg-amber-400 hover:bg-amber-300 text-black shadow-lg shadow-amber-500/10 text-xs gap-1.5"
               >
-                <Copy className="size-3.5 mr-1.5" /> Copiar Roteiro Completo
+                {generateMutation.isPending ? (
+                  <>
+                    <RefreshCw className="size-4 animate-spin" /> Gerando {sceneCount} Falas ({formatDuration(sceneCount * 8)})...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-4" /> Gerar Roteiro de {sceneCount} Falas ({formatDuration(sceneCount * 8)})
+                  </>
+                )}
               </Button>
             </div>
           </div>
 
-          {/* Teleprompter Reader Mode */}
-          {isTeleprompterActive ? (
-            <div className="rounded-2xl border border-cyan-500/30 bg-[#08090d] p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                <div className="flex items-center gap-3">
-                  <span className="size-3 rounded-full bg-red-500 animate-ping" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wider">Teleprompter de Live</span>
-                </div>
-                <div className="flex items-center gap-3">
+          {/* Right Column: Live Teleprompter & Micro-Speeches (7 Cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            {/* Top Bar for Script Actions & Teleprompter */}
+            <div className="rounded-2xl border border-white/[0.08] bg-[#0E1017] p-4 shadow-xl space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/[0.06] pb-3">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-slate-400">Velocidade:</span>
-                    <input
-                      type="range"
-                      min="15"
-                      max="70"
-                      value={teleprompterSpeed}
-                      onChange={(e) => setTeleprompterSpeed(Number(e.target.value))}
-                      className="w-24 accent-cyan-400"
-                    />
+                    <span className="text-xs font-bold text-[#F7F7FB]">Sequência de Falas da Live</span>
+                    <Badge className="bg-amber-500/15 text-amber-300 border-amber-500/25 text-[10px] font-bold">
+                      {liveBlocks.length} Falas ({formattedTotalDuration})
+                    </Badge>
                   </div>
+                  <p className="text-[11px] text-[#A3A6B3]">
+                    Falas de até 8s ordenadas para transmissão ou avatares em loop contínuo.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs border-white/15"
-                    onClick={() => setIsScrolling(!isScrolling)}
+                    onClick={handleCopyFullScript}
+                    className="h-8 text-xs font-semibold border-white/10 bg-white/[0.02] text-[#A3A6B3] hover:text-white"
                   >
-                    {isScrolling ? <Pause className="size-3 mr-1" /> : <Play className="size-3 mr-1" />}
-                    {isScrolling ? "Pausar" : "Rolar Auto"}
+                    {copiedFull ? <Check className="size-3.5 text-emerald-400 mr-1" /> : <Copy className="size-3.5 mr-1 text-[#9B7CFF]" />}
+                    {copiedFull ? "Copiado!" : "Copiar Tudo"}
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadTxt}
+                    className="h-8 text-xs font-semibold border-white/10 bg-white/[0.02] text-[#A3A6B3] hover:text-white"
+                  >
+                    <Download className="size-3.5 mr-1 text-cyan-400" /> Exportar TXT
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                    className="h-8 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-black shadow-md shadow-emerald-500/10 gap-1"
+                  >
+                    {saveMutation.isPending ? <RefreshCw className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+                    Salvar no Banco de Dados
                   </Button>
                 </div>
               </div>
 
-              <div
-                ref={teleprompterRef}
-                className="h-[460px] overflow-y-auto pr-3 space-y-6 scroll-smooth"
-              >
-                {liveBlocks.map((block) => (
-                  <div key={block.id} className="space-y-1.5 border-b border-white/5 pb-4">
+              {/* LIVE TELEPROMPTER / SIMULATOR BAR */}
+              <div className="rounded-xl border border-white/[0.08] bg-[#11131E] p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsPlaying(!isPlaying)}
+                    className={`size-9 rounded-xl flex items-center justify-center font-bold transition shadow-md ${
+                      isPlaying ? "bg-amber-400 text-black" : "bg-[#9B7CFF] text-black hover:bg-[#AA92FF]"
+                    }`}
+                  >
+                    {isPlaying ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+                  </button>
+
+                  <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-mono text-cyan-400 font-bold">{block.timeframe}</span>
-                      <span className="text-[10px] text-slate-400">· {block.actionGuide}</span>
+                      <span className="text-xs font-bold text-[#F7F7FB]">
+                        {isPlaying ? "Simulando Live Ao Vivo..." : "Teleprompter de Live"}
+                      </span>
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded">
+                        Fala {currentBlockIndex + 1} de {liveBlocks.length} ({secondsInCurrentBlock}s/8s)
+                      </span>
                     </div>
-                    <p className="text-xl font-bold leading-relaxed text-slate-100 font-sans">
-                      "{block.speech}"
+                    <p className="text-[10px] text-[#666A78]">
+                      Acompanhe o tempo de cada fala para sincronizar com seu avatar ou teleprompter.
                     </p>
                   </div>
-                ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentBlockIndex(0);
+                      setSecondsInCurrentBlock(0);
+                      setIsPlaying(false);
+                    }}
+                    className="text-xs text-[#A3A6B3] hover:text-white p-1.5 rounded-lg hover:bg-white/[0.05]"
+                    title="Reiniciar do bloco 1"
+                  >
+                    <RotateCcw className="size-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
-          ) : (
-            /* Cards View: Micro-Blocks (≤ 8s each) */
-            <div className="space-y-3">
-              {liveBlocks.map((block, idx) => (
-                <article
-                  key={block.id}
-                  className="bento-card group rounded-xl border border-white/10 bg-[#0e1017] p-4 shadow-md hover:border-cyan-400/40 hover:bg-white/[0.02] transition"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex size-7 items-center justify-center rounded-lg bg-white/10 text-xs font-bold text-white font-mono">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <div>
-                        <span className="text-xs font-bold text-white">{block.stageName}</span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-mono text-cyan-400 font-bold">{block.timeframe}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">({block.durationSeconds}s)</span>
-                          <Badge className={`text-[9px] px-1.5 py-0 border ${block.badgeColor}`}>
-                            {block.badge}
-                          </Badge>
-                        </div>
+
+            {/* List of Micro-Blocks */}
+            <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
+              {liveBlocks.map((block, idx) => {
+                const isActive = currentBlockIndex === idx;
+
+                return (
+                  <article
+                    key={block.id}
+                    className={`rounded-xl border p-4 transition-all duration-200 ${
+                      isActive
+                        ? "border-amber-400 bg-amber-400/[0.04] shadow-lg shadow-amber-400/5 ring-1 ring-amber-400/20"
+                        : "border-white/[0.08] bg-[#0E1017] hover:border-white/15"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-6 items-center justify-center rounded-lg bg-white/[0.04] border border-white/[0.08] text-[10px] font-mono font-bold text-white">
+                          #{block.stepNumber}
+                        </span>
+                        <Badge className={`text-[10px] font-bold border ${block.badgeColor}`}>
+                          {block.badge}
+                        </Badge>
+                        <span className="text-[10px] font-mono text-[#666A78]">
+                          {block.timeframe} ({block.durationSeconds}s)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCurrentBlockIndex(idx);
+                            setSecondsInCurrentBlock(0);
+                          }}
+                          className="text-[10px] text-[#666A78] hover:text-amber-400 px-2 py-0.5 rounded hover:bg-white/[0.04] transition"
+                        >
+                          Ir para esta fala
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopySingle(block.speech, idx)}
+                          className="text-[10px] text-[#A3A6B3] hover:text-[#9B7CFF] flex items-center gap-1 font-medium px-2 py-0.5 rounded hover:bg-white/[0.04] transition"
+                        >
+                          {copiedIndex === idx ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+                          {copiedIndex === idx ? "Copiado!" : "Copiar"}
+                        </button>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => copySingleBlock(block.speech, idx)}
-                      className="text-slate-400 hover:text-cyan-300 p-1.5 rounded-lg hover:bg-white/5 transition flex items-center gap-1 text-[11px]"
-                      title="Copiar micro-fala"
-                    >
-                      {copiedIndex === idx ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                      <span className="hidden sm:inline">{copiedIndex === idx ? "Copiado!" : "Copiar"}</span>
-                    </button>
-                  </div>
+                    {/* Action Guide */}
+                    <div className="rounded-lg bg-black/40 border border-white/[0.04] px-3 py-1.5 text-[11px] text-[#A3A6B3] mb-2 flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase text-amber-400/90 shrink-0">Ação Visual:</span>
+                      <span className="truncate">{block.actionGuide}</span>
+                    </div>
 
-                  {/* Spoken text & visual guide */}
-                  <div className="mt-3 space-y-2">
-                    <div className="rounded-lg bg-black/40 p-3 text-xs leading-relaxed text-slate-100 font-medium border border-white/5">
+                    {/* Spoken text */}
+                    <div className="text-xs md:text-sm text-[#F7F7FB] font-medium leading-relaxed bg-[#11131E] border border-white/[0.06] rounded-xl p-3">
                       "{block.speech}"
                     </div>
+                  </article>
+                );
+              })}
 
-                    <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-1">
-                      <span className="flex items-center gap-1">
-                        <strong className="text-slate-300">Ação no Vídeo:</strong> {block.actionGuide}
-                      </span>
-                      <span className="text-slate-500 italic">
-                        {block.hookTrigger}
-                      </span>
-                    </div>
-                  </div>
-                </article>
-              ))}
+              {/* Action Button to Append 20 more speeches */}
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => appendMutation.mutate(20)}
+                  disabled={appendMutation.isPending}
+                  className="w-full h-10 border-dashed border-white/15 bg-white/[0.01] hover:bg-white/[0.04] text-xs text-[#A3A6B3] hover:text-white font-semibold gap-1.5"
+                >
+                  {appendMutation.isPending ? (
+                    <>
+                      <RefreshCw className="size-4 animate-spin text-amber-400" /> Gerando mais 20 falas...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="size-4 text-amber-400" /> Estender Live (+20 falas contínuas de 8s)
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

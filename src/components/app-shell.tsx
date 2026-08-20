@@ -83,7 +83,6 @@ const navGroups = [
     title: "Estúdio IA & Ferramentas",
     items: [
       { label: "Editor de Vídeos", icon: Scissors, to: "/video-editor" as const },
-      { label: "Gerador de Vídeo IA", icon: Sparkles, to: "/ai-video-generator" as const },
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
       { label: "Outras Ferramentas", icon: Wrench, to: "/tools" as const },
     ],
