@@ -232,6 +232,8 @@ function Brand({ isCollapsed }: { isCollapsed?: boolean }) {
 
 export function AppShell({ user, children }: { user: AppUser; children: ReactNode }) {
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isVideoEditor = pathname === "/video-editor";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
@@ -274,7 +276,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
         <aside
           className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-white/[0.06] bg-[#090A10]/95 shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-300 ease-in-out lg:flex ${
             isCollapsed ? "w-16" : "w-64"
-          }`}
+          } ${isVideoEditor ? "lg:!hidden" : ""}`}
         >
           <div
             className={`flex h-16 shrink-0 items-center ${
@@ -346,10 +348,10 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
 
         <div
           className={`relative z-10 transition-all duration-300 ease-in-out ${
-            isCollapsed ? "lg:pl-16" : "lg:pl-64"
+            isVideoEditor ? "" : isCollapsed ? "lg:pl-16" : "lg:pl-64"
           }`}
         >
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-[#07080D]/90 px-4 backdrop-blur-xl md:px-8 shadow-sm">
+          <header className={`${isVideoEditor ? "hidden" : "sticky"} top-0 z-30 h-16 items-center gap-3 border-b border-white/[0.06] bg-[#07080D]/90 px-4 backdrop-blur-xl md:px-8 shadow-sm ${isVideoEditor ? "" : "flex"}`}>
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="lg:hidden text-[#A3A6B3]" aria-label="Abrir menu">
@@ -442,7 +444,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
             </div>
           </header>
 
-          <main className="px-4 py-6 md:px-8 md:py-8">{children}</main>
+          <main className={isVideoEditor ? "h-screen overflow-hidden" : "px-4 py-6 md:px-8 md:py-8"}>{children}</main>
         </div>
       </div>
     </TooltipProvider>

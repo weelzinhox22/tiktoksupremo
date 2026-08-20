@@ -223,74 +223,549 @@ export const GANCHO_EMBALAGEM_TIKTOK_SHOP_PRESET: MovementPreset & { videoUrl?: 
   category: "ugc",
   formats: ["POV", "UNBOXING", "TIKTOK SHOP", "PACOTE"],
   description: "Unboxing hiper-realista com o pacote preto oficial de envio do TikTok Shop, rasgando o topo com som sincronizado e retirando os produtos sequencialmente.",
-  prompt_instruction: `Ultra-realistic TikTok Shop fashion unboxing video. 
-Static overhead camera. 
-No camera movement. 
-No zoom. 
-No panning. 
-No shaking. 
-No cuts. 
-No transitions. 
-Use the same overall sequence and behavior as the reference: 
-A black shipping bag/package is already centered on the surface. 
-The woman’s hands appear naturally and hold the package from both sides near the top opening. 
-The package must remain the same package throughout the scene. 
-Do not change the package design, color, label, or shape. 
-Keep the same product continuity. 
-Do not morph objects. 
-Do not deform the hands. 
-Do not deform the package. 
-No extra fingers. 
-No duplicate garments. 
-UNBOXING SEQUENCE: 
-The woman firmly grips the top of the package with both hands. 
-With a quick, realistic, and satisfying motion, she tears open the TOP part of the package, just like a real shipping bag being opened from the top seam. 
-The plastic must stretch naturally and rip realistically. 
-At the exact moment the package is torn open, include a clear, crisp, synchronized plastic ripping sound. 
-Audio requirements: 
-– realistic plastic stretching sound – realistic crinkling sound – realistic tearing sound – tearing sound perfectly synchronized with the hands and package – subtle package handling sounds – subtle fabric movement sounds – no music – no voice – no talking – no artificial fake sound effects – clean audio only 
-After tearing the top open, both hands pull the opening apart and reveal the clothing inside. 
-IMPORTANT: 
-The package must remain visible in the scene. 
-Do not remove the package from the scene. 
-Do not throw the package away. 
-Do not move it out of frame. 
-Keep the opened package on the surface while the products are removed. 
-PRODUCT REMOVAL LOGIC: 
-If there is only ONE clothing piece inside: – remove only that one piece – pull it out naturally with both hands – place it neatly on the surface beside or in front of the package – keep the package visible in the scene 
-If there are TWO clothing pieces inside: – remove ONLY ONE piece at a time – never pull both pieces out together 
-– never remove everything at once – first, remove the first clothing piece naturally – place the first piece neatly on the surface – keep the package still visible in the scene – then reach back into the same package – remove the second clothing piece naturally – place the second piece neatly beside the first one 
-The removal must feel realistic and sequential: 
-first piece out → placed on the surface → second piece out → placed on the surface. 
-Do not skip steps. 
-Do not instantly spawn the clothing outside the package. 
-Do not make both pieces come out together. 
-Do not mix the garments. 
-Do not duplicate the garments. 
-CLOTHING PRESENTATION: 
-Each clothing piece must be handled as a single physical object with realistic fabric behavior and gravity. 
-When each piece is removed: – lift it naturally from the package – briefly reveal it clearly – then place it neatly on the surface – gently adjust or smooth it if needed 
-After placing the garment, the hands may lightly smooth the fabric to make the piece look clean and presentable. 
-If there are two pieces: – place them one after the other in an organized way – keep both visible on the surface at the end – keep the opened package still visible in the scene 
-MOVEMENT STYLE: 
-Fast but realistic. 
-Smooth hand coordination. 
-Natural unboxing rhythm. 
-Visually satisfying and viral-style product reveal. 
-Elegant and controlled movement. 
-No robotic motion. 
-No clipping. 
-No object morphing. 
-No unrealistic physics. 
-FINAL RESULT: 
-A hyper-realistic overhead unboxing video where the woman tears open the TOP of the black shipping package with a satisfying synchronized ripping sound, keeps the opened package visible in the scene, then removes the clothing naturally following the exact sequence: if there are two pieces, she removes one piece first, places it on the surface, then removes the second piece and places it beside the first — never taking both out at once. The final scene shows the garments neatly arranged on the surface with the package still visible.`,
+  prompt_instruction: `# ULTRA-REALISTIC TIKTOK SHOP FASHION UNBOXING VIDEO
+
+## REFERENCE IMAGES
+
+* **Image A = STARTING FRAME**
+* **Image B = FINAL FRAME**
+
+The video must start exactly from **Image A** and end matching **Image B** as closely as possible.
+
+Image A and Image B are not loose inspiration.
+
+They define the literal beginning and the literal end of the video.
+
+---
+
+# ABSOLUTE CORE RULE
+
+## THE EXACT GARMENT(S) SHOWN IN IMAGE B ARE ALREADY PHYSICALLY INSIDE THE PACKAGE IN IMAGE A BEFORE FRAME 1.
+
+This is the most important instruction.
+
+The clothing inside the package must already be the exact clothing shown in Image B from the very start.
+
+Do **not** invent a temporary garment.
+
+Do **not** invent an intermediate garment.
+
+Do **not** create a generic outfit and later transform it.
+
+Do **not** reinterpret the clothing.
+
+Do **not** redesign the product.
+
+The model must understand this as a real physical continuity:
+
+**The exact clothing shown in Image B is already folded or packed inside the black package shown in Image A, and the hands simply open the package and remove those exact garments.**
+
+---
+
+# PRODUCT IDENTITY LOCK
+
+Analyze Image B carefully and preserve the exact clothing identity throughout the entire video.
+
+This includes:
+
+* exact number of garment pieces
+* exact clothing type
+* exact design
+* exact color
+* exact fabric
+* exact texture
+* exact thickness
+* exact proportions
+* exact seams
+* exact trims
+* exact silhouette
+* exact shape
+* exact folds when visible
+* exact accessories or attached details
+* exact orientation of each piece once placed
+* any visible strings, straps, bands, buttons, lace, ribbing, prints, or design details shown in Image B
+
+The garment(s) being removed from the package and the garment(s) shown in the final frame must be the **same physical garment(s)**.
+
+No substitution.
+
+No redesign.
+
+No product transformation.
+
+No color shift.
+
+No texture shift.
+
+No shape shift.
+
+No style shift.
+
+---
+
+# FIRST VISIBLE FABRIC RULE
+
+This is extremely important.
+
+At the first moment any clothing becomes visible inside the opened package, that clothing must **already be the exact clothing from Image B**.
+
+The first visible fabric must already match Image B in:
+
+* color
+* texture
+* material
+* garment type
+* design language
+* visible details
+
+Never show a different garment first.
+
+Never show placeholder clothing.
+
+Never show clothing that later changes into another piece.
+
+The first visible fabric from inside the package must already belong to the final garment(s) from Image B.
+
+---
+
+# CAMERA
+
+Static overhead camera.
+
+No camera movement.
+
+No zoom.
+
+No panning.
+
+No tilting.
+
+No reframing.
+
+No shaking.
+
+No cuts.
+
+No transitions.
+
+One continuous uninterrupted shot.
+
+The video must feel like a realistic top-down TikTok Shop unboxing clip.
+
+---
+
+# STARTING FRAME — IMAGE A
+
+The first frame must match Image A as closely as possible.
+
+Preserve the same:
+
+* surface
+* lighting
+* natural shadows
+* framing
+* package placement
+* package proportions
+* package label
+* hands
+* skin tone
+* nails
+* bracelets
+* rings
+* arm position
+* overall environment
+
+Use only the same two feminine hands already visible in Image A.
+
+Do not create extra hands.
+
+Do not create extra arms.
+
+Do not show a face, head, torso, shoulders, or any additional body parts.
+
+---
+
+# PACKAGE CONTINUITY
+
+A black shipping bag/package is already centered on the surface in Image A.
+
+The package must remain the same physical package throughout the sequence.
+
+Do not change its:
+
+* color
+* shape
+* label
+* size
+* material
+* design
+
+Do not morph the package.
+
+Do not replace the package.
+
+Do not transform the package into clothing.
+
+The clothing is a separate object physically contained inside it.
+
+---
+
+# UNBOXING ACTION
+
+Both hands grip the top opening of the package.
+
+The hands physically tear open the top seam with a quick but realistic motion.
+
+The plastic must stretch naturally before tearing.
+
+At the exact moment the package tears, include synchronized realistic audio:
+
+* crisp plastic ripping sound
+* realistic plastic stretching sound
+* realistic plastic crinkling
+
+No music.
+
+No voice.
+
+No talking.
+
+No narration.
+
+Audio must remain clean and realistic.
+
+---
+
+# PHYSICAL OBJECT PERMANENCE
+
+Maintain strict physical object permanence.
+
+The garment(s) shown in Image B already exist inside the package before it is opened.
+
+The garment(s) must physically travel through a continuous motion path:
+
+**inside package → package opening → hands → surface → final arrangement**
+
+No teleportation.
+
+No spawning.
+
+No sudden appearance.
+
+No hidden replacement.
+
+No dissolving.
+
+No morphing.
+
+No object swapping.
+
+The garment removed from the package must remain the same garment until the end.
+
+---
+
+# EXTRACTION RULE
+
+The clothing must be physically removed from inside the package.
+
+Do not make the garments appear outside the package automatically.
+
+Do not spawn the garments into the scene.
+
+Do not teleport the garments.
+
+Do not morph the garments from package contents into the final layout.
+
+The hands must clearly:
+
+1. open the package
+2. reach inside
+3. grasp the garment
+4. pull it out physically
+5. place it onto the surface
+6. adjust it naturally
+
+---
+
+# SINGLE-PIECE OR MULTI-PIECE LOGIC
+
+The number of garment pieces must exactly match Image B.
+
+## If Image B shows ONE garment:
+
+1. open the package
+2. reach inside
+3. physically remove that exact garment
+4. place it on the surface
+5. adjust it until it matches Image B
+
+## If Image B shows MULTIPLE garments:
+
+1. open the package
+2. reach inside
+3. remove only one garment at a time
+4. place that garment on the surface
+5. adjust it naturally
+6. return to the same opened package
+7. remove the next garment
+8. place it on the surface
+9. adjust it naturally
+10. repeat until all pieces shown in Image B have been removed
+
+Never remove two pieces together.
+
+Never hold two separate garments as one combined object.
+
+Never let one garment transform into another.
+
+Each garment must behave as a separate physical object.
+
+---
+
+# ANALYZE IMAGE B DYNAMICALLY
+
+Do not assume any fixed clothing type.
+
+Instead, carefully analyze Image B and preserve exactly what is shown there.
+
+This includes, when applicable:
+
+* tops
+* shorts
+* skirts
+* dresses
+* pants
+* lingerie
+* sleepwear
+* matching sets
+* multiple-piece outfits
+* straps
+* ribbons
+* waistbands
+* drawstrings
+* sleeves
+* hems
+* lace
+* ribbing
+* prints
+* embroidery
+* openings
+* hardware
+* decorative details
+
+If a visible design detail exists in Image B, that same detail must already exist on the garment while it is still being removed from the package.
+
+Do not add missing details later.
+
+Do not generate a plain version first and then upgrade it during the video.
+
+The correct garment must emerge correctly from the package from the start.
+
+---
+
+# FABRIC BEHAVIOR
+
+Use realistic soft fabric physics.
+
+The clothing must behave like real fabric:
+
+* natural folds
+* natural gravity
+* natural drape
+* natural compression under the fingers
+* natural unfolding
+* natural settling on the surface
+
+No cardboard-like stiffness.
+
+No paper-like behavior.
+
+No plastic-looking fabric.
+
+No unrealistic deformation.
+
+No melting or liquid-like cloth.
+
+No sudden rigid flattening.
+
+---
+
+# HAND MOVEMENT
+
+Hand movement must be:
+
+* fast but realistic
+* smooth
+* controlled
+* elegant
+* natural
+
+Preserve believable anatomy.
+
+Exactly two hands only.
+
+No extra fingers.
+
+No distorted fingers.
+
+No duplicated fingers.
+
+No merged fingers.
+
+No extra limbs.
+
+The same hands from Image A must remain consistent throughout.
+
+---
+
+# ARRANGEMENT PHASE
+
+After each garment is removed, the hands should naturally place and adjust it on the surface.
+
+The hands may gently unfold, rotate, flatten, or straighten the garment as needed.
+
+However, the garment identity must never change during this adjustment.
+
+The final arrangement must not be newly invented.
+
+It must be a physical arrangement process that ends in the same arrangement shown in Image B.
+
+---
+
+# FINAL FRAME TARGET — IMAGE B
+
+Image B is the required final arrangement.
+
+After all garment(s) are removed from the package, the hands must place and adjust them so that the last frame matches Image B as closely as possible.
+
+Match Image B in:
+
+* exact number of garments
+* exact garment identity
+* exact garment color
+* exact garment design
+* exact texture
+* exact visible details
+* exact orientation
+* exact relative position
+* exact spacing
+* exact fold/open state
+* exact composition
+
+The final frame must not invent a new arrangement.
+
+The final frame must not use a different clothing pose.
+
+The clothing must end in the same visible configuration shown in Image B.
+
+---
+
+# PACKAGE AT THE END
+
+Keep the opened black package visible in the scene only if it is also visible in Image B.
+
+If Image B does not show the package, the hands may naturally move the empty opened package aside or out of frame after removing all garments.
+
+Do not make the package disappear magically.
+
+It must be physically moved.
+
+---
+
+# FINAL-FRAME CLEANUP
+
+If Image B does not contain hands or arms, the hands should naturally exit the frame after making the final garment adjustments.
+
+If Image B does contain visible hands, match that arrangement as closely as possible.
+
+The final frame must visually resolve into Image B.
+
+---
+
+# HARD NEGATIVE RULES
+
+Absolutely no:
+
+* different clothing emerging from the package
+* temporary clothing
+* placeholder clothing
+* generic garment replacement
+* clothing changing after extraction
+* clothing changing color
+* clothing changing texture
+* clothing changing design
+* clothing morphing
+* clothing teleportation
+* instant clothing appearance
+* package transforming into clothing
+* object spawning
+* removal of two garments at the same time
+* duplicated garments
+* missing garments
+* extra garments
+* extra hands
+* extra arms
+* face
+* head
+* torso
+* shoulders
+* extra fingers
+* distorted hands
+* distorted clothing
+* object clipping
+* unrealistic physics
+* camera movement
+* zoom
+* cuts
+* transitions
+
+---
+
+# PRIORITY ORDER
+
+If instruction priority is needed, follow this order:
+
+1. **The exact garment(s) from Image B must already physically exist inside the package before Frame 1.**
+2. **The first visible fabric from inside the package must already be the exact clothing from Image B.**
+3. **The garment identity must remain unchanged from inside the package to the final frame.**
+4. **Each garment must be physically removed through continuous hand motion.**
+5. **The final frame must match Image B as closely as possible.**
+6. **Preserve Image A continuity, environment, and camera lock.**
+
+Never sacrifice garment identity for smoother animation.
+
+---
+
+# FINAL INTERPRETATION
+
+This is not a video where an unknown outfit is unboxed and later transformed into the outfit from Image B.
+
+This is a video where:
+
+**the exact garment(s) shown in Image B have already been inside the package since before the first frame.**
+
+The hands tear open the package, reveal those exact garment(s), remove them one by one through continuous physical movement, place them on the surface, optionally move the empty package aside, and adjust the garment(s) until the final frame matches Image B as closely as possible.
+
+**IMAGE A = LITERAL START
+IMAGE B = LITERAL END
+SAME PACKAGE
+SAME HANDS
+SAME GARMENT(S)
+ONE CONTINUOUS PHYSICAL REALITY**`,
   movement_json: {
     tipo: "prompt_unboxing_embalagem_tiktok_shop",
     camera: "static overhead",
     duracao_segundos: 8,
-    instrucao: "Ultra-realistic TikTok Shop fashion unboxing video. Static overhead camera. No camera movement. No zoom. A black shipping bag/package is centered on the surface. The woman tears open the TOP of the black shipping package with a satisfying synchronized ripping sound, keeps the opened package visible in the scene, then removes the clothing naturally following the exact sequence: if there are two pieces, she removes one piece first, places it on the surface, then removes the second piece and places it beside the first. The final scene shows the garments neatly arranged on the surface with the package still visible."
+    instrucao: `# ULTRA-REALISTIC TIKTOK SHOP FASHION UNBOXING VIDEO
+
+Image A = STARTING FRAME
+Image B = FINAL FRAME
+
+The exact garment(s) shown in Image B are already physically inside the black package in Image A before Frame 1.
+
+The hands physically tear open the top seam with synchronized plastic ripping audio, reveal the exact fabric matching Image B from the first visible millimeter, remove each piece sequentially one by one, adjust them on the surface to match Image B's final layout, and physically slide the empty package out of frame.`
   },
-  tags: ["embalagem tiktok shop", "unboxing", "pacote preto", "viral", "tiktok shop", "pov"],
+  tags: ["embalagem tiktok shop", "unboxing", "pacote preto", "viral", "tiktok shop", "pov", "image a to image b"],
   videoUrl: ganchoEmbalagemTikTokShopVideo,
   duration: "8s",
   created_at: "2026-08-19T18:26:00.000Z",
@@ -360,17 +835,590 @@ export const MOSTRAR_O_TECIDO_DE_PERTO_PRESET: MovementPreset & { videoUrl?: str
   category: "fashion",
   formats: ["POV", "CLOSE-UP", "TEXTURA", "8S"],
   description: "Vídeo overhead realista de 8 segundos onde mãos femininas pegam uma blusa, aproximam da câmera e deslizam os dedos sobre o tecido para evidenciar textura e qualidade.",
-  prompt_instruction: `Create a realistic 8-second overhead product video using the provided image as the main reference. Keep the camera completely fixed in a top-down position. Preserve the same carpet background, lighting, framing, feminine hands, white nails, bracelets, and the clothing arrangement. 
-The hands should pick up only one blouse from the arrangement in a natural way. After picking it up, gently stretch the blouse a little to show the fabric, then bring it closer to the camera without moving the camera itself. While holding the blouse near the camera, use the fingers to softly rub and slide over the fabric, showing the texture and quality of the material. The movement should look smooth, elegant, and natural, like a product showcase. 
-After showing the fabric up close, keep the blouse well positioned in the hands, with the material clearly visible. The action should focus only on this single blouse. 
-No camera movement, no zoom, no cuts, no transitions, no extra products, no switching pieces, no distorted hands, and no deformed fabric.`,
+  prompt_instruction: `Create a realistic **8-second overhead product showcase video** using the provided image as the main visual reference.
+
+
+## CAMERA
+
+
+Keep the camera completely fixed in a top-down overhead position throughout the entire video.
+
+
+* No camera movement
+* No zoom
+* No panning
+* No shaking
+* No tilting
+* No reframing
+* No cuts
+* No transitions
+
+
+The camera must remain completely static for the entire clip.
+
+
+---
+
+
+## SCENE CONTINUITY
+
+
+Preserve exactly the same:
+
+
+* carpet/background
+* lighting
+* framing
+* shadows
+* clothing arrangement
+* feminine hands
+* skin tone
+* white nails
+* bracelets
+* rings or visible accessories
+
+
+Do not change the environment.
+
+
+Do not add new objects.
+
+
+Do not alter the overall composition except for the single blouse being handled.
+
+
+---
+
+
+## SINGLE PRODUCT RULE
+
+
+The hands must interact with **only ONE blouse** from the existing arrangement.
+
+
+Do not touch, move, lift, drag, or disturb any other clothing piece.
+
+
+All other garments must remain completely still in their original positions throughout the video.
+
+
+No switching to another blouse.
+
+
+No changing products.
+
+
+No duplicated garments.
+
+
+No extra garments.
+
+
+---
+
+
+## PICKUP ACTION
+
+
+The hands naturally approach one blouse from the arrangement.
+
+
+Pick up only that blouse in a realistic and elegant way.
+
+
+At the beginning, both hands may briefly assist in lifting and organizing the blouse naturally.
+
+
+However, once the blouse has been lifted and is ready to be showcased, the hand roles must become clearly defined.
+
+
+---
+
+
+## SUPPORT-HAND RULE
+
+
+### ONE HAND MUST BE THE MAIN SUPPORT HAND.
+
+
+One hand must hold and support **only the upper part of the blouse**, such as:
+
+
+* the top edge
+* shoulder area
+* neckline area
+* upper corner
+
+
+depending on the blouse design.
+
+
+This hand must remain the blouse’s **true physical support point**.
+
+
+The garment’s weight must visibly depend on this hand.
+
+
+---
+
+
+## FREE-HAND RULE
+
+
+The second hand must remain free and be used only to demonstrate the fabric.
+
+
+The free hand may:
+
+
+* touch the fabric
+* softly rub the fabric
+* gently slide across the fabric
+* smooth the material
+* lightly press the fabric
+* softly pull a small section to show stretch
+
+
+The free hand must **not** become a second support hand during the showcase.
+
+
+The free hand must **not** hold the blouse from the opposite side while the texture is being shown.
+
+
+The blouse must not be displayed stretched flat between two hands.
+
+
+---
+
+
+## CRITICAL ANTI-FLOATING RULE
+
+
+The blouse must never appear to float.
+
+
+The blouse must never appear suspended in the air without clear support.
+
+
+The blouse must never remain unnaturally flat in mid-air.
+
+
+The blouse must never hover between the hands.
+
+
+The supporting hand must always be clearly responsible for holding the garment.
+
+
+The rest of the blouse must hang downward naturally from the point where it is being held.
+
+
+---
+
+
+## SOFT FABRIC PHYSICS — VERY IMPORTANT
+
+
+The blouse must behave like **soft, lightweight, flexible real fabric**.
+
+
+It must have the physical behavior of a **soft cloth garment**, not a rigid object.
+
+
+Use:
+
+
+* natural drape
+* soft hanging behavior
+* flowing folds
+* realistic gravity
+* natural sagging
+* soft compression
+* natural bending
+* subtle waviness
+* realistic fabric settling
+* delicate movement when the blouse is touched
+* gentle follow-through when the blouse is lifted or repositioned
+
+
+The lower part of the blouse must naturally drop downward due to gravity.
+
+
+The fabric should form loose, natural folds and curves.
+
+
+When the free hand rubs, slides, or presses on the blouse, the fabric must react like a soft cloth:
+
+
+* it should compress slightly
+* it should shift naturally
+* it should wrinkle softly
+* it should drape and relax again
+* it should not stay stiff
+* it should not hold a rigid shape
+
+
+When the blouse is moved upward toward the camera, the bottom part should naturally lag slightly and sway subtly, like real soft fabric reacting to motion.
+
+
+When the blouse is briefly stretched, the fabric should respond gently and elastically, then relax back naturally.
+
+
+### STRICTLY AVOID STIFF FABRIC BEHAVIOR
+
+
+Do not make the blouse behave like:
+
+
+* cardboard
+* paper
+* thick foam
+* plastic sheet
+* rubber sheet
+* heavy board
+* rigid panel
+* frozen cloth
+
+
+The blouse must not look structured, hard, or armature-like.
+
+
+The blouse must not remain unnaturally open or flat.
+
+
+The blouse must not keep sharp unnatural angles unless the real fabric naturally creates them.
+
+
+The blouse must not look starched or stiff.
+
+
+The blouse must look like **soft wearable fabric**.
+
+
+---
+
+
+## NATURAL GRAVITY RULE
+
+
+Gravity must be clearly visible.
+
+
+The blouse should naturally hang downward from the upper area held by the supporting hand.
+
+
+The lower portion must:
+
+
+* droop naturally
+* curve naturally
+* fold naturally
+* sway slightly with motion
+* settle softly after movement
+
+
+If the blouse is lifted closer to the camera, the fabric must continue to hang and drape downward, not remain flat or suspended.
+
+
+The garment should always feel like it has real weight and softness.
+
+
+---
+
+
+## SUBTLE STRETCH DEMONSTRATION
+
+
+While the supporting hand keeps holding the blouse from the upper part, the free hand may gently pinch or grasp a small area of the blouse and softly stretch it a little.
+
+
+This stretch must be subtle and realistic.
+
+
+It should communicate softness and flexibility, not aggressive pulling.
+
+
+The fabric must react naturally and then return softly to its resting shape.
+
+
+No extreme deformation.
+
+
+No unnatural snapping.
+
+
+No rigid stretching.
+
+
+---
+
+
+## CLOSE-UP SHOWCASE
+
+
+Bring the blouse closer to the camera by physically raising the supporting hand and the garment upward toward the camera.
+
+
+The camera must remain fixed.
+
+
+Do not simulate zoom.
+
+
+Do not move the background.
+
+
+The blouse itself moves closer to the lens while staying supported by one hand.
+
+
+While close to the camera, keep the blouse well presented and visibly supported.
+
+
+The lower part of the blouse should still hang naturally with soft folds.
+
+
+---
+
+
+## FABRIC TEXTURE DEMONSTRATION
+
+
+While the blouse is held near the camera, the free hand should softly move across the fabric.
+
+
+The movement should look smooth, elegant, and natural.
+
+
+The free hand should:
+
+
+* gently rub the fabric
+* slide the fingertips across the surface
+* softly smooth the material
+* lightly press and release
+* demonstrate texture and softness
+
+
+The blouse must react as soft cloth during this interaction.
+
+
+When the fingers glide across the surface, the fabric should show subtle shifting, soft wrinkles, and slight movement.
+
+
+Do not keep the fabric unnaturally frozen during touch.
+
+
+Do not make the fabric look rigid while being rubbed.
+
+
+---
+
+
+## HAND CONSISTENCY
+
+
+Use only the same two feminine hands from the reference.
+
+
+Maintain the same:
+
+
+* white nails
+* bracelets
+* skin tone
+* accessories
+
+
+Exactly two hands only.
+
+
+No extra hands.
+
+
+No extra arms.
+
+
+No extra fingers.
+
+
+No duplicated hands.
+
+
+No fused fingers.
+
+
+No distorted anatomy.
+
+
+No hand deformation.
+
+
+The motions must feel natural and human.
+
+
+---
+
+
+## PRODUCT SHOWCASE STYLE
+
+
+The overall motion must feel like a clean TikTok Shop fashion demonstration.
+
+
+The gesture style should be:
+
+
+* smooth
+* elegant
+* controlled
+* delicate
+* realistic
+* feminine
+* natural
+
+
+The blouse should be handled with care and softness.
+
+
+Avoid robotic or jerky movement.
+
+
+Avoid exaggerated presentation.
+
+
+Avoid unnatural posing.
+
+
+---
+
+
+## FINAL MOMENT
+
+
+At the end of the video:
+
+
+* the blouse is still the only garment being showcased
+* one hand is still holding the upper part of the blouse
+* the blouse remains clearly supported
+* the other hand is softly finishing a rub or slide across the fabric
+* the material remains clearly visible
+* the blouse shows soft natural drape and folds
+* the blouse does not appear stiff or floating
+
+
+The final visible impression should be of a soft, real blouse being elegantly shown up close.
+
+
+---
+
+
+## STRICT NEGATIVE RULES
+
+
+No camera movement.
+
+
+No zoom.
+
+
+No cuts.
+
+
+No transitions.
+
+
+No switching garments.
+
+
+No touching other garments.
+
+
+No extra products.
+
+
+No extra hands.
+
+
+No extra arms.
+
+
+No extra fingers.
+
+
+No distorted hands.
+
+
+No deformed blouse.
+
+
+No floating blouse.
+
+
+No unsupported garment.
+
+
+No blouse hovering in the air.
+
+
+No blouse stretched flat between both hands during the showcase.
+
+
+No rigid fabric.
+
+
+No stiff fabric.
+
+
+No cardboard-like fabric.
+
+
+No paper-like cloth.
+
+
+No plastic-looking cloth.
+
+
+No frozen folds.
+
+
+No unrealistic fabric behavior.
+
+
+No object morphing.
+
+
+No product duplication.
+
+
+No robotic motion.
+
+
+---
+
+
+## MOST IMPORTANT EXECUTION RULES
+
+
+**ONE HAND MUST HOLD AND SUPPORT ONLY THE UPPER PART OF THE BLOUSE.**
+
+
+**THE OTHER HAND MUST STAY FREE AND ONLY PASS, RUB, SLIDE, OR GENTLY STRETCH THE FABRIC.**
+
+
+**THE BLOUSE MUST ALWAYS HANG NATURALLY WITH SOFT-CLOTH PHYSICS.**
+
+
+**THE FABRIC MUST LOOK LIGHT, FLEXIBLE, DRAPED, AND REAL — NEVER STIFF, FLAT, OR FLOATING.**
+
+
+The blouse must always behave like a real soft garment under natural gravity.`,
   movement_json: {
     tipo: "prompt_mostrar_tecido_de_perto_8s",
     camera: "top-down fixa",
     duracao_segundos: 8,
-    instrucao: "Create a realistic 8-second overhead product video using the provided image as the main reference. Keep the camera completely fixed in a top-down position. Preserve the same carpet background, lighting, framing, feminine hands, white nails, bracelets, and the clothing arrangement. The hands should pick up only one blouse from the arrangement in a natural way, gently stretch the blouse, bring it closer to the camera, and use fingers to softly rub and slide over the fabric showing texture and quality."
+    instrucao: `Create a realistic 8-second overhead product showcase video using the provided image as the main visual reference. Top-down camera locked. One hand acts as the main physical support point holding the upper part of the blouse while the other free hand rubs, slides across, and demonstrates fabric texture with soft cloth gravity and natural drape.`
   },
-  tags: ["tecido de perto", "textura", "qualidade", "close up", "8s", "overhead", "moda", "pov"],
+  tags: ["tecido de perto", "textura", "qualidade", "close up", "8s", "overhead", "moda", "pov", "suporte de uma mao"],
   videoUrl: mostrarOTecidoDePertoVideo,
   duration: "8s",
   created_at: "2026-08-19T18:23:00.000Z",

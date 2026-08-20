@@ -154,7 +154,7 @@ export function VideoStudio({
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<
-    "media" | "text" | "captions" | "audio" | "transitions" | "effects"
+    "media" | "elements" | "text" | "captions" | "audio" | "transitions" | "effects" | "filters"
   >("media");
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [shortcutQuery, setShortcutQuery] = useState("");
@@ -662,9 +662,9 @@ export function VideoStudio({
   return (
     <section
       id="video-studio"
-      className="overflow-hidden rounded-3xl border border-border bg-[#090b11] shadow-2xl shadow-black/20"
+      className="grid h-full min-h-0 overflow-hidden bg-[#0d0e10] xl:grid-cols-[276px_minmax(460px,1fr)_300px] xl:grid-rows-[minmax(0,1fr)_252px]"
     >
-      <div className="flex flex-wrap items-center gap-1 border-b border-white/10 bg-[#11141d] px-3 py-2">
+      <div className="hidden">
         <Button
           size="icon"
           variant="ghost"
@@ -775,7 +775,7 @@ export function VideoStudio({
         </div>
       </div>
 
-      <div className="grid min-h-[640px] xl:grid-cols-[340px_minmax(460px,1fr)_320px]">
+      <div className="contents">
         <EditorResourcePanel
           activePanel={activePanel}
           onPanelChange={setActivePanel}
@@ -797,19 +797,19 @@ export function VideoStudio({
             setSelectedTextId(null);
           }}
         />
-        <div className="flex min-w-0 flex-col items-center justify-between bg-[#08090d] p-4 relative">
+        <div className="relative flex min-h-0 min-w-0 flex-col items-center justify-between bg-[#1b1c1e] p-3 xl:col-start-2 xl:row-start-1">
           {/* Top Player Indicator */}
-          <div className="w-full flex items-center justify-between text-[11px] text-slate-400 pb-2">
+          <div className="flex w-full items-center justify-between pb-1 text-[10px] text-[#8b8d92]">
             <span className="flex items-center gap-1.5 font-medium">
-              <span className="size-2 rounded-full bg-cyan-400 animate-pulse" />
-              9:16 Vertical (TikTok / Reels)
+              <span className="size-1.5 rounded-full bg-[#2ea9ff]" />
+              9:16
             </span>
             <span className="font-mono text-slate-500 text-[10px]">1080 × 1920</span>
           </div>
 
           <div
             ref={previewRef}
-            className="relative aspect-[9/16] max-h-[500px] w-full max-w-[282px] overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10 my-auto"
+            className="relative my-auto aspect-[9/16] max-h-[calc(100vh-390px)] min-h-0 w-full max-w-[265px] overflow-hidden bg-black shadow-[0_16px_50px_rgba(0,0,0,.45)] ring-1 ring-white/10"
           >
             {activeEntries.some((entry) => entry.segment.file) ? (
               activeEntries.map((entry, activeIndex) => {
@@ -896,7 +896,7 @@ export function VideoStudio({
           </div>
 
           {/* CapCut Style Bottom Transport Bar */}
-          <div className="w-full flex items-center justify-between border-t border-white/10 pt-3 px-2 text-white">
+          <div className="flex h-10 w-full items-center justify-between border-t border-white/[0.07] px-2 pt-1 text-white">
             {/* Left Actions: Split, Delete, Duplicate */}
             <div className="flex items-center gap-1">
               <Button
@@ -944,7 +944,7 @@ export function VideoStudio({
               </Button>
               <Button
                 size="icon"
-                className="size-9 rounded-full bg-cyan-500 hover:bg-cyan-400 text-black shadow-lg shadow-cyan-500/20"
+                className="size-8 rounded-full bg-white text-black shadow-sm hover:bg-slate-200"
                 onClick={() => {
                   if (currentTime >= layout.duration) seek(0);
                   setPlaying((current) => !current);
@@ -981,7 +981,7 @@ export function VideoStudio({
           </div>
         </div>
 
-        <aside className="border-l border-white/10 bg-[#11141d] p-4 text-slate-100">
+        <aside className="min-h-0 overflow-y-auto border-l border-white/[0.08] bg-[#151618] p-4 text-slate-100 xl:col-start-3 xl:row-start-1">
           {selectedText ? (
             <TextInspector
               overlay={selectedText}
@@ -1020,9 +1020,9 @@ export function VideoStudio({
         </aside>
       </div>
 
-      <div className="border-t border-white/10 bg-[#0d1017]">
-        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-2 text-slate-300">
-          <span className="text-[11px] font-medium">Timeline</span>
+      <div className="min-h-0 overflow-hidden border-t border-white/[0.08] bg-[#111214] xl:col-start-2 xl:col-end-4 xl:row-start-2">
+        <div className="flex h-10 items-center gap-3 border-b border-white/[0.07] px-3 text-slate-300">
+          <span className="text-[11px] font-medium">Linha do tempo</span>
           <span className="hidden text-[10px] text-slate-500 sm:inline">
             Arraste os blocos · Ctrl + scroll muda o zoom
           </span>
@@ -1042,7 +1042,7 @@ export function VideoStudio({
         </div>
         <div
           ref={timelineViewportRef}
-          className="overflow-x-auto pb-3"
+          className="h-[calc(100%-2.5rem)] overflow-auto pb-3"
           onWheel={handleTimelineWheel}
         >
           <div className="relative min-w-max" style={{ width: timelineWidth + 100 }}>
@@ -1459,8 +1459,8 @@ function EditorResourcePanel({
   onSelectSegment,
   onSelectAudio,
 }: {
-  activePanel: "media" | "text" | "captions" | "audio" | "transitions" | "effects";
-  onPanelChange: (panel: "media" | "text" | "captions" | "audio" | "transitions" | "effects") => void;
+  activePanel: "media" | "elements" | "text" | "captions" | "audio" | "transitions" | "effects" | "filters";
+  onPanelChange: (panel: "media" | "elements" | "text" | "captions" | "audio" | "transitions" | "effects" | "filters") => void;
   segments: EditorSegment[];
   audioLayers: EditorAudioLayer[];
   disabled: boolean;
@@ -1474,17 +1474,19 @@ function EditorResourcePanel({
 }) {
   const tabs = [
     { id: "media" as const, label: "Mídia", icon: Film },
+    { id: "elements" as const, label: "Elementos", icon: Layers },
+    { id: "audio" as const, label: "Áudio", icon: Music2 },
     { id: "text" as const, label: "Texto", icon: Type },
     { id: "captions" as const, label: "Legendas", icon: Captions },
-    { id: "audio" as const, label: "Áudio", icon: Music2 },
-    { id: "transitions" as const, label: "Transições", icon: Split },
     { id: "effects" as const, label: "Efeitos", icon: Wand2 },
+    { id: "transitions" as const, label: "Transições", icon: Split },
+    { id: "filters" as const, label: "Filtros", icon: Sliders },
   ];
 
   return (
-    <aside className="flex min-h-0 border-r border-white/10 bg-[#0e1017] text-slate-100">
+    <aside className="flex min-h-0 border-r border-white/[0.08] bg-[#0e0f11] text-slate-100 xl:col-start-1 xl:row-start-1 xl:row-end-3">
       {/* CapCut Vertical Icon Rail */}
-      <div className="flex w-16 shrink-0 flex-col items-center gap-1 border-r border-white/10 bg-[#08090d] py-3">
+      <div className="flex w-[62px] shrink-0 flex-col items-center gap-0.5 border-r border-white/[0.08] bg-[#0b0c0e] py-2">
         {tabs.map((tab) => {
           const isActive = activePanel === tab.id;
           return (
@@ -1492,14 +1494,14 @@ function EditorResourcePanel({
               key={tab.id}
               type="button"
               aria-pressed={isActive}
-              className={`flex w-12 flex-col items-center justify-center gap-1 rounded-xl py-2.5 text-[9px] font-semibold transition-all ${
+              className={`flex w-[54px] flex-col items-center justify-center gap-1 rounded-lg py-2 text-[9px] font-medium transition-all ${
                 isActive
-                  ? "bg-white/10 text-white shadow-inner ring-1 ring-white/20"
+                  ? "bg-white/[0.08] text-white"
                   : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200"
               }`}
               onClick={() => onPanelChange(tab.id)}
             >
-              <tab.icon className={`size-4 ${isActive ? "text-cyan-400" : "text-slate-400"}`} />
+              <tab.icon className={`size-[17px] ${isActive ? "text-white" : "text-slate-400"}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -1507,7 +1509,7 @@ function EditorResourcePanel({
       </div>
 
       {/* Subpanel Drawer Content */}
-      <div className="w-72 max-h-[640px] overflow-y-auto p-3.5 bg-[#11131a]">
+      <div className="min-w-0 flex-1 overflow-y-auto bg-[#151618] p-3">
         {activePanel === "media" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -1560,6 +1562,22 @@ function EditorResourcePanel({
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {activePanel === "elements" && (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-bold text-white">Elementos</p>
+              <p className="mt-1 text-[10px] leading-4 text-slate-500">Formas, molduras e destaques para a composição.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {["●", "■", "▲", "♡", "→", "✦", "★", "✓", "!"].map((shape) => (
+                <button key={shape} type="button" className="aspect-square rounded-lg border border-white/[0.08] bg-[#222326] text-xl text-slate-200 transition hover:border-white/30 hover:bg-[#292a2e]">
+                  {shape}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -1709,6 +1727,28 @@ function EditorResourcePanel({
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activePanel === "filters" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Filtros</span>
+              <span className="text-[10px] text-slate-500">Ver todos</span>
+            </div>
+            {["Retrô", "Vida", "Estúdio", "Paisagem", "Filmes"].map((group, groupIndex) => (
+              <section key={group}>
+                <p className="mb-2 text-[10px] font-semibold text-slate-300">{group}</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {["Natural", "Quente", "Frio"].map((name, index) => (
+                    <button key={name} type="button" className="group text-left">
+                      <span className={`block aspect-[4/3] rounded-md border border-white/10 bg-gradient-to-br ${["from-amber-300/50 to-orange-900/60", "from-sky-300/40 to-indigo-900/60", "from-emerald-300/40 to-stone-900/70"][(groupIndex + index) % 3]} transition group-hover:border-white/40`} />
+                      <span className="mt-1 block truncate text-[9px] text-slate-400">{name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </div>

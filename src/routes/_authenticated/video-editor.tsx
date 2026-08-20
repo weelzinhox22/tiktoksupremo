@@ -658,7 +658,7 @@ function ProfessionalVideoEditorPage() {
   ).duration;
 
   return (
-    <div className="-mx-4 -my-7 min-h-[calc(100vh-4rem)] bg-[#07080c] text-slate-100 md:-mx-8 md:-my-10">
+    <div className="h-screen overflow-hidden bg-[#07080c] text-slate-100">
       <input
         ref={fileInputRef}
         type="file"
@@ -671,10 +671,10 @@ function ProfessionalVideoEditorPage() {
         }}
       />
 
-      <header className="sticky top-16 z-20 flex min-h-16 flex-wrap items-center gap-3 border-b border-white/10 bg-[#0c0e14]/95 px-4 py-3 backdrop-blur-xl md:px-5">
+      <header className="relative z-20 flex h-14 items-center gap-3 border-b border-white/[0.08] bg-[#111214] px-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-cyan/10 ring-1 ring-primary/25">
-            <Film className="size-4 text-primary" />
+          <span className="flex size-8 items-center justify-center rounded-lg bg-white text-[#111214] shadow-sm">
+            <Film className="size-4" />
           </span>
           <div>
             <Input
@@ -685,7 +685,7 @@ function ProfessionalVideoEditorPage() {
                   "project-name",
                 )
               }
-              className="h-6 w-44 border-0 bg-transparent px-0 text-sm font-semibold text-white shadow-none focus-visible:ring-0"
+              className="h-5 w-44 border-0 bg-transparent px-0 text-[13px] font-semibold text-white shadow-none focus-visible:ring-0"
               aria-label="Nome do projeto"
             />
             <p className="flex items-center gap-1 text-[10px] text-slate-500">
@@ -911,14 +911,8 @@ function ProfessionalVideoEditorPage() {
         </div>
       )}
 
-      {!hasMedia ? (
-        <EditorEmptyState
-          onImport={() => fileInputRef.current?.click()}
-          onClear={() => void clearProject()}
-        />
-      ) : (
-        <div className="p-3 md:p-4">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+      <div className="h-[calc(100vh-3.5rem)] overflow-hidden">
+          <div className="hidden flex-wrap items-center gap-2 text-[11px] text-slate-400">
             <Badge variant="outline" className="border-white/10 bg-white/[0.03] text-slate-300">
               {project.timelineIds.length} clipe(s)
             </Badge>
@@ -999,8 +993,7 @@ function ProfessionalVideoEditorPage() {
             onRemoveSegment={removeSegment}
             onDuplicateSegment={duplicateSegment}
           />
-        </div>
-      )}
+      </div>
 
       {/* Frame 0 Headline Generator Dialog */}
       <Dialog open={isHeadlineModalOpen} onOpenChange={setIsHeadlineModalOpen}>
