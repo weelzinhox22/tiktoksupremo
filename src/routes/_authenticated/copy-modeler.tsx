@@ -188,12 +188,24 @@ function CopyModelerPage() {
 
   const handleSendToScriptWizard = () => {
     if (!currentVersion) return;
+    const copyTitle = currentVersion.name || newProduct || originalProduct || "Copy Modelada";
+    const prodName = newProduct || originalProduct || "Produto";
     navigate({
       to: "/projects/new",
       search: {
-        productName: newProduct || originalProduct,
+        projectName: `Roteiro: ${copyTitle}`,
+        productName: prodName,
+        copy: currentVersion.content,
+        description: currentVersion.content,
+        benefits: analysis?.strengths?.join(", ") || "Alta qualidade e praticidade",
+        problems: analysis?.weaknesses?.join(", ") || "",
+        objections: "",
+        audience: newAudience || originalAudience || analysis?.audience || "",
+        tone: tone || "Natural, direto e curioso",
+        duration: String(estSpeech?.estimatedDurationSeconds || "30"),
       },
     });
+    toast.success("Copy e contexto completos enviados para o Criador de Roteiro!");
   };
 
   const handleSendToCreativeLab = () => {

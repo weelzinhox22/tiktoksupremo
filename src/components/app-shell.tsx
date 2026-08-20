@@ -49,16 +49,23 @@ const navGroups = [
     title: "Principal",
     items: [
       { label: "Visão geral", icon: LayoutDashboard, to: "/dashboard" as const },
-      { label: "Rastreador de Vendas", icon: TrendingUp, to: "/creative-tracker" as const },
-      { label: "Fábrica diária", icon: Factory, to: "/daily-studio" as const },
-      { label: "Agente de produção", icon: Bot, to: "/production-agent" as const },
       { label: "Meus Projetos", icon: FolderKanban, to: "/projects" as const },
+      { label: "Biblioteca de Prompts", icon: PersonStanding, to: "/movements" as const },
+    ],
+  },
+  {
+    title: "Ativos do Estúdio",
+    items: [
+      { label: "Personagens & Avatares", icon: UserRound, to: "/characters" as const },
+      { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
+      { label: "Produtos", icon: Package, to: "/products" as const },
     ],
   },
   {
     title: "Criação & Roteiro",
     items: [
       { label: "Criar roteiro", icon: Clapperboard, to: "/projects/new" as const },
+      { label: "Roteiros para Upar Conta", icon: Flame, to: "/follower-growth" as const },
       { label: "Scripts de Live IA", icon: Radio, to: "/live-scripts" as const },
       { label: "Estúdio de Ganchos", icon: Zap, to: "/hook-studio" as const },
       { label: "Modelador de Copy", icon: Wand2, to: "/copy-modeler" as const },
@@ -73,17 +80,9 @@ const navGroups = [
     ],
   },
   {
-    title: "Ativos & Prompts",
-    items: [
-      { label: "Biblioteca de Prompts", icon: PersonStanding, to: "/movements" as const },
-      { label: "Personagens & Avatares", icon: UserRound, to: "/characters" as const },
-      { label: "Biblioteca de Cenários", icon: Building2, to: "/scenarios" as const },
-      { label: "Produtos", icon: Package, to: "/products" as const },
-    ],
-  },
-  {
     title: "Estúdio IA & Ferramentas",
     items: [
+      { label: "Editor de Vídeos", icon: Scissors, to: "/video-editor" as const },
       { label: "Gerador de Vídeo IA", icon: Sparkles, to: "/ai-video-generator" as const },
       { label: "Estúdio de Voz IA", icon: Mic, to: "/voice-studio" as const },
       { label: "Outras Ferramentas", icon: Wrench, to: "/tools" as const },
@@ -107,13 +106,13 @@ function NavList({
       {navGroups.map((group) => (
         <div key={group.title} className="space-y-1">
           {!isCollapsed ? (
-            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 select-none">
+            <div className="px-3 pt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#666A78] select-none">
               {group.title}
             </div>
           ) : (
-            <div className="my-1.5 border-t border-sidebar-border/40 mx-2" aria-hidden="true" />
+            <div className="my-2 border-t border-white/[0.06] mx-2" aria-hidden="true" />
           )}
-          <nav className="flex flex-col gap-1">
+          <nav className="flex flex-col gap-0.5">
             {group.items.map((item) => {
               const active =
                 pathname === item.to ||
@@ -143,25 +142,25 @@ function NavList({
                   to={item.to}
                   onClick={onNavigate}
                   className={`group relative flex items-center ${
-                    isCollapsed ? "justify-center px-0 py-2" : "gap-2.5 px-2.5 py-2"
-                  } rounded-lg text-xs font-medium transition-all duration-150 ${
+                    isCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
+                  } rounded-xl text-xs font-medium transition-all duration-150 ${
                     active
-                      ? "bg-gradient-to-r from-primary/18 to-cyan/8 text-sidebar-accent-foreground font-semibold shadow-sm ring-1 ring-primary/20"
-                      : "text-muted-foreground hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-foreground"
+                      ? "bg-[#9B7CFF]/12 text-[#F7F7FB] font-semibold border border-[#9B7CFF]/25 shadow-sm shadow-[#9B7CFF]/5"
+                      : "text-[#A3A6B3] hover:text-[#F7F7FB] hover:bg-white/[0.04]"
                   }`}
                 >
                   {active && (
                     <span
-                      className={`absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary ${
+                      className={`absolute left-0 inset-y-1.5 w-1 rounded-r-full bg-[#9B7CFF] shadow-[0_0_8px_#9B7CFF] ${
                         isCollapsed ? "left-0" : ""
                       }`}
                     />
                   )}
                   <span
-                    className={`flex size-6 shrink-0 items-center justify-center rounded-md transition-colors ${
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-lg transition-colors ${
                       active
-                        ? "bg-primary/20 text-primary"
-                        : "bg-white/[0.03] group-hover:bg-primary/10 group-hover:text-primary"
+                        ? "bg-[#9B7CFF]/20 text-[#9B7CFF]"
+                        : "bg-white/[0.03] text-[#A3A6B3] group-hover:bg-[#9B7CFF]/10 group-hover:text-[#9B7CFF]"
                     }`}
                   >
                     <item.icon className="size-3.5" />
@@ -174,7 +173,7 @@ function NavList({
                 return (
                   <Tooltip key={item.label} delayDuration={0}>
                     <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                    <TooltipContent side="right" className="font-medium text-xs">
+                    <TooltipContent side="right" className="font-medium text-xs bg-[#101119] border-white/10 text-white">
                       {item.label}
                     </TooltipContent>
                   </Tooltip>
@@ -187,20 +186,20 @@ function NavList({
         </div>
       ))}
       {isAdmin && (
-        <div className="space-y-1">
+        <div className="space-y-1 pt-1">
           {!isCollapsed ? (
-            <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60">
+            <div className="px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#666A78]">
               Administração
             </div>
           ) : (
-            <div className="mx-2 my-1.5 border-t border-sidebar-border/40" />
+            <div className="mx-2 my-2 border-t border-white/[0.06]" />
           )}
           <Link
             to="/admin/video-providers"
             onClick={onNavigate}
-            className={`group flex items-center rounded-lg py-2 text-xs font-medium text-muted-foreground transition hover:bg-sidebar-accent/60 hover:text-foreground ${isCollapsed ? "justify-center px-0" : "gap-2.5 px-2.5"}`}
+            className={`group flex items-center rounded-xl py-2 text-xs font-medium text-[#A3A6B3] transition hover:bg-white/[0.04] hover:text-[#F7F7FB] ${isCollapsed ? "justify-center px-0" : "gap-3 px-3"}`}
           >
-            <span className="flex size-6 items-center justify-center rounded-md bg-violet-500/10 text-violet-300">
+            <span className="flex size-6 items-center justify-center rounded-lg bg-white/[0.03] text-[#A3A6B3] group-hover:bg-[#9B7CFF]/10 group-hover:text-[#9B7CFF]">
               <Settings className="size-3.5" />
             </span>
             {!isCollapsed && <span>Provedores de vídeo</span>}
@@ -213,14 +212,19 @@ function NavList({
 
 function Brand({ isCollapsed }: { isCollapsed?: boolean }) {
   return (
-    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-2.5"} px-1`}>
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/25 to-cyan/15 shadow-lg shadow-primary/10 ring-1 ring-primary/25">
-        <Sparkles className="size-4 text-primary" />
+    <div className={`flex items-center ${isCollapsed ? "justify-center" : "gap-3"} px-1`}>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#9B7CFF]/25 to-[#7C5CFC]/15 shadow-md shadow-[#9B7CFF]/15 border border-[#9B7CFF]/30 text-[#9B7CFF]">
+        <Sparkles className="size-4" />
       </span>
       {!isCollapsed && (
         <div className="leading-tight truncate">
-          <p className="font-display text-sm font-semibold tracking-tight">Tik Supremo</p>
-          <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Studio</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-display text-sm font-bold tracking-tight text-[#F7F7FB]">Tik Supremo</p>
+            <span className="rounded-md bg-[#9B7CFF]/15 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-[#9B7CFF] border border-[#9B7CFF]/20">
+              Studio
+            </span>
+          </div>
+          <p className="text-[10px] text-[#666A78] mt-0.5">Content AI Platform</p>
         </div>
       )}
     </div>
@@ -269,14 +273,14 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
       <div className={`relative min-h-screen bg-background ${compactMode ? "compact-mode" : ""}`}>
         <div className="aurora opacity-40" aria-hidden="true" />
         <aside
-          className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-sidebar-border bg-sidebar/95 shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-300 ease-in-out lg:flex ${
+          className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-white/[0.06] bg-[#090A10]/95 shadow-2xl shadow-black/40 backdrop-blur-xl transition-all duration-300 ease-in-out lg:flex ${
             isCollapsed ? "w-16" : "w-64"
           }`}
         >
           <div
             className={`flex h-16 shrink-0 items-center ${
               isCollapsed ? "justify-center px-1" : "justify-between px-4"
-            } border-b border-sidebar-border/50`}
+            } border-b border-white/[0.06]`}
           >
             <Brand isCollapsed={isCollapsed} />
             {!isCollapsed && (
@@ -284,7 +288,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
                 variant="ghost"
                 size="icon"
                 onClick={toggleCollapsed}
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                className="h-8 w-8 text-[#A3A6B3] hover:text-[#F7F7FB] hover:bg-white/[0.04] rounded-lg"
                 title="Recolher menu lateral"
               >
                 <ChevronsLeft className="size-4" />
@@ -292,33 +296,50 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
             )}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-2.5 py-4 space-y-5">
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
             <NavList isCollapsed={isCollapsed} isAdmin={user.isAdmin} />
           </div>
 
-          <div className="shrink-0 border-t border-sidebar-border p-3 bg-sidebar/50">
+          <div className="shrink-0 border-t border-white/[0.06] p-3 bg-[#0B0C12]/80">
             {isCollapsed ? (
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <div className="flex justify-center">
-                    <span className="flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
+                    <span className="flex size-8 items-center justify-center rounded-xl border border-[#9B7CFF]/30 bg-[#9B7CFF]/10 text-xs font-bold text-[#9B7CFF]">
                       {user.displayName.slice(0, 2).toUpperCase()}
                     </span>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="font-semibold">{user.displayName}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                <TooltipContent side="right" className="bg-[#101119] border-white/10 text-white">
+                  <p className="font-semibold text-xs">{user.displayName}</p>
+                  <p className="text-[10px] text-[#A3A6B3]">{user.email}</p>
                 </TooltipContent>
               </Tooltip>
             ) : (
-              <div className="min-w-0 pr-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Sessão protegida
-                </p>
-                <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">
-                  {user.email}
-                </p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-xl border border-[#9B7CFF]/30 bg-[#9B7CFF]/10 text-xs font-bold text-[#9B7CFF]">
+                    {user.displayName.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-[#F7F7FB] truncate">
+                      {user.displayName}
+                    </p>
+                    <p className="truncate text-[10px] text-[#666A78]">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-[#666A78] hover:text-red-400 hover:bg-red-500/10 rounded-lg shrink-0"
+                  onClick={handleSignOut}
+                  title="Sair"
+                >
+                  <LogOut className="size-3.5" />
+                </Button>
               </div>
             )}
           </div>
@@ -329,26 +350,26 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
             isCollapsed ? "lg:pl-16" : "lg:pl-64"
           }`}
         >
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-xl md:px-8 shadow-sm">
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-white/[0.06] bg-[#07080D]/90 px-4 backdrop-blur-xl md:px-8 shadow-sm">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
+                <Button variant="ghost" size="icon" className="lg:hidden text-[#A3A6B3]" aria-label="Abrir menu">
                   <Menu />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="flex flex-col w-72 bg-sidebar p-0">
+              <SheetContent side="left" className="flex flex-col w-72 bg-[#090A10] border-white/10 p-0">
                 <SheetTitle className="sr-only">Menu principal</SheetTitle>
-                <div className="flex h-16 shrink-0 items-center px-4 border-b border-sidebar-border/50">
+                <div className="flex h-16 shrink-0 items-center px-4 border-b border-white/[0.06]">
                   <Brand />
                 </div>
                 <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
                   <NavList onNavigate={() => setMobileOpen(false)} isAdmin={user.isAdmin} />
                 </div>
-                <div className="shrink-0 border-t border-sidebar-border p-4 bg-sidebar/50">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Sessão protegida
+                <div className="shrink-0 border-t border-white/[0.06] p-4 bg-[#0B0C12]">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#666A78]">
+                    Sessão conectada
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-foreground/90 font-medium">
+                  <p className="mt-0.5 truncate text-xs text-[#F7F7FB] font-medium">
                     {user.email}
                   </p>
                 </div>
@@ -359,7 +380,7 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
               variant="ghost"
               size="icon"
               onClick={toggleCollapsed}
-              className="hidden lg:flex text-muted-foreground hover:text-foreground"
+              className="hidden lg:flex text-[#666A78] hover:text-[#F7F7FB] hover:bg-white/[0.04] rounded-lg"
               aria-label={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
               title={isCollapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
             >
@@ -370,50 +391,59 @@ export function AppShell({ user, children }: { user: AppUser; children: ReactNod
               )}
             </Button>
 
-            <p className="hidden text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground sm:block">
-              Content workspace
+            <p className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-[#666A78] sm:block">
+              Content Studio
             </p>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2.5">
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={toggleCompactMode}
-                    className={`gap-1.5 text-xs ${compactMode ? "bg-primary/15 border-primary/30 text-primary" : "text-muted-foreground"}`}
+                    className={`h-8 gap-1.5 text-xs border-white/10 bg-white/[0.02] hover:bg-white/[0.06] ${compactMode ? "bg-[#9B7CFF]/15 border-[#9B7CFF]/30 text-[#9B7CFF]" : "text-[#A3A6B3]"}`}
                   >
                     {compactMode ? (
                       <Maximize2 className="size-3.5" />
                     ) : (
                       <Minimize2 className="size-3.5" />
                     )}
-                    <span className="hidden sm:inline">
-                      {compactMode ? "Tamanho normal" : "Reduzir tela"}
+                    <span className="hidden sm:inline font-medium">
+                      {compactMode ? "Normal" : "Compacto"}
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="bg-[#101119] border-white/10 text-white text-xs">
                   {compactMode
-                    ? "Restaurar tamanho normal da interface"
-                    : "Reduzir escala da tela (Visão compacta)"}
+                    ? "Restaurar tamanho normal"
+                    : "Visão compacta"}
                 </TooltipContent>
               </Tooltip>
 
-              <Button variant="hero" size="sm" onClick={() => navigate({ to: "/projects/new" })}>
-                <Plus />
+              <Button
+                size="sm"
+                className="h-8 text-xs font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/20 gap-1.5"
+                onClick={() => navigate({ to: "/projects/new" })}
+              >
+                <Plus className="size-3.5" />
                 <span className="hidden sm:inline">Novo projeto</span>
               </Button>
-              <span className="flex size-9 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
-                {user.displayName.slice(0, 2).toUpperCase()}
-              </span>
-              <Button variant="ghost" size="icon" aria-label="Sair" onClick={handleSignOut}>
-                <LogOut />
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-[#666A78] hover:text-[#F7F7FB] hover:bg-white/[0.04] rounded-lg"
+                aria-label="Sair"
+                onClick={handleSignOut}
+                title="Sair"
+              >
+                <LogOut className="size-4" />
               </Button>
             </div>
           </header>
 
-          <main className="px-4 py-7 md:px-8 md:py-10">{children}</main>
+          <main className="px-4 py-6 md:px-8 md:py-8">{children}</main>
         </div>
       </div>
     </TooltipProvider>

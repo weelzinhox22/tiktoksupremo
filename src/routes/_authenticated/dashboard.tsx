@@ -1,26 +1,22 @@
+import { useState, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  BarChart3,
-  CheckCircle2,
   Clapperboard,
   Eye,
-  FileVideo2,
   FolderKanban,
-  Layers3,
   Loader2,
   Package,
-  Play,
   Plus,
-  Radar,
-  Shuffle,
   Sparkles,
-  TrendingUp,
   UserRound,
-  WandSparkles,
+  Download,
+  Flame,
+  Radio,
+  RotateCw,
+  Play,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,10 +25,15 @@ import {
   listProductLibrary,
 } from "@/features/libraries/queries";
 import { listProjects } from "@/features/projects/queries";
+import {
+  BUILTIN_MOVEMENT_PRESETS,
+  PRESET_VIDEO_MAP,
+  PRESET_DURATION_MAP,
+} from "@/features/movements/movement-presets";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
-  head: () => ({ meta: [{ title: "Visão geral — Tik Supremo" }] }),
+  head: () => ({ meta: [{ title: "Visão geral — Tik Supremo Studio" }] }),
 });
 
 function Dashboard() {
@@ -44,20 +45,28 @@ function Dashboard() {
     queryKey: ["avatars", user.id],
     queryFn: () => listAvatarLibrary(user.id),
   });
+
   const projects = projectsQuery.data ?? [];
   const performance = performanceQuery.data ?? [];
-  const completed = projects.filter((project) => project.status === "completed").length;
-  const pendingLinks = performance.filter((record) => record.match_status === "pending").length;
   const totalViews = performance.reduce((sum, record) => sum + record.views, 0);
-  const bestPublication = [...performance].sort(
-    (a, b) =>
-      b.views +
-      b.likes * 4 +
-      b.comments * 8 +
-      b.shares * 12 +
-      b.orders * 500 -
-      (a.views + a.likes * 4 + a.comments * 8 + a.shares * 12 + a.orders * 500),
-  )[0];
+
+  // Video-Only Rotating Prompt Presets
+  const videoPresets = useMemo(() => {
+    return BUILTIN_MOVEMENT_PRESETS.filter((p) => Boolean(PRESET_VIDEO_MAP[p.id]));
+  }, []);
+
+  const [videoIndex, setVideoIndex] = useState(() => {
+    return Math.floor(Math.random() * (videoPresets.length || 1));
+  });
+
+  const currentVideoPreset = videoPresets[videoIndex % videoPresets.length] || BUILTIN_MOVEMENT_PRESETS[0];
+  const currentVideoSrc = currentVideoPreset ? PRESET_VIDEO_MAP[currentVideoPreset.id] : undefined;
+  const currentDuration = currentVideoPreset ? PRESET_DURATION_MAP[currentVideoPreset.id] || "8s" : "8s";
+
+  const handleNextVideo = () => {
+    setVideoIndex((prev) => (prev + 1) % videoPresets.length);
+  };
+
   const loading =
     projectsQuery.isLoading ||
     performanceQuery.isLoading ||
@@ -66,334 +75,278 @@ function Dashboard() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex min-h-[55vh] max-w-6xl items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto size-8 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-muted-foreground">Montando sua central criativa...</p>
+      <div className="mx-auto flex min-h-[40vh] max-w-6xl items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="mx-auto size-7 animate-spin text-[#9B7CFF]" />
+          <p className="text-xs text-[#A3A6B3]">Carregando estúdio...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 pb-12">
-      <header className="bento-hero p-6 md:p-8">
-        <div className="grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="relative z-1">
-            <Badge className="border-primary/20 bg-primary/10 text-primary">
-              <Sparkles className="mr-1 size-3" /> Seu estúdio está pronto
+    <div className="mx-auto w-full max-w-7xl space-y-4 pb-6">
+      {/* Header Bar */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-white/[0.07] bg-[#0E1017] px-5 py-4 shadow-lg shadow-black/20">
+        <div className="space-y-0.5">
+          <div className="flex items-center gap-2">
+            <Badge className="border-[#9B7CFF]/30 bg-[#9B7CFF]/10 text-[#9B7CFF] text-[10px] font-bold px-2 py-0.5">
+              <Sparkles className="mr-1 size-3" /> Tik Supremo Studio
             </Badge>
-            <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight md:text-5xl">
-              Olá, {user.displayName}. O próximo vídeo vencedor começa aqui.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-              Transforme produtos em roteiros, gere variações realmente diferentes e acompanhe o que
-              está performando sem sair do mesmo fluxo.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="feature-pill">
-                <CheckCircle2 /> Prompts VEO em JSON
-              </span>
-              <span className="feature-pill">
-                <CheckCircle2 /> Biblioteca reutilizável
-              </span>
-              <span className="feature-pill">
-                <CheckCircle2 /> Desempenho por link
-              </span>
-            </div>
+            <span className="text-[11px] text-[#666A78]">Painel de Controle</span>
           </div>
-          <div className="relative z-1 flex flex-wrap gap-3">
-            <Button variant="outline" size="lg" asChild>
-              <Link to="/radar">
-                <Radar /> Abrir radar
-              </Link>
-            </Button>
-            <Button variant="hero" size="lg" asChild>
-              <Link to="/projects/new">
-                <Plus /> Criar roteiro
-              </Link>
-            </Button>
-          </div>
+          <h1 className="text-xl font-extrabold text-[#F7F7FB] tracking-tight md:text-2xl">
+            Olá, {user.displayName}
+          </h1>
+          <p className="text-xs text-[#A3A6B3]">
+            Transforme produtos em roteiros, modele copies vencedoras e acompanhe sua performance.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2.5 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs font-semibold border-white/10 bg-white/[0.02] hover:bg-white/[0.06] text-[#A3A6B3] hover:text-[#F7F7FB]"
+            asChild
+          >
+            <Link to="/tiktok-downloader">
+              <Download className="mr-1.5 size-3.5 text-[#9B7CFF]" /> Baixar do TikTok
+            </Link>
+          </Button>
+
+          <Button
+            size="sm"
+            className="h-8 text-xs font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/20"
+            asChild
+          >
+            <Link to="/projects/new">
+              <Plus className="mr-1.5 size-3.5" /> Criar Roteiro
+            </Link>
+          </Button>
         </div>
       </header>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={Eye} label="Views monitoradas" value={totalViews.toLocaleString("pt-BR")} />
-        <StatCard
+      {/* Metric Cards (1 Compact Row) */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <UnifiedMetricCard
+          icon={Eye}
+          label="Views monitoradas"
+          value={totalViews.toLocaleString("pt-BR")}
+          detail="Alcance total"
+        />
+        <UnifiedMetricCard
           icon={FolderKanban}
-          label="Projetos"
+          label="Projetos criados"
           value={projects.length}
-          detail={`${completed} concluídos`}
+          detail="Roteiros prontos"
         />
-        <StatCard
+        <UnifiedMetricCard
           icon={Package}
-          label="Produtos salvos"
+          label="Produtos no catálogo"
           value={productsQuery.data?.length ?? 0}
-          detail="prontos para reutilizar"
+          detail="Prontos para uso"
         />
-        <StatCard
+        <UnifiedMetricCard
           icon={UserRound}
-          label="Avatares"
+          label="Avatares & Personagens"
           value={avatarsQuery.data?.length ?? 0}
-          detail={pendingLinks ? `${pendingLinks} links pendentes` : "identidade consistente"}
-          attention={pendingLinks > 0}
+          detail="Consistência IA"
         />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-12">
-        <div className="bento-card bento-card-accent p-5 md:p-6 lg:col-span-7">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Produção rápida
-              </p>
-              <h2 className="mt-1 text-xl font-semibold">O que você quer criar agora?</h2>
-            </div>
-            <WandSparkles className="size-6 text-primary" />
-          </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <ActionCard
-              to="/projects/new"
-              icon={Clapperboard}
-              title="Novo roteiro"
-              description="Produto, avatar, movimentos e variações modulares."
-              accent="primary"
-            />
-            <ActionCard
-              to="/copies"
-              icon={FileVideo2}
-              title="Transcrever vídeo"
-              description="Salve gancho, corpo, CTA e o que deu certo."
-              accent="cyan"
-            />
-            <ActionCard
-              to="/video-editor"
-              icon={Shuffle}
-              title="Combinar vídeos"
-              description="Monte e baixe variações em lote num arquivo ZIP."
-              accent="pink"
-            />
-            <ActionCard
-              to="/radar"
-              icon={Radar}
-              title="Encontrar oportunidades"
-              description="Compare seus vencedores com sinais virais do TikTok."
-              accent="amber"
-            />
-          </div>
+      {/* Central 2-Column Bento Grid: Tool Shortcuts (Left) + Featured Video (Right) */}
+      <section className="grid gap-4 lg:grid-cols-12 items-stretch">
+        {/* Left Column: 4 Tool Shortcuts in 2x2 Grid (7 Cols) */}
+        <div className="lg:col-span-7 grid grid-cols-2 gap-3 h-full">
+          <UnifiedToolShortcut
+            to="/projects/new"
+            icon={Clapperboard}
+            title="Criar Roteiro"
+            subtitle="Prompts VEO & Kling para conversão"
+          />
+          <UnifiedToolShortcut
+            to="/follower-growth"
+            icon={Flame}
+            title="Roteiros para Upar Conta"
+            subtitle="Ganchos para reter e ganhar seguidores"
+          />
+          <UnifiedToolShortcut
+            to="/live-scripts"
+            icon={Radio}
+            title="Scripts de Live IA"
+            subtitle="Falas de até 8s geradas via Gemini"
+          />
+          <UnifiedToolShortcut
+            to="/tiktok-downloader"
+            icon={Download}
+            title="Baixar do TikTok"
+            subtitle="Download sem marca d'água em HD"
+          />
         </div>
 
-        <div className="bento-card interactive-card p-5 md:p-6 lg:col-span-5">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Melhor sinal atual
-              </p>
-              <h2 className="mt-1 text-xl font-semibold">Seu criativo líder</h2>
+        {/* Right Column: Featured Video Card (5 Cols) */}
+        <div className="lg:col-span-5 flex flex-col h-full">
+          <div className="h-full rounded-2xl border border-white/[0.07] bg-[#0E1017] p-4 shadow-xl flex flex-col justify-between space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#9B7CFF]/15 text-[#9B7CFF] border border-[#9B7CFF]/25 text-[10px] font-bold px-2 py-0.5">
+                  <Sparkles className="size-3 mr-1" /> Movimento em Alta
+                </Badge>
+                <span className="text-[10px] font-mono text-[#666A78]">({currentDuration})</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextVideo}
+                className="text-xs text-[#A3A6B3] hover:text-[#F7F7FB] flex items-center gap-1 px-2 py-0.5 rounded-lg hover:bg-white/[0.04] transition"
+                title="Ver próximo movimento"
+              >
+                <RotateCw className="size-3 text-[#9B7CFF]" /> Trocar Vídeo
+              </button>
             </div>
-            <span className="flex size-11 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-300">
-              <TrendingUp className="size-5" />
-            </span>
-          </div>
-          {bestPublication ? (
-            <div className="mt-5">
-              <div className="flex flex-wrap gap-2">
-                <Badge className="bg-primary/10 text-primary">
-                  {bestPublication.projects?.name ?? "Publicação avulsa"}
-                </Badge>
-                <Badge variant="outline">
-                  {bestPublication.views.toLocaleString("pt-BR")} views
-                </Badge>
+
+            {/* Video Player Frame */}
+            <div className="w-full aspect-[16/10] rounded-xl overflow-hidden bg-black/60 relative border border-white/[0.08] shadow-inner">
+              {currentVideoSrc ? (
+                <video
+                  key={currentVideoSrc}
+                  src={currentVideoSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="size-full object-cover"
+                />
+              ) : (
+                <div className="size-full flex items-center justify-center text-slate-600">
+                  <Play className="size-8 text-[#9B7CFF]/60" />
+                </div>
+              )}
+            </div>
+
+            {/* Title & Primary Action */}
+            <div className="space-y-2.5 pt-0.5">
+              <div>
+                <h3 className="text-xs font-bold text-[#F7F7FB] truncate">{currentVideoPreset?.name}</h3>
+                <p className="text-[11px] text-[#A3A6B3] line-clamp-1 mt-0.5">
+                  {currentVideoPreset?.description}
+                </p>
               </div>
-              <p className="mt-4 line-clamp-4 text-sm font-medium leading-6">
-                {bestPublication.hook_text ||
-                  "Este vídeo ainda não foi associado a um gancho do seu banco."}
-              </p>
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                <SmallMetric label="Curtidas" value={bestPublication.likes} />
-                <SmallMetric label="Compart." value={bestPublication.shares} />
-                <SmallMetric label="Pedidos" value={bestPublication.orders} />
-              </div>
-              <Button className="mt-5" variant="ghost" asChild>
-                <Link to="/performance">
-                  Ver análise completa <ArrowRight />
+
+              <Button
+                className="w-full h-8.5 font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/15 text-xs gap-1.5"
+                asChild
+              >
+                <Link to="/movements">
+                  Ver na Biblioteca de Prompts <ArrowRight className="size-3.5" />
                 </Link>
               </Button>
             </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-dashed border-border p-8 text-center">
-              <BarChart3 className="mx-auto size-7 text-primary" />
-              <p className="mt-3 text-sm font-medium">Seu ranking começa com um link</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Publique um vídeo e cole o endereço na página de desempenho.
-              </p>
-            </div>
-          )}
+          </div>
+        </div>
+      </section>
+
+      {/* Recent Projects Section */}
+      <section className="rounded-2xl border border-white/[0.07] bg-[#0E1017] p-4 shadow-xl space-y-3">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+          <h2 className="text-xs font-bold text-[#F7F7FB] flex items-center gap-2">
+            <FolderKanban className="size-3.5 text-[#9B7CFF]" /> Meus Últimos Roteiros
+          </h2>
+          <Link to="/projects" className="text-[11px] text-[#9B7CFF] hover:text-[#AA92FF] hover:underline flex items-center gap-1 font-semibold transition">
+            Ver Todos ({projects.length}) <ArrowRight className="size-3" />
+          </Link>
         </div>
 
-        <div className="bento-card overflow-hidden lg:col-span-8">
-          <div className="flex items-center justify-between border-b border-border p-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Continue de onde parou
-              </p>
-              <h2 className="mt-1 font-semibold">Projetos recentes</h2>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/projects">
-                Ver todos <ArrowRight />
+        {projects.length > 0 ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.slice(0, 3).map((proj) => (
+              <Link
+                key={proj.id}
+                to="/projects/$projectId"
+                params={{ projectId: proj.id }}
+                className="group flex items-center justify-between rounded-xl border border-white/[0.05] bg-white/[0.015] p-3 hover:border-[#9B7CFF]/30 hover:bg-white/[0.03] transition-all"
+              >
+                <div className="min-w-0 flex-1 pr-2">
+                  <p className="text-xs font-bold text-[#F7F7FB] truncate group-hover:text-[#9B7CFF] transition-colors">
+                    {proj.name}
+                  </p>
+                  <p className="text-[10px] text-[#A3A6B3] truncate mt-0.5">
+                    {proj.products?.[0]?.name || "Roteiro criado"}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-[9px] shrink-0 border-white/15 text-[#A3A6B3]">
+                  {proj.status}
+                </Badge>
               </Link>
-            </Button>
+            ))}
           </div>
-          {projects.length ? (
-            <div className="divide-y divide-border">
-              {projects.slice(0, 4).map((project) => (
-                <Link
-                  key={project.id}
-                  to="/projects/$projectId"
-                  params={{ projectId: project.id }}
-                  className="group flex items-center gap-4 p-4 transition-colors hover:bg-secondary/25 md:px-5"
-                >
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-105">
-                    <Play className="size-4" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium transition-colors group-hover:text-primary">
-                      {project.name}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {project.products?.[0]?.name ?? "Produto ainda não identificado"}
-                    </p>
-                  </div>
-                  <Badge variant="outline">{project.status}</Badge>
-                  <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="p-10 text-center text-sm text-muted-foreground">
-              Crie o primeiro projeto para começar sua biblioteca de vencedores.
-            </div>
-          )}
-        </div>
-
-        <div className="bento-card bento-card-accent p-5 md:p-6 lg:col-span-4">
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-cyan/10 text-cyan">
-              <Layers3 className="size-5" />
-            </span>
-            <div>
-              <p className="text-xs text-muted-foreground">Biblioteca criativa</p>
-              <h2 className="font-semibold">Tudo conectado</h2>
-            </div>
+        ) : (
+          <div className="py-3 text-center text-xs text-[#666A78]">
+            Nenhum roteiro criado ainda. Clique em "Criar Roteiro" para começar!
           </div>
-          <div className="mt-5 space-y-3">
-            <LibraryRow label="Produtos" value={productsQuery.data?.length ?? 0} to="/products" />
-            <LibraryRow label="Avatares" value={avatarsQuery.data?.length ?? 0} to="/avatars" />
-            <LibraryRow label="Publicações" value={performance.length} to="/performance" />
-          </div>
-          {pendingLinks > 0 && (
-            <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] p-3 text-xs leading-5 text-amber-100/80">
-              {pendingLinks} publicação(ões) foi(ram) preservada(s), mas ainda aguardam associação a
-              um projeto.
-            </div>
-          )}
-        </div>
+        )}
       </section>
     </div>
   );
 }
 
-function StatCard({
+function UnifiedMetricCard({
   icon: Icon,
   label,
   value,
   detail,
-  attention,
 }: {
-  icon: LucideIcon;
+  icon: typeof Eye;
   label: string;
   value: string | number;
   detail?: string;
-  attention?: boolean;
 }) {
   return (
-    <article className="bento-card interactive-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={`flex size-10 items-center justify-center rounded-xl ${attention ? "bg-amber-500/10 text-amber-300" : "bg-primary/10 text-primary"}`}
-        >
-          <Icon className="size-5" />
-        </span>
-        {detail && <span className="text-[11px] text-muted-foreground">{detail}</span>}
+    <article className="rounded-2xl border border-white/[0.07] bg-[#0E1017] p-3.5 shadow-md flex items-center gap-3 hover:border-[#9B7CFF]/25 transition-all">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#9B7CFF]/10 text-[#9B7CFF] border border-[#9B7CFF]/20">
+        <Icon className="size-4" />
       </div>
-      <p className="mt-5 text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
+      <div className="min-w-0">
+        <p className="text-lg font-extrabold text-[#F7F7FB] tracking-tight leading-none">{value}</p>
+        <p className="text-xs text-[#A3A6B3] font-medium truncate mt-0.5">{label}</p>
+        {detail && <p className="text-[10px] text-[#666A78] mt-0.5">{detail}</p>}
+      </div>
     </article>
   );
 }
 
-function ActionCard({
+function UnifiedToolShortcut({
   to,
   icon: Icon,
   title,
-  description,
-  accent,
+  subtitle,
 }: {
-  to: "/projects/new" | "/copies" | "/video-editor" | "/radar";
-  icon: LucideIcon;
+  to: string;
+  icon: typeof Clapperboard;
   title: string;
-  description: string;
-  accent: "primary" | "cyan" | "pink" | "amber";
+  subtitle: string;
 }) {
-  const accents = {
-    primary: "bg-primary/10 text-primary",
-    cyan: "bg-cyan/10 text-cyan",
-    pink: "bg-pink/10 text-pink",
-    amber: "bg-amber-400/10 text-amber-300",
-  };
   return (
     <Link
       to={to}
-      className="group rounded-2xl border border-border bg-background/25 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:bg-secondary/25"
+      className="group rounded-2xl border border-white/[0.07] bg-[#0E1017] p-3.5 transition-all duration-150 hover:-translate-y-0.5 hover:border-[#9B7CFF]/35 hover:bg-[#9B7CFF]/[0.02] shadow-md flex flex-col justify-between h-full"
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className={`flex size-10 items-center justify-center rounded-xl ${accents[accent]}`}>
-          <Icon className="size-5" />
-        </span>
-        <ArrowRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex size-7 items-center justify-center rounded-lg bg-white/[0.03] border border-white/[0.06] text-[#A3A6B3] group-hover:bg-[#9B7CFF]/10 group-hover:text-[#9B7CFF] group-hover:border-[#9B7CFF]/20 transition-colors">
+          <Icon className="size-3.5" />
+        </div>
+        <ArrowRight className="size-3 text-[#666A78] group-hover:text-[#9B7CFF] group-hover:translate-x-0.5 transition-all" />
       </div>
-      <h3 className="mt-4 font-semibold transition-colors group-hover:text-primary">{title}</h3>
-      <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
-    </Link>
-  );
-}
 
-function SmallMetric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-secondary/30 p-3 text-center">
-      <p className="font-semibold">{value.toLocaleString("pt-BR")}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
-  );
-}
-
-function LibraryRow({
-  label,
-  value,
-  to,
-}: {
-  label: string;
-  value: number;
-  to: "/products" | "/avatars" | "/performance";
-}) {
-  return (
-    <Link
-      to={to}
-      className="group flex items-center justify-between rounded-xl border border-border bg-background/25 px-4 py-3 transition-colors hover:border-primary/25 hover:bg-secondary/30"
-    >
-      <span className="text-sm text-muted-foreground group-hover:text-foreground">{label}</span>
-      <span className="font-semibold text-primary">{value}</span>
+      <div>
+        <h3 className="text-xs font-bold text-[#F7F7FB] group-hover:text-[#9B7CFF] transition-colors">
+          {title}
+        </h3>
+        <p className="text-[10px] text-[#A3A6B3] line-clamp-2 mt-0.5 leading-tight">
+          {subtitle}
+        </p>
+      </div>
     </Link>
   );
 }

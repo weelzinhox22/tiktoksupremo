@@ -107,12 +107,42 @@ const buildProjectName = (customName: string, productName: string) => {
 };
 
 export const Route = createFileRoute("/_authenticated/projects/new")({
+  validateSearch: (search: Record<string, unknown>): {
+    projectName?: string | undefined;
+    productName?: string | undefined;
+    description?: string | undefined;
+    copy?: string | undefined;
+    benefits?: string | undefined;
+    audience?: string | undefined;
+    problems?: string | undefined;
+    objections?: string | undefined;
+    setting?: string | undefined;
+    character?: string | undefined;
+    tone?: string | undefined;
+    duration?: string | undefined;
+  } => {
+    return {
+      projectName: typeof search["projectName"] === "string" ? search["projectName"] : undefined,
+      productName: typeof search["productName"] === "string" ? search["productName"] : undefined,
+      description: typeof search["description"] === "string" ? search["description"] : undefined,
+      copy: typeof search["copy"] === "string" ? search["copy"] : undefined,
+      benefits: typeof search["benefits"] === "string" ? search["benefits"] : undefined,
+      audience: typeof search["audience"] === "string" ? search["audience"] : undefined,
+      problems: typeof search["problems"] === "string" ? search["problems"] : undefined,
+      objections: typeof search["objections"] === "string" ? search["objections"] : undefined,
+      setting: typeof search["setting"] === "string" ? search["setting"] : undefined,
+      character: typeof search["character"] === "string" ? search["character"] : undefined,
+      tone: typeof search["tone"] === "string" ? search["tone"] : undefined,
+      duration: typeof search["duration"] === "string" ? search["duration"] : undefined,
+    };
+  },
   head: () => ({ meta: [{ title: "Novo roteiro — Tik Supremo" }] }),
   component: NewProjectPage,
 });
 
 function NewProjectPage() {
   const { user } = Route.useRouteContext();
+  const searchParams = Route.useSearch();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [aiSuggestions, setAiSuggestions] = useState<ProductSuggestions | null>(null);
@@ -149,8 +179,8 @@ function NewProjectPage() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      projectName: "",
-      productName: "",
+      projectName: searchParams.projectName || "",
+      productName: searchParams.productName || "",
       productUrl: "",
       category: "Beleza e cuidados pessoais",
       price: "",
@@ -160,18 +190,18 @@ function NewProjectPage() {
       rating: "",
       reviewCount: "",
       knownSales: "",
-      description: "",
-      benefits: "",
-      problems: "",
-      objections: "",
-      audience: "Público brasileiro interessado em solução prática e bom custo-benefício",
+      description: searchParams.description || searchParams.copy || "Produto inovador para o dia a dia",
+      benefits: searchParams.benefits || "Praticidade, alta qualidade e economia de tempo",
+      problems: searchParams.problems || "",
+      objections: searchParams.objections || "",
+      audience: searchParams.audience || "Público brasileiro interessado em solução prática e bom custo-benefício",
       competition: "",
       productNotes: "",
-      copy: "",
-      duration: "30",
-      tone: "Natural, direto e curioso",
-      character: "Creator brasileiro autêntico",
-      setting: "Ambiente doméstico bem iluminado",
+      copy: searchParams.copy || "",
+      duration: searchParams.duration || "30",
+      tone: searchParams.tone || "Natural, direto e curioso",
+      character: searchParams.character || "Creator brasileiro autêntico",
+      setting: searchParams.setting || "Ambiente doméstico bem iluminado",
       recordingStyle: "UGC com câmera de celular",
       objective: "Conversão para TikTok Shop",
       variations: "3",

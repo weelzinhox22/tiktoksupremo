@@ -113,10 +113,16 @@ function HookStudioPage() {
     navigate({
       to: "/projects/new",
       search: {
+        projectName: `Roteiro: ${hook.styleName} — ${productName || "Produto"}`,
         productName: productName || "Produto",
+        copy: hook.spokenText,
+        description: `Gancho de entrada: "${hook.spokenText}" (${hook.visualAction})`,
+        problems: mainPain || "",
+        audience: niche || "",
+        tone: hook.styleName || "Impactante",
       },
     });
-    toast.success("Gancho enviado ao Criador de Roteiros!");
+    toast.success("Gancho e contexto enviados para o Criador de Roteiro!");
   };
 
   // Filter Library Formulas

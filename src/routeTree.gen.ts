@@ -24,6 +24,7 @@ import { Route as AuthenticatedCreativeLabRouteImport } from './routes/_authenti
 import { Route as AuthenticatedCreativeTrackerRouteImport } from './routes/_authenticated/creative-tracker'
 import { Route as AuthenticatedDailyStudioRouteImport } from './routes/_authenticated/daily-studio'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedFollowerGrowthRouteImport } from './routes/_authenticated/follower-growth'
 import { Route as AuthenticatedHookStudioRouteImport } from './routes/_authenticated/hook-studio'
 import { Route as AuthenticatedLiveScriptsRouteImport } from './routes/_authenticated/live-scripts'
 import { Route as AuthenticatedMetadataCleanerRouteImport } from './routes/_authenticated/metadata-cleaner'
@@ -127,6 +128,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFollowerGrowthRoute =
+  AuthenticatedFollowerGrowthRouteImport.update({
+    id: '/follower-growth',
+    path: '/follower-growth',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHookStudioRoute = AuthenticatedHookStudioRouteImport.update({
   id: '/hook-studio',
   path: '/hook-studio',
@@ -272,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/follower-growth': typeof AuthenticatedFollowerGrowthRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
@@ -311,6 +319,7 @@ export interface FileRoutesByTo {
   '/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/follower-growth': typeof AuthenticatedFollowerGrowthRoute
   '/hook-studio': typeof AuthenticatedHookStudioRoute
   '/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
@@ -352,6 +361,7 @@ export interface FileRoutesById {
   '/_authenticated/creative-tracker': typeof AuthenticatedCreativeTrackerRoute
   '/_authenticated/daily-studio': typeof AuthenticatedDailyStudioRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/follower-growth': typeof AuthenticatedFollowerGrowthRoute
   '/_authenticated/hook-studio': typeof AuthenticatedHookStudioRoute
   '/_authenticated/live-scripts': typeof AuthenticatedLiveScriptsRoute
   '/_authenticated/metadata-cleaner': typeof AuthenticatedMetadataCleanerRoute
@@ -393,6 +403,7 @@ export interface FileRouteTypes {
     | '/creative-tracker'
     | '/daily-studio'
     | '/dashboard'
+    | '/follower-growth'
     | '/hook-studio'
     | '/live-scripts'
     | '/metadata-cleaner'
@@ -432,6 +443,7 @@ export interface FileRouteTypes {
     | '/creative-tracker'
     | '/daily-studio'
     | '/dashboard'
+    | '/follower-growth'
     | '/hook-studio'
     | '/live-scripts'
     | '/metadata-cleaner'
@@ -472,6 +484,7 @@ export interface FileRouteTypes {
     | '/_authenticated/creative-tracker'
     | '/_authenticated/daily-studio'
     | '/_authenticated/dashboard'
+    | '/_authenticated/follower-growth'
     | '/_authenticated/hook-studio'
     | '/_authenticated/live-scripts'
     | '/_authenticated/metadata-cleaner'
@@ -612,6 +625,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/follower-growth': {
+      id: '/_authenticated/follower-growth'
+      path: '/follower-growth'
+      fullPath: '/follower-growth'
+      preLoaderRoute: typeof AuthenticatedFollowerGrowthRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/hook-studio': {
@@ -789,6 +809,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedCreativeTrackerRoute: typeof AuthenticatedCreativeTrackerRoute
   AuthenticatedDailyStudioRoute: typeof AuthenticatedDailyStudioRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFollowerGrowthRoute: typeof AuthenticatedFollowerGrowthRoute
   AuthenticatedHookStudioRoute: typeof AuthenticatedHookStudioRoute
   AuthenticatedLiveScriptsRoute: typeof AuthenticatedLiveScriptsRoute
   AuthenticatedMetadataCleanerRoute: typeof AuthenticatedMetadataCleanerRoute
@@ -823,6 +844,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCreativeTrackerRoute: AuthenticatedCreativeTrackerRoute,
   AuthenticatedDailyStudioRoute: AuthenticatedDailyStudioRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFollowerGrowthRoute: AuthenticatedFollowerGrowthRoute,
   AuthenticatedHookStudioRoute: AuthenticatedHookStudioRoute,
   AuthenticatedLiveScriptsRoute: AuthenticatedLiveScriptsRoute,
   AuthenticatedMetadataCleanerRoute: AuthenticatedMetadataCleanerRoute,
