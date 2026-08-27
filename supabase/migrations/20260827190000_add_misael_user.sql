@@ -1,0 +1,6 @@
+﻿-- Acesso criado para Misael via Supabase Auth Admin API
+-- Email: misaeltiktok@gmail.com
+-- User ID: 10262c44-3a5d-4830-8f42-459b9ee3fdda
+-- Criado em: 2026-08-27
+-- Nota: O usuario foi criado diretamente via API com email ja confirmado.
+-- Este arquivo apenas documenta o acesso criado.
