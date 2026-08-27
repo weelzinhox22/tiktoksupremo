@@ -93,6 +93,9 @@ export type EditorTextOverlay = {
   textTransform?: "none" | "uppercase" | "lowercase";
   borderRadius?: number;
   captionWords?: string[];
+  captionGroupId?: string;
+  captionLineWordCounts?: number[];
+  maxLines?: number;
   activeWordIndex?: number;
   highlightColor?: string;
   captionPreset?:
@@ -102,6 +105,9 @@ export type EditorTextOverlay = {
     | "capcut_purple"
     | "capcut_neon_green"
     | "capcut_dynamic"
+    | "capcut_clean"
+    | "four_words"
+    | "word_pop"
     | "karaoke"
     | "minimal"
     | "impact";
@@ -1231,17 +1237,26 @@ async function createTextOverlayPng(overlay: EditorTextOverlay, width: number, h
         : overlay.text;
   const words = displayText.trim().split(/\s+/);
   const lines: string[] = [];
-  let line = "";
-  for (const word of words) {
-    const candidate = line ? `${line} ${word}` : word;
-    if (context.measureText(candidate).width > maxWidth && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = candidate;
+  if (overlay.captionLineWordCounts?.length) {
+    let wordOffset = 0;
+    for (const count of overlay.captionLineWordCounts) {
+      const value = words.slice(wordOffset, wordOffset + count).join(" ");
+      if (value) lines.push(value);
+      wordOffset += count;
     }
+  } else {
+    let line = "";
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (context.measureText(candidate).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else {
+        line = candidate;
+      }
+    }
+    if (line) lines.push(line);
   }
-  if (line) lines.push(line);
   const lineHeight = fontSize * 1.15;
   const x = (overlay.x / 100) * width;
   const y = (overlay.y / 100) * height;

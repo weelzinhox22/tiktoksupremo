@@ -98,6 +98,82 @@ const transcribeFileSchema = z.object({
   mimeType: z.string().optional(),
 });
 
+const captionUploadSchema = z.object({
+  filename: z.string().min(1, "Nome do arquivo necessário"),
+  mimeType: z.string().optional(),
+  size: z.number().positive().max(50 * 1024 * 1024, "O arquivo excede 50 MB"),
+});
+
+const storedCaptionFileSchema = z.object({
+  storagePath: z.string().min(1),
+  filename: z.string().min(1),
+  mimeType: z.string().optional(),
+});
+
+const safeStorageName = (value: string) =>
+  value
+    .normalize("NFKD")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
+    .slice(-120);
+
+/**
+ * Creates a short-lived direct-to-Storage upload. The media never crosses the
+ * Server Function request body, which keeps production deployments below their
+ * request-size limit.
+ */
+export const createCaptionUploadServerFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => captionUploadSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await getSupabaseServerClient();
+    const auth = await supabase.auth.getUser();
+    if (auth.error || !auth.data.user) throw new Error("Sua sessão expirou. Entre novamente.");
+    const storagePath = `${auth.data.user.id}/caption-jobs/${crypto.randomUUID()}-${safeStorageName(data.filename)}`;
+    const signed = await supabase.storage
+      .from("project-files")
+      .createSignedUploadUrl(storagePath, { upsert: false });
+    if (signed.error || !signed.data) {
+      throw new Error(`Não foi possível preparar o envio do áudio: ${signed.error?.message ?? "erro desconhecido"}`);
+    }
+    return {
+      storagePath,
+      signedUrl: signed.data.signedUrl,
+      token: signed.data.token,
+      mimeType: data.mimeType,
+    };
+  });
+
+export const transcribeStoredCaptionFileServerFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => storedCaptionFileSchema.parse(data))
+  .handler(async ({ data }) => {
+    const { getAIProvider } = await import("@/lib/ai/factory");
+    const { getSupabaseServerClient } = await import("@/lib/supabase/server");
+    const supabase = await getSupabaseServerClient();
+    const auth = await supabase.auth.getUser();
+    if (auth.error || !auth.data.user) throw new Error("Sua sessão expirou. Entre novamente.");
+    const expectedPrefix = `${auth.data.user.id}/caption-jobs/`;
+    if (!data.storagePath.startsWith(expectedPrefix)) throw new Error("Arquivo de legenda inválido.");
+
+    try {
+      const downloaded = await supabase.storage.from("project-files").download(data.storagePath);
+      if (downloaded.error || !downloaded.data) {
+        throw new Error(`Não foi possível ler o arquivo enviado: ${downloaded.error?.message ?? "erro desconhecido"}`);
+      }
+      if (downloaded.data.size > 50 * 1024 * 1024) throw new Error("O arquivo excede 50 MB.");
+      const { provider } = getAIProvider();
+      const blob = new Blob([await downloaded.data.arrayBuffer()], {
+        type: data.mimeType || downloaded.data.type || "audio/mp3",
+      });
+      const transcript = await provider.transcribeMedia(blob, data.filename);
+      if (!transcript || !transcript.trim()) {
+        throw new Error("Nenhuma fala compreensível foi identificada no arquivo enviado.");
+      }
+      return { success: true as const, transcript: transcript.trim(), filename: data.filename };
+    } finally {
+      await supabase.storage.from("project-files").remove([data.storagePath]);
+    }
+  });
+
 export const transcribeLocalFileServerFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => transcribeFileSchema.parse(data))
   .handler(async ({ data }) => {

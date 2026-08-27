@@ -78,6 +78,7 @@ import {
 import { TextPresetBrowser } from "@/features/video-editor/text-preset-browser";
 import { presetStyleToOverlay, type TextPreset } from "@/features/video-editor/text-presets";
 import { getTextVisualStyle } from "@/features/video-editor/text-style";
+import type { CaptionPreset } from "@/features/video-editor/automation";
 
 type VideoStudioProps = {
   segments: EditorSegment[];
@@ -90,6 +91,8 @@ type VideoStudioProps = {
   canUndo: boolean;
   canRedo: boolean;
   shortcutsOpenRequest: number;
+  captionPreset: CaptionPreset;
+  captionBusy: boolean;
   onUndo: () => void;
   onRedo: () => void;
   onSave: () => void;
@@ -104,6 +107,9 @@ type VideoStudioProps = {
   onSplitSegment: (id: string, sourceTime: number) => void;
   onRemoveSegment: (id: string) => void;
   onDuplicateSegment: (id: string) => void;
+  onCaptionPresetChange: (preset: CaptionPreset) => void;
+  onOpenCaptionSettings: () => void;
+  onCreateCaptions: () => void;
 };
 
 const clipColors: Record<EditorSegment["group"], string> = {
@@ -123,6 +129,8 @@ export function VideoStudio({
   canUndo,
   canRedo,
   shortcutsOpenRequest,
+  captionPreset,
+  captionBusy,
   onUndo,
   onRedo,
   onSave,
@@ -137,6 +145,9 @@ export function VideoStudio({
   onSplitSegment,
   onRemoveSegment,
   onDuplicateSegment,
+  onCaptionPresetChange,
+  onOpenCaptionSettings,
+  onCreateCaptions,
 }: VideoStudioProps) {
   const timelineSegments = useMemo(
     () =>
@@ -169,6 +180,30 @@ export function VideoStudio({
   const selectedSegment = segments.find((segment) => segment.id === selectedSegmentId) ?? null;
   const selectedText = textOverlays.find((overlay) => overlay.id === selectedTextId) ?? null;
   const selectedAudio = audioLayers.find((layer) => layer.id === selectedAudioId) ?? null;
+  const timelineTextGroups = useMemo(() => {
+    const groups = new Map<
+      string,
+      { id: string; overlays: EditorTextOverlay[]; start: number; end: number; text: string }
+    >();
+    for (const overlay of textOverlays) {
+      const id = overlay.captionGroupId ?? overlay.id;
+      const existing = groups.get(id);
+      if (existing) {
+        existing.overlays.push(overlay);
+        existing.start = Math.min(existing.start, overlay.start);
+        existing.end = Math.max(existing.end, overlay.end);
+      } else {
+        groups.set(id, {
+          id,
+          overlays: [overlay],
+          start: overlay.start,
+          end: overlay.end,
+          text: overlay.text,
+        });
+      }
+    }
+    return [...groups.values()].sort((a, b) => a.start - b.start);
+  }, [textOverlays]);
   const timelineWidth = Math.max(720, layout.duration * zoom);
   const activeEntries = layout.entries.filter(
     (entry) => currentTime >= entry.start && currentTime < entry.end + 0.015,
@@ -316,14 +351,48 @@ export function VideoStudio({
   };
 
   const updateText = (id: string, patch: Partial<EditorTextOverlay>) => {
+    const target = textOverlays.find((overlay) => overlay.id === id);
+    const updateWholeCaption =
+      target?.captionGroupId && patch.start === undefined && patch.end === undefined;
+    const captionWords =
+      typeof patch.text === "string" ? patch.text.trim().split(/\s+/).filter(Boolean) : undefined;
     onChangeTextOverlays(
-      textOverlays.map((overlay) => (overlay.id === id ? { ...overlay, ...patch } : overlay)),
+      textOverlays.map((overlay) => {
+        const matches =
+          overlay.id === id ||
+          (updateWholeCaption && overlay.captionGroupId === target.captionGroupId);
+        if (!matches) return overlay;
+        return {
+          ...overlay,
+          ...patch,
+          ...(captionWords
+            ? {
+                captionWords,
+                activeWordIndex: Math.min(overlay.activeWordIndex ?? 0, captionWords.length - 1),
+              }
+            : {}),
+        };
+      }),
     );
   };
 
   const removeText = (id: string) => {
-    onChangeTextOverlays(textOverlays.filter((overlay) => overlay.id !== id));
+    const target = textOverlays.find((overlay) => overlay.id === id);
+    onChangeTextOverlays(
+      textOverlays.filter(
+        (overlay) =>
+          overlay.id !== id &&
+          (!target?.captionGroupId || overlay.captionGroupId !== target.captionGroupId),
+      ),
+    );
     setSelectedTextId(null);
+  };
+
+  const removeAllTexts = () => {
+    if (!textOverlays.length) return;
+    onChangeTextOverlays([]);
+    setSelectedTextId(null);
+    setEditingTextId(null);
   };
 
   const duplicateText = (overlay: EditorTextOverlay) => {
@@ -781,7 +850,10 @@ export function VideoStudio({
           onPanelChange={setActivePanel}
           segments={timelineSegments}
           audioLayers={audioLayers}
+          textCount={textOverlays.length}
           disabled={disabled}
+          captionPreset={captionPreset}
+          captionBusy={captionBusy}
           onAddHeading={() => addText("heading")}
           onAddBody={() => addText("body")}
           onApplyPreset={applyTextPreset}
@@ -796,6 +868,10 @@ export function VideoStudio({
             setSelectedAudioId(id);
             setSelectedTextId(null);
           }}
+          onCaptionPresetChange={onCaptionPresetChange}
+          onOpenCaptionSettings={onOpenCaptionSettings}
+          onCreateCaptions={onCreateCaptions}
+          onRemoveAllTexts={removeAllTexts}
         />
         <div className="relative flex min-h-0 min-w-0 flex-col items-center justify-between bg-[#1b1c1e] p-3 xl:col-start-2 xl:row-start-1">
           {/* Top Player Indicator */}
@@ -1200,46 +1276,64 @@ export function VideoStudio({
               onSeek={beginSeek}
               compact
             >
-              {textOverlays.map((overlay) => (
-                <button
-                  key={overlay.id}
-                  type="button"
-                  className={`absolute top-1 h-9 overflow-hidden rounded border border-amber-300/70 bg-amber-400/25 px-2 text-left text-[10px] font-medium text-amber-50 ${selectedTextId === overlay.id ? "ring-2 ring-white" : ""}`}
-                  style={{
-                    left: overlay.start * zoom,
-                    width: Math.max(34, (overlay.end - overlay.start) * zoom),
-                  }}
-                  onPointerDown={(event) => {
-                    setSelectedTextId(overlay.id);
-                    setSelectedAudioId(null);
-                    const duration = overlay.end - overlay.start;
-                    beginTimelineMove(event, overlay.start, duration, (start) =>
-                      updateText(overlay.id, { start, end: start + duration }),
-                    );
-                  }}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setSelectedTextId(overlay.id);
-                    setSelectedAudioId(null);
-                    seek(overlay.start + 0.01);
-                  }}
-                  onDoubleClick={(event) => {
-                    event.stopPropagation();
-                    setEditingTextId(overlay.id);
-                  }}
-                  title="Arraste para sincronizar · duplo clique para corrigir a legenda"
-                >
-                  <span
-                    className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize border-r border-amber-100/70 bg-black/25"
-                    onPointerDown={(event) => beginTextTrim(event, overlay, "start")}
-                  />
-                  <span className="block truncate">{overlay.text}</span>
-                  <span
-                    className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize border-l border-amber-100/70 bg-black/25"
-                    onPointerDown={(event) => beginTextTrim(event, overlay, "end")}
-                  />
-                </button>
-              ))}
+              {timelineTextGroups.map((group) => {
+                const overlay = group.overlays[0]!;
+                const groupSelected = group.overlays.some((item) => item.id === selectedTextId);
+                return (
+                  <button
+                    key={group.id}
+                    type="button"
+                    className={`absolute top-1 h-9 overflow-hidden rounded-lg border border-orange-300/70 bg-orange-500/80 px-2 text-left text-[10px] font-semibold text-white shadow-sm ${groupSelected ? "ring-2 ring-cyan-300" : ""}`}
+                    style={{
+                      left: group.start * zoom,
+                      width: Math.max(42, (group.end - group.start) * zoom),
+                    }}
+                    onPointerDown={(event) => {
+                      setSelectedTextId(overlay.id);
+                      setSelectedAudioId(null);
+                      const duration = group.end - group.start;
+                      const originalStart = group.start;
+                      beginTimelineMove(event, group.start, duration, (start) => {
+                        const delta = start - originalStart;
+                        const ids = new Set(group.overlays.map((item) => item.id));
+                        onChangeTextOverlays(
+                          textOverlays.map((item) =>
+                            ids.has(item.id)
+                              ? { ...item, start: item.start + delta, end: item.end + delta }
+                              : item,
+                          ),
+                        );
+                      });
+                    }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setSelectedTextId(overlay.id);
+                      setSelectedAudioId(null);
+                      seek(group.start + 0.01);
+                    }}
+                    onDoubleClick={(event) => {
+                      event.stopPropagation();
+                      setEditingTextId(overlay.id);
+                    }}
+                    title="Arraste o bloco para sincronizar · duplo clique para corrigir a legenda"
+                  >
+                    {group.overlays.length === 1 && (
+                      <span
+                        className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize border-r border-orange-100/70 bg-black/25"
+                        onPointerDown={(event) => beginTextTrim(event, overlay, "start")}
+                      />
+                    )}
+                    <Captions className="mr-1 inline size-3" />
+                    <span className="truncate align-middle">{group.text}</span>
+                    {group.overlays.length === 1 && (
+                      <span
+                        className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize border-l border-orange-100/70 bg-black/25"
+                        onPointerDown={(event) => beginTextTrim(event, overlay, "end")}
+                      />
+                    )}
+                  </button>
+                );
+              })}
               {!textOverlays.length && <EmptyTrack label="Clique em Adicionar texto" />}
             </TimelineRow>
 
@@ -1450,7 +1544,10 @@ function EditorResourcePanel({
   onPanelChange,
   segments,
   audioLayers,
+  textCount,
   disabled,
+  captionPreset,
+  captionBusy,
   onAddHeading,
   onAddBody,
   onApplyPreset,
@@ -1458,12 +1555,19 @@ function EditorResourcePanel({
   onImportAudio,
   onSelectSegment,
   onSelectAudio,
+  onCaptionPresetChange,
+  onOpenCaptionSettings,
+  onCreateCaptions,
+  onRemoveAllTexts,
 }: {
   activePanel: "media" | "elements" | "text" | "captions" | "audio" | "transitions" | "effects" | "filters";
   onPanelChange: (panel: "media" | "elements" | "text" | "captions" | "audio" | "transitions" | "effects" | "filters") => void;
   segments: EditorSegment[];
   audioLayers: EditorAudioLayer[];
+  textCount: number;
   disabled: boolean;
+  captionPreset: CaptionPreset;
+  captionBusy: boolean;
   onAddHeading?: () => void;
   onAddBody?: () => void;
   onApplyPreset: (preset: TextPreset) => void;
@@ -1471,6 +1575,10 @@ function EditorResourcePanel({
   onImportAudio: (file: File) => void;
   onSelectSegment: (id: string) => void;
   onSelectAudio: (id: string) => void;
+  onCaptionPresetChange: (preset: CaptionPreset) => void;
+  onOpenCaptionSettings: () => void;
+  onCreateCaptions: () => void;
+  onRemoveAllTexts: () => void;
 }) {
   const tabs = [
     { id: "media" as const, label: "Mídia", icon: Film },
@@ -1589,6 +1697,17 @@ function EditorResourcePanel({
               onAddHeading={onAddHeading}
               onAddBody={onAddBody}
             />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full border-rose-500/30 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+              disabled={disabled || textCount === 0}
+              onClick={onRemoveAllTexts}
+              title="Remove todos os textos e legendas; use Desfazer para restaurar"
+            >
+              <Trash2 /> Apagar todos os textos ({textCount})
+            </Button>
           </div>
         )}
 
@@ -1603,22 +1722,60 @@ function EditorResourcePanel({
               Gera legendas automáticas sincronizadas com a fala no estilo viral dos criadores do CapCut.
             </p>
 
-            <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-2 gap-2 pt-1">
               {[
-                { name: "🟡 CapCut Fundo Amarelo", desc: "Texto preto em caixa amarela destacada", preset: "capcut_yellow" as const },
-                { name: "🟣 CapCut Fundo Roxo", desc: "Roxo vibrante com glow e traço", preset: "capcut_purple" as const },
-                { name: "🟢 CapCut Verde Neon", desc: "Verde elétrico de alta retenção", preset: "capcut_neon_green" as const },
-                { name: "⚡ CapCut Palavra Dinâmica", desc: "Destaca cada palavra conforme falada", preset: "capcut_dynamic" as const },
+                { name: "Amarelo", preview: "OLHA ISSO", color: "bg-yellow-400 text-black", preset: "capcut_yellow" as const },
+                { name: "Roxo", preview: "PERFEITO", color: "bg-violet-600 text-white", preset: "capcut_purple" as const },
+                { name: "Neon", preview: "NOVIDADE", color: "bg-green-400 text-black", preset: "capcut_neon_green" as const },
+                { name: "Dinâmica", preview: "PALAVRA", color: "bg-transparent text-yellow-300", preset: "capcut_dynamic" as const },
+                { name: "Limpa", preview: "texto limpo", color: "bg-transparent text-white", preset: "capcut_clean" as const },
+                { name: "4 palavras", preview: "UMA FRASE POR VEZ", color: "bg-black/70 text-white", preset: "four_words" as const },
+                { name: "Word Pop", preview: "DESTAQUE", color: "bg-transparent text-rose-400", preset: "word_pop" as const },
+                { name: "Minimal", preview: "legenda discreta", color: "bg-black/40 text-white", preset: "minimal" as const },
               ].map((item) => (
-                <div
-                  key={item.name}
-                  className="p-2.5 rounded-xl border border-white/10 bg-black/40 hover:border-cyan-400/50 hover:bg-white/[0.03] transition cursor-pointer"
+                <button
+                  type="button"
+                  key={item.preset}
+                  className={`rounded-xl border bg-[#222326] p-2 text-left transition hover:border-cyan-400/50 ${captionPreset === item.preset ? "border-cyan-400 ring-1 ring-cyan-400/40" : "border-white/10"}`}
+                  onClick={() => onCaptionPresetChange(item.preset)}
                 >
-                  <p className="font-bold text-[11px] text-slate-200">{item.name}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{item.desc}</p>
-                </div>
+                  <span className={`flex h-12 items-center justify-center rounded-lg px-1 text-center text-[9px] font-black ${item.color}`}>
+                    {item.preview}
+                  </span>
+                  <span className="mt-1.5 block text-[10px] font-medium text-slate-300">{item.name}</span>
+                </button>
               ))}
             </div>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full border-white/10 bg-white/5 text-white"
+              onClick={onOpenCaptionSettings}
+            >
+              <Sliders /> Tamanho, linhas e roteiro exato
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="w-full"
+              disabled={disabled || captionBusy}
+              onClick={onCreateCaptions}
+            >
+              {captionBusy ? <span className="animate-pulse">Sincronizando...</span> : <><Captions /> Criar legendas</>}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="w-full border-rose-500/30 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+              disabled={disabled || textCount === 0}
+              onClick={onRemoveAllTexts}
+              title="Remove todos os textos e legendas; use Desfazer para restaurar"
+            >
+              <Trash2 /> Apagar todos os textos ({textCount})
+            </Button>
           </div>
         )}
 
@@ -1792,6 +1949,12 @@ function TextCanvasElement({
   onRemove: () => void;
 }) {
   const visualStyle = getTextVisualStyle(overlay, 0.4);
+  const captionLineBreaks = new Set<number>();
+  let captionLineOffset = 0;
+  for (const count of overlay.captionLineWordCounts?.slice(0, -1) ?? []) {
+    captionLineOffset += count;
+    captionLineBreaks.add(captionLineOffset);
+  }
   const elementStyle = {
     ...visualStyle,
     left: `${overlay.x}%`,
@@ -1920,8 +2083,9 @@ function TextCanvasElement({
                     display: "inline-block",
                   }}
                 >
-                  {index ? " " : ""}
+                  {index && !captionLineBreaks.has(index) ? " " : ""}
                   {word}
+                  {captionLineBreaks.has(index + 1) ? <br /> : null}
                 </span>
               ))}
             </span>

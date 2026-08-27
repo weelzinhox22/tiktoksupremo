@@ -112,11 +112,18 @@ function LiveStudioDownloads() {
           </span>
           <span className="font-display text-lg font-bold">Tik Supremo</span>
         </Link>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/">
-            <ArrowLeft /> Voltar ao site
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="border-white/10 bg-white/[0.04] text-xs font-semibold hover:bg-white/[0.08]" asChild>
+            <Link to="/dashboard">
+              Ir para o Dashboard
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground" asChild>
+            <Link to="/">
+              <ArrowLeft className="mr-1.5 size-3.5" /> Voltar ao site
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <main className="relative z-10">

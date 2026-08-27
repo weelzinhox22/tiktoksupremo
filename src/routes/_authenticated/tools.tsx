@@ -18,6 +18,7 @@ import {
   Wrench,
   Radio,
   TrendingUp,
+  MonitorPlay,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -48,6 +49,15 @@ const toolCategories = [
         badge: "Rápido",
         badgeColor: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
         gradient: "from-cyan-500/10 via-transparent to-transparent",
+      },
+      {
+        title: "Downloads Live Studio",
+        description: "Baixe o LiveStudio CAM (Windows) e a extensão LiveWelPro para operação integrada de LIVE.",
+        to: "/live-studio",
+        icon: MonitorPlay,
+        badge: "Novo · Live",
+        badgeColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+        gradient: "from-purple-500/10 via-transparent to-transparent",
       },
       {
         title: "Transcrever por Link",

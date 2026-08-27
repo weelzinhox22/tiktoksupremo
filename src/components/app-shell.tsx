@@ -19,6 +19,7 @@ import {
   PersonStanding,
   BarChart3,
   Radar,
+  MonitorPlay,
   Video,
   ShieldCheck,
   Download,
@@ -75,6 +76,7 @@ const navGroups = [
     title: "Download & Transcrição",
     items: [
       { label: "Baixar do TikTok", icon: Download, to: "/tiktok-downloader" as const },
+      { label: "Downloads Live Studio", icon: MonitorPlay, to: "/live-studio" as const },
       { label: "Transcrever por Link", icon: FileText, to: "/video-transcriber" as const },
       { label: "Transcrever Arquivo", icon: FileCheck2, to: "/copies" as const },
     ],
@@ -121,6 +123,7 @@ function NavList({
                 (item.to === "/tools" &&
                   [
                     "/tools",
+                    "/live-studio",
                     "/tiktok-downloader",
                     "/video-transcriber",
                     "/copies",

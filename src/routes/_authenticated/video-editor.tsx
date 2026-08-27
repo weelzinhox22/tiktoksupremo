@@ -28,6 +28,7 @@ import {
   ShoppingBag,
   CheckCircle2,
   Package,
+  Settings2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +83,10 @@ import {
   type HeadlineBgStyle,
 } from "@/features/video-editor/frame0-headlines";
 import { listProductLibrary } from "@/features/libraries/queries";
-import { transcribeLocalFileServerFn } from "@/features/tiktok-downloader/transcribe-server";
+import {
+  createCaptionUploadServerFn,
+  transcribeStoredCaptionFileServerFn,
+} from "@/features/tiktok-downloader/transcribe-server";
 
 export const Route = createFileRoute("/_authenticated/video-editor")({
   component: ProfessionalVideoEditorPage,
@@ -135,15 +139,6 @@ function createSegment(file: File, duration: number, index: number): EditorSegme
   };
 }
 
-function fileToBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 function ProfessionalVideoEditorPage() {
   const editor = useEditorHistory(emptyProject());
   const project = editor.state;
@@ -157,7 +152,12 @@ function ProfessionalVideoEditorPage() {
   const [shortcutsOpenRequest, setShortcutsOpenRequest] = useState(0);
   const [automationBusy, setAutomationBusy] = useState<"captions" | "silence" | null>(null);
   const [captionPreset, setCaptionPreset] = useState<CaptionPreset>("capcut_yellow");
-  const [captionEmojis, setCaptionEmojis] = useState(true);
+  const [captionEmojis, setCaptionEmojis] = useState(false);
+  const [captionFontSize, setCaptionFontSize] = useState(34);
+  const [captionWordsPerCard, setCaptionWordsPerCard] = useState(4);
+  const [captionMaxLines, setCaptionMaxLines] = useState(2);
+  const [captionReferenceText, setCaptionReferenceText] = useState("");
+  const [captionSettingsOpen, setCaptionSettingsOpen] = useState(false);
   const [auditBusy, setAuditBusy] = useState(false);
   const [editorTemplates, setEditorTemplates] = useState<VideoEditorTemplate[]>([]);
   const productsQuery = useQuery({ queryKey: ["product-library"], queryFn: listProductLibrary });
@@ -439,13 +439,37 @@ function ProfessionalVideoEditorPage() {
     setAutomationBusy("captions");
     const toastId = toast.loading("Transcrevendo e criando legendas...");
     try {
-      const result = await transcribeLocalFileServerFn({
-        data: {
-          base64: await fileToBase64(selectedSegment.file),
-          filename: selectedSegment.file.name,
-          mimeType: selectedSegment.file.type,
-        },
-      });
+      let transcript = captionReferenceText.trim();
+      if (!transcript) {
+        toast.loading("Enviando mídia diretamente para transcrição...", { id: toastId });
+        const upload = await createCaptionUploadServerFn({
+          data: {
+            filename: selectedSegment.file.name,
+            mimeType: selectedSegment.file.type,
+            size: selectedSegment.file.size,
+          },
+        });
+        const uploadBody = new FormData();
+        uploadBody.append("cacheControl", "3600");
+        uploadBody.append("", selectedSegment.file);
+        const uploaded = await fetch(upload.signedUrl, {
+          method: "PUT",
+          headers: { "x-upsert": "false" },
+          body: uploadBody,
+        });
+        if (!uploaded.ok) {
+          throw new Error(`Falha no envio direto da mídia (${uploaded.status}).`);
+        }
+        toast.loading("Transcrevendo a fala...", { id: toastId });
+        const result = await transcribeStoredCaptionFileServerFn({
+          data: {
+            storagePath: upload.storagePath,
+            filename: selectedSegment.file.name,
+            mimeType: selectedSegment.file.type,
+          },
+        });
+        transcript = result.transcript;
+      }
       const duration = Math.max(0.1, selectedSegment.end - selectedSegment.start);
       const timeline = getTimelineLayout(
         project.timelineIds
@@ -454,10 +478,12 @@ function ProfessionalVideoEditorPage() {
       );
       const offset =
         timeline.entries.find((entry) => entry.segment.id === selectedSegment.id)?.start ?? 0;
-      const smart = await createSmartCaptions(result.transcript, selectedSegment.file, {
+      const smart = await createSmartCaptions(transcript, selectedSegment.file, {
         preset: captionPreset,
         emojis: captionEmojis,
-        wordsPerCard: 4,
+        wordsPerCard: captionWordsPerCard,
+        fontSize: captionFontSize,
+        maxLines: captionMaxLines,
       });
       const captions = smart.captions
         .filter((caption) => caption.start < duration)
@@ -472,7 +498,7 @@ function ProfessionalVideoEditorPage() {
         true,
       );
       toast.success(
-        `${smart.words.length} palavras sincronizadas · ${smart.importantPhrases.length} frase(s) importante(s).`,
+        `${smart.words.length} palavras sincronizadas${captionReferenceText.trim() ? " com o roteiro exato" : ""}.`,
         { id: toastId },
       );
     } catch (cause) {
@@ -805,6 +831,17 @@ function ProfessionalVideoEditorPage() {
             {automationBusy === "captions" ? <Loader2 className="animate-spin" /> : <Captions />}
             <span className="hidden xl:inline">Legendas IA</span>
           </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-8 text-slate-400 hover:bg-white/10 hover:text-white"
+            disabled={Boolean(automationBusy)}
+            onClick={() => setCaptionSettingsOpen(true)}
+            title="Personalizar tamanho, linhas, palavras e roteiro exato"
+            aria-label="Configurar legendas automáticas"
+          >
+            <Settings2 />
+          </Button>
           <select
             aria-label="Preset das legendas automáticas"
             className="hidden h-8 rounded-md border border-white/10 bg-[#0b0d13] px-2 text-[10px] text-slate-300 xl:block"
@@ -816,6 +853,9 @@ function ProfessionalVideoEditorPage() {
             <option value="capcut_purple">🟣 CapCut Fundo Roxo</option>
             <option value="capcut_neon_green">🟢 CapCut Verde Neon</option>
             <option value="capcut_dynamic">⚡ CapCut Palavra Dinâmica</option>
+            <option value="capcut_clean">💬 CapCut Limpa</option>
+            <option value="four_words">4️⃣ Quatro Palavras</option>
+            <option value="word_pop">🔴 Palavra Pop</option>
             <option value="tiktok">📱 TikTok Creator</option>
             <option value="karaoke">🎤 Karaokê</option>
             <option value="impact">🔥 Impacto Oferta</option>
@@ -939,6 +979,8 @@ function ProfessionalVideoEditorPage() {
             canUndo={editor.canUndo}
             canRedo={editor.canRedo}
             shortcutsOpenRequest={shortcutsOpenRequest}
+            captionPreset={captionPreset}
+            captionBusy={automationBusy === "captions"}
             onUndo={editor.undo}
             onRedo={editor.redo}
             onSave={() => void saveNow()}
@@ -992,8 +1034,86 @@ function ProfessionalVideoEditorPage() {
             onSplitSegment={splitSegment}
             onRemoveSegment={removeSegment}
             onDuplicateSegment={duplicateSegment}
+            onCaptionPresetChange={setCaptionPreset}
+            onOpenCaptionSettings={() => setCaptionSettingsOpen(true)}
+            onCreateCaptions={() => void createAutomaticCaptions()}
           />
       </div>
+
+      <Dialog open={captionSettingsOpen} onOpenChange={setCaptionSettingsOpen}>
+        <DialogContent className="max-w-xl border-white/15 bg-[#0c0e14]/95 text-slate-100">
+          <DialogHeader>
+            <DialogTitle>Configurar legendas automáticas</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Controle a densidade visual. Se você colar o roteiro, as legendas usarão exatamente
+              essas palavras e a IA será usada apenas para sincronizar o tempo da fala.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Label className="text-xs text-slate-300">
+              Fonte (px)
+              <Input
+                className="mt-1 border-white/10 bg-black/30"
+                type="number"
+                min={18}
+                max={72}
+                value={captionFontSize}
+                onChange={(event) => setCaptionFontSize(Math.max(18, Math.min(72, Number(event.target.value))))}
+              />
+            </Label>
+            <Label className="text-xs text-slate-300">
+              Palavras por bloco
+              <Input
+                className="mt-1 border-white/10 bg-black/30"
+                type="number"
+                min={1}
+                max={8}
+                value={captionWordsPerCard}
+                onChange={(event) => setCaptionWordsPerCard(Math.max(1, Math.min(8, Number(event.target.value))))}
+              />
+            </Label>
+            <Label className="text-xs text-slate-300">
+              Linhas por bloco
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-white/10 bg-black/30 px-3 text-sm"
+                value={captionMaxLines}
+                onChange={(event) => setCaptionMaxLines(Number(event.target.value))}
+              >
+                <option value={1}>1 linha</option>
+                <option value={2}>2 linhas</option>
+                <option value={3}>3 linhas</option>
+              </select>
+            </Label>
+          </div>
+
+          <Label className="text-xs text-slate-300">
+            Roteiro exato da personagem (opcional)
+            <textarea
+              className="mt-1 min-h-32 w-full resize-y rounded-lg border border-white/10 bg-black/30 p-3 text-sm leading-5 text-white outline-none focus:border-cyan-400"
+              value={captionReferenceText}
+              onChange={(event) => setCaptionReferenceText(event.target.value)}
+              placeholder="Cole aqui exatamente o que a personagem fala..."
+            />
+          </Label>
+
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-cyan-400/15 bg-cyan-400/5 p-3 text-[11px] text-slate-400">
+            <span>
+              Recomendado para 9:16: 30–36 px, 4 palavras e até 2 linhas.
+            </span>
+            <Button
+              size="sm"
+              onClick={() => {
+                setCaptionSettingsOpen(false);
+                void createAutomaticCaptions();
+              }}
+              disabled={!selectedSegment || Boolean(automationBusy)}
+            >
+              <Captions /> Criar agora
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Frame 0 Headline Generator Dialog */}
       <Dialog open={isHeadlineModalOpen} onOpenChange={setIsHeadlineModalOpen}>

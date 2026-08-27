@@ -17,6 +17,7 @@ import {
   RotateCw,
   Play,
   Zap,
+  MonitorPlay,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,7 +106,18 @@ function Dashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs font-semibold border-white/10 bg-white/[0.03] hover:bg-white/[0.08] text-[#A3A6B3] hover:text-[#F7F7FB] transition-all hover:scale-[1.02]"
+            asChild
+          >
+            <Link to="/live-studio">
+              <Download className="mr-1.5 size-3.5 text-[#9B7CFF]" /> Downloads Live Studio
+            </Link>
+          </Button>
+
           <Button
             size="sm"
             variant="outline"
@@ -113,7 +125,7 @@ function Dashboard() {
             asChild
           >
             <Link to="/tiktok-downloader">
-              <Download className="mr-1.5 size-3.5 text-[#9B7CFF]" /> Baixar do TikTok
+              <Download className="mr-1.5 size-3.5 text-cyan-400" /> Baixar do TikTok
             </Link>
           </Button>
 
@@ -128,6 +140,40 @@ function Dashboard() {
           </Button>
         </div>
       </header>
+
+      {/* Live Studio Download Highlight Banner */}
+      <section className="relative overflow-hidden rounded-2xl border border-[#9B7CFF]/25 bg-gradient-to-r from-[#171328] via-[#0E1017] to-[#111425] p-4 sm:p-5 shadow-xl shadow-purple-950/20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#9B7CFF]/15 text-[#9B7CFF] border border-[#9B7CFF]/30 shadow-inner">
+              <MonitorPlay className="size-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-[#9B7CFF]/20 text-[#AA92FF] border-[#9B7CFF]/30 text-[10px] font-bold px-2 py-0.5">
+                  EXPERIMENTAL
+                </Badge>
+                <span className="text-xs font-bold text-[#F7F7FB]">LiveStudio CAM & Extensão LiveWelPro</span>
+              </div>
+              <p className="text-xs text-[#A3A6B3]">
+                Baixe o aplicativo para Windows (96,8 MB) e a extensão Chrome para automações, Telegram e estúdio de LIVE.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              className="h-9 px-4 text-xs font-bold bg-[#9B7CFF] hover:bg-[#AA92FF] text-[#07080D] shadow-md shadow-[#9B7CFF]/25 gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              asChild
+            >
+              <Link to="/live-studio">
+                <Download className="size-3.5" /> Página de Downloads <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {/* Metric Cards (1 Compact Row) */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">

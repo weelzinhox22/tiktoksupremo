@@ -7,6 +7,9 @@ export type CaptionPreset =
   | "capcut_purple"
   | "capcut_neon_green"
   | "capcut_dynamic"
+  | "capcut_clean"
+  | "four_words"
+  | "word_pop"
   | "karaoke"
   | "minimal"
   | "impact";
@@ -34,7 +37,7 @@ const emojiRules: Array<[RegExp, string]> = [
 const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
   capcut_yellow: {
     y: 74,
-    fontSize: 50,
+    fontSize: 34,
     color: "#000000",
     backgroundColor: "#facc15",
     style: "caption",
@@ -42,13 +45,13 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     fontWeight: 900,
     strokeColor: "#000000",
     strokeWidth: 0,
-    borderRadius: 14,
+    borderRadius: 9,
     highlightColor: "#ffffff",
     textTransform: "uppercase",
   },
   capcut_purple: {
     y: 74,
-    fontSize: 50,
+    fontSize: 35,
     color: "#ffffff",
     backgroundColor: "#7c3aed",
     style: "caption",
@@ -56,13 +59,13 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     fontWeight: 900,
     strokeColor: "#000000",
     strokeWidth: 2,
-    borderRadius: 14,
+    borderRadius: 9,
     highlightColor: "#facc15",
     textTransform: "uppercase",
   },
   capcut_neon_green: {
     y: 74,
-    fontSize: 50,
+    fontSize: 35,
     color: "#000000",
     backgroundColor: "#22c55e",
     style: "caption",
@@ -70,13 +73,13 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     fontWeight: 900,
     strokeColor: "#000000",
     strokeWidth: 0,
-    borderRadius: 14,
+    borderRadius: 9,
     highlightColor: "#ffffff",
     textTransform: "uppercase",
   },
   capcut_dynamic: {
     y: 76,
-    fontSize: 54,
+    fontSize: 38,
     color: "#ffffff",
     backgroundColor: "transparent",
     style: "impact",
@@ -87,9 +90,48 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
     highlightColor: "#facc15",
     textTransform: "uppercase",
   },
+  capcut_clean: {
+    y: 77,
+    fontSize: 32,
+    color: "#ffffff",
+    backgroundColor: "transparent",
+    style: "minimal",
+    fontFamily: "Montserrat, Arial, sans-serif",
+    fontWeight: 700,
+    strokeColor: "#111827",
+    strokeWidth: 2,
+    highlightColor: "#22d3ee",
+    textTransform: "none",
+  },
+  four_words: {
+    y: 74,
+    fontSize: 35,
+    color: "#ffffff",
+    backgroundColor: "rgba(0,0,0,.62)",
+    style: "caption",
+    fontFamily: "Montserrat, Arial, sans-serif",
+    fontWeight: 800,
+    strokeWidth: 0,
+    borderRadius: 8,
+    highlightColor: "#facc15",
+    textTransform: "none",
+  },
+  word_pop: {
+    y: 72,
+    fontSize: 38,
+    color: "#ffffff",
+    backgroundColor: "transparent",
+    style: "impact",
+    fontFamily: "Montserrat, Arial Black, sans-serif",
+    fontWeight: 900,
+    strokeColor: "#000000",
+    strokeWidth: 5,
+    highlightColor: "#fb2c36",
+    textTransform: "uppercase",
+  },
   tiktok: {
     y: 72,
-    fontSize: 48,
+    fontSize: 36,
     color: "#fff",
     backgroundColor: "rgba(0,0,0,.58)",
     style: "caption",
@@ -103,7 +145,7 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
   },
   capcut: {
     y: 76,
-    fontSize: 50,
+    fontSize: 35,
     color: "#fff",
     backgroundColor: "#facc15",
     style: "caption",
@@ -117,7 +159,7 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
   },
   karaoke: {
     y: 70,
-    fontSize: 46,
+    fontSize: 34,
     color: "#d1d5db",
     backgroundColor: "rgba(8,8,12,.75)",
     style: "caption",
@@ -129,7 +171,7 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
   },
   minimal: {
     y: 74,
-    fontSize: 40,
+    fontSize: 30,
     color: "#fff",
     backgroundColor: "rgba(0,0,0,.45)",
     style: "minimal",
@@ -140,7 +182,7 @@ const presetStyles: Record<CaptionPreset, Partial<EditorTextOverlay>> = {
   },
   impact: {
     y: 68,
-    fontSize: 56,
+    fontSize: 42,
     color: "#fff",
     backgroundColor: "transparent",
     style: "impact",
@@ -163,7 +205,7 @@ export function transcriptToCaptions(transcript: string, duration: number): Edit
 export async function createSmartCaptions(
   transcript: string,
   file: File,
-  options: { preset: CaptionPreset; emojis: boolean; wordsPerCard?: number },
+  options: { preset: CaptionPreset; emojis: boolean; wordsPerCard?: number; fontSize?: number; maxLines?: number },
 ) {
   const analysis = await analyzeSpeech(file);
   const words = alignWordsToSpeech(transcript, analysis);
@@ -177,11 +219,11 @@ export async function createSmartCaptions(
 
 export function timedWordsToCaptions(
   words: TimedWord[],
-  options: { preset: CaptionPreset; emojis: boolean; wordsPerCard?: number },
+  options: { preset: CaptionPreset; emojis: boolean; wordsPerCard?: number; fontSize?: number; maxLines?: number },
 ) {
   const isCapcutStyle = options.preset.startsWith("capcut");
-  const defaultSize = isCapcutStyle ? 3 : 4;
-  const cardSize = Math.max(1, Math.min(6, options.wordsPerCard ?? defaultSize));
+  const presetSize = options.preset === "four_words" ? 4 : isCapcutStyle ? 3 : 4;
+  const cardSize = Math.max(1, Math.min(8, options.wordsPerCard ?? presetSize));
   const overlays: EditorTextOverlay[] = [];
   for (let offset = 0; offset < words.length; offset += cardSize) {
     const card = words.slice(offset, offset + cardSize);
@@ -190,6 +232,13 @@ export function timedWordsToCaptions(
     const displayWords = emoji
       ? [...card.map((word) => word.text), emoji]
       : card.map((word) => word.text);
+    const captionGroupId = `caption-group-${crypto.randomUUID()}`;
+    const maxLines = Math.max(1, Math.min(3, options.maxLines ?? 2));
+    const lineCount = Math.min(maxLines, displayWords.length);
+    const captionLineWordCounts = Array.from({ length: lineCount }, (_, index) => {
+      const base = Math.floor(displayWords.length / lineCount);
+      return base + (index < displayWords.length % lineCount ? 1 : 0);
+    });
     for (const [activeWordIndex, word] of card.entries()) {
       overlays.push({
         id: `caption-${crypto.randomUUID()}`,
@@ -198,7 +247,7 @@ export function timedWordsToCaptions(
         end: Math.max(word.start + 0.08, word.end),
         x: 50,
         y: 76,
-        fontSize: 48,
+        fontSize: options.fontSize ?? 34,
         color: "#fff",
         backgroundColor: "rgba(0,0,0,.55)",
         style: "caption",
@@ -219,10 +268,14 @@ export function timedWordsToCaptions(
         textTransform: "none",
         borderRadius: 14,
         captionWords: displayWords,
+        captionGroupId,
+        captionLineWordCounts,
+        maxLines,
         activeWordIndex,
         important: word.important,
         captionPreset: options.preset,
         ...presetStyles[options.preset],
+        ...(options.fontSize ? { fontSize: options.fontSize } : {}),
       });
     }
   }
