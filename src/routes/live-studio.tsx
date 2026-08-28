@@ -288,7 +288,7 @@ function LiveStudioDownloads() {
       <div className="aurora" aria-hidden="true" />
 
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-5">
-        <Link to="/" className="flex items-center gap-2 font-semibold">
+        <Link to="/dashboard" className="flex items-center gap-2 font-semibold">
           <span className="bg-gradient-supremo flex size-9 items-center justify-center rounded-xl">
             <Sparkles className="size-4 text-primary-foreground" />
           </span>
@@ -297,12 +297,7 @@ function LiveStudioDownloads() {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="border-white/10 bg-white/[0.04] text-xs font-semibold hover:bg-white/[0.08]" asChild>
             <Link to="/dashboard">
-              Ir para o Dashboard
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground" asChild>
-            <Link to="/">
-              <ArrowLeft className="mr-1.5 size-3.5" /> Voltar ao site
+              <ArrowLeft className="mr-1.5 size-3.5" /> Voltar ao Dashboard
             </Link>
           </Button>
         </div>
